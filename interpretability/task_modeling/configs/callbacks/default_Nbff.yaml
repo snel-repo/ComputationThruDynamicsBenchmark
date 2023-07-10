@@ -1,0 +1,18 @@
+model_checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: "."
+  monitor: valid/loss
+  save_last: True
+
+tune_report_callback:
+  _target_: ray.tune.integration.pytorch_lightning.TuneReportCallback
+  metrics:
+    loss: valid/loss
+
+state_transition_callback:
+  _target_: interpretability.task_modeling.callbacks.callbacks.StateTransitionCallback
+  log_every_n_epochs: 20
+  
+latent_traj:
+ _target_: interpretability.task_modeling.callbacks.callbacks.LatentTrajectoryPlot
+ log_every_n_epochs: 20

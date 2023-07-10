@@ -1,7 +1,0 @@
-_target_: task_modeling.models.task_trained_RNN.TaskTrainedRNN
-input_size: 4
-latent_size: 64
-output_size: 2
-
-learning_rate: 5.0e-4
-weight_decay: 1.0e-9
