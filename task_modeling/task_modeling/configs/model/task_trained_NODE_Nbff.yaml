@@ -1,0 +1,12 @@
+_target_: task_modeling.models.task_trained_NODE.TaskTrainedNODE
+input_size: 3
+latent_size: 3
+output_size: 3
+
+learning_rate: 5.0e-3
+weight_decay: 1.0e-5
+
+vf_hidden_size: 128
+vf_depth: 3
+
+state_2_state: False

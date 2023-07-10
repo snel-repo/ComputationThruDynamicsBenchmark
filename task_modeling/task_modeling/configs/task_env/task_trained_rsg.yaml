@@ -1,0 +1,5 @@
+_target_: task_modeling.task_envs.task_envs.ReadySetGoTask
+
+n_timesteps: 100
+n_samples: 500
+noise: 0.01

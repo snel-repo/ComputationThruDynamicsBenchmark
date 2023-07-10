@@ -1,0 +1,62 @@
+defaults:
+  - model: tbff
+  - datamodule: tbff
+  - callbacks: tbff
+  - _self_
+
+seed: 0
+ignore_warnings: False
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  gradient_clip_val: 200
+  max_epochs: 2_000
+  log_every_n_steps: 5
+  # track_grad_norm: 2
+
+callbacks:
+  model_checkpoint:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: valid/recon_smth
+    mode: min
+    save_top_k: 1
+    save_last: True
+    verbose: False
+    dirpath: lightning_checkpoints
+    auto_insert_metric_name: False
+  early_stopping:
+    _target_: pytorch_lightning.callbacks.EarlyStopping
+    monitor: valid/recon_smth
+    mode: min
+    patience: 200
+    min_delta: 0
+  learning_rate_monitor:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    logging_interval: epoch
+
+logger:
+  csv_logger:
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: "csv_logs"
+    version: ""
+    name: ""
+  tensorboard_logger:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: "."
+    version: ""
+    name: ""
+
+  wandb_logger:
+    _target_: pytorch_lightning.loggers.WandbLogger
+    save_dir: "."
+    version: ""
+    name: ""
+    project: "lfads_NODE"
+    group: ""
+
+posterior_sampling:
+  use_best_ckpt: True
+  fn:
+    _target_: lfads_torch.post_run.analysis.run_posterior_sampling
+    filename: lfads_output.h5
+    num_samples: 50

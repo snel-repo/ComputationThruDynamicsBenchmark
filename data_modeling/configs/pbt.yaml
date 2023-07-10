@@ -1,0 +1,65 @@
+defaults:
+  - model: nlb_mc_maze
+  - datamodule: nlb_mc_maze
+  - callbacks: default
+  - _self_
+
+# Use unique initializations for better diversity
+seed: null
+ignore_warnings: True
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  gradient_clip_val: 200
+  max_epochs: 1_000
+  log_every_n_steps: 5
+  # Checkpointing is managed by the `TuneReportCheckpointCallback`
+  enable_checkpointing: False
+  # Prevent console output by individual models
+  enable_progress_bar: False
+  enable_model_summary: False
+
+# Allow PBT to handle LR scheduling
+model:
+  lr_scheduler: False
+
+callbacks:
+  tune_report_checkpoint_callback:
+    _target_: ray.tune.integration.pytorch_lightning.TuneReportCheckpointCallback
+    metrics:
+      - valid/recon_smth
+      - cur_epoch
+    filename: tune.ckpt
+    "on": validation_end
+  learning_rate_monitor:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    logging_interval: epoch
+
+logger:
+  csv_logger:
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: "csv_logs"
+    # Allow the logger to create a new version for each generation
+    version: null
+    name: ""
+  tensorboard_logger:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    # Configure logger so PTL and ray use the same TB file.
+    save_dir:
+      _target_: ray.tune.get_trial_dir
+    version: ""
+    name: ""
+  wandb_logger:
+    _target_: pytorch_lightning.loggers.WandbLogger
+    project: null # Overwrite with PROJECT_STR in the run script
+    tags:
+      - pbt
+      - null # Overwrite with DATASET_STR in the run script
+      - null # Overwrite with RUN_TAG in the run script
+
+posterior_sampling:
+  use_best_ckpt: False
+  fn:
+    _target_: lfads_torch.post_run.analysis.run_posterior_sampling
+    filename: lfads_output.h5
+    num_samples: 50

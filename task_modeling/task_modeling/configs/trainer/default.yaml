@@ -1,0 +1,6 @@
+_target_: pytorch_lightning.Trainer
+log_every_n_steps: 100
+max_epochs: 1000
+# Prevent console output from individual models
+progress_bar_refresh_rate: 0
+weights_summary: null

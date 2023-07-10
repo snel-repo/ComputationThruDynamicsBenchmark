@@ -1,0 +1,12 @@
+_target_: lfads_torch.datamodules.BasicDataModule
+data_paths:
+  - ${relpath:datasets/mc_maze_large-05ms-val.h5}
+batch_keys:
+  - behavior
+attr_keys:
+  - psth
+  - train_cond_idx
+  - valid_cond_idx
+  - train_decode_mask
+  - valid_decode_mask
+batch_size: 256
