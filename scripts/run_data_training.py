@@ -4,13 +4,13 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from lfads_torch.run_model import run_model
+from interpretability.data_modeling.lfads_torch.run_model import run_model
 
 logger = logging.getLogger(__name__)
 
 # ---------- OPTIONS -----------
 OVERWRITE = True
-PROJECT_STR = "0710_TBFF_InputInf_RNN_Bernoulli"
+PROJECT_STR = "0711_TBFF_InputInf_RNN_Reconfig2"
 DATASET_STR = "tbff"
 RUN_TAG = datetime.now().strftime("%Y%m%d-%H%M%S")
 RUN_DIR = (

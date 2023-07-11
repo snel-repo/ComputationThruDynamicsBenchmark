@@ -25,19 +25,11 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "TBFF_RNN_Inputs2"
+RUN_DESC = "TBFF_RNN_Final"
 NUM_SAMPLES = 1
 TASK = "Nbff"
 MODEL = "RNN"
 
-# grid_search
-# choice
-# Learning Rates (Sim):
-# Flow= 1.88e-4
-# Linear = 2e-3
-# MLP = 7.3e-3
-# Correct = ?
-# Invert = 1.88e-4
 
 SEARCH_SPACE = dict(
     # -----------------Model Parameters -----------------------------------

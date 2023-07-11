@@ -120,3 +120,7 @@ def train(
     # -----------------------------Train model---------------------------
     log.info("Training model")
     wrapper.train_and_simulate()
+    
+    # -----------------------------Save wrapper---------------------------
+    log.info("Saving wrapper")
+    wrapper.save_wrapper(f"/home/csverst/Github/InterpretabilityBenchmark/task_trained_models/{run_tag}_{run_name}.pkl")

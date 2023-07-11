@@ -1,12 +1,12 @@
 raster_plot:
-  _target_: lfads_torch.callbacks.RasterPlot
+  _target_: interpretability.data_modeling.lfads_torch.callbacks.RasterPlot
   log_every_n_epochs: 100
 
 trajectory_plot:
-  _target_: lfads_torch.callbacks.TrajectoryPlot
+  _target_: interpretability.data_modeling.lfads_torch.callbacks.TrajectoryPlot
   log_every_n_epochs: 100
 
 input_accuracy:
-  _target_: lfads_torch.extensions.task_trained.InputR2Plot
+  _target_: interpretability.data_modeling.lfads_torch.extensions.task_trained.InputR2Plot
   log_every_n_epochs: 20
   n_samples: 16

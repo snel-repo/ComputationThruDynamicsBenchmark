@@ -1,4 +1,6 @@
 from interpretability.task_modeling.datamodule.task_datamodule import TaskDataModule
+import pickle
+
 class TaskTrainWrapper():
     def __init__(self, task_env, model, data_simulator, trainer):
         self.task_env = task_env
@@ -35,3 +37,12 @@ class TaskTrainWrapper():
     def train_and_simulate(self):
         self.train_model()
         self.simulate_neural_spiking()
+
+    def save_wrapper(self, filepath):
+        with open(filepath, 'wb') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load_wrapper(filepath):
+        with open(filepath, 'rb') as f:
+            return pickle.load(f)

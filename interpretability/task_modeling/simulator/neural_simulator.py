@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 import h5py
 
 # plt.switch_backend("Agg")
-DATA_HOME = "/home/csverst/Github/NeuralLatentInterpretability/data_modeling/datasets"
+DATA_HOME = "/home/csverst/Github/InterpretabilityBenchmark/interpretability/data_modeling/datasets"
 
 def sigmoidActivation(module, input):
     return 1 / (1 + module.exp(-1 * input))
@@ -45,6 +45,10 @@ class NeuralDataSimulator():
         self.n_neurons = n_neurons
         self.nonlin_embed = nonlin_embed
         self.obs_noise = "poisson"
+        self.readout = None
+        self.orig_mean = None
+        self.orig_std = None
+
 
     def simulate_neural_data(self, task_trained_model, datamodule, seed):
 
@@ -83,13 +87,16 @@ class NeuralDataSimulator():
         else:
             # Use an identity readout
             readout = np.eye(n_lat_dim)
-
+        self.readout = readout
         activity = latents @ readout
 
         # Standardize and record original mean and standard deviations
         orig_mean = np.mean(activity, axis=0, keepdims=True)
         orig_std = np.std(activity, axis=0, keepdims=True)
         activity = (activity - orig_mean) / orig_std
+
+        self.orig_mean = orig_mean
+        self.orig_std = orig_std
 
         if self.nonlin_embed:
             rng = np.random.default_rng(seed)
@@ -149,3 +156,43 @@ class NeuralDataSimulator():
             h5file.create_dataset("readout", data=readout)
             h5file.create_dataset("orig_mean", data=orig_mean)
             h5file.create_dataset("orig_std", data=orig_std)
+
+    def simulate_new_data(self, task_trained_model, datamodule, seed):
+
+        if self.readout is None:
+            ValueError("Must first generate data before simulating new data")
+
+        # Get trajectories and model predictions
+        train_data = datamodule.train_dataloader().dataset.tensors
+        _, latents = task_trained_model(train_data[0])
+        inputs = train_data[1].numpy()
+        n_trials, n_times, n_lat_dim = latents.shape
+        latents = latents.detach().numpy()
+
+        readout = self.readout
+        activity = latents @ readout
+
+        activity = (activity - self.orig_mean) / self.orig_std
+
+        if self.nonlin_embed:
+            rng = np.random.default_rng(seed)
+            scaling_matrix = np.logspace(0.2, 1, (self.n_neurons))
+            activity = activity * scaling_matrix[None, :]
+        # Add noise to the observations
+        if self.obs_noise is not None:
+            if self.nonlin_embed:
+                activity = apply_data_warp_sigmoid(activity)
+            elif self.obs_noise in ["poisson"]:
+                activity = np.exp(activity)
+            noise_fn = getattr(rng, self.obs_noise)
+            data = noise_fn(activity).astype(float)
+        else:
+            if self.nonlin_embed:
+                activity = apply_data_warp_sigmoid(activity)
+            data = activity
+            
+        latents = latents.reshape(n_trials, n_times, n_lat_dim)
+        activity = activity.reshape(n_trials, n_times, self.n_neurons)
+        data = data.reshape(n_trials, n_times, self.n_neurons)
+
+        return data, activity, latents, inputs
