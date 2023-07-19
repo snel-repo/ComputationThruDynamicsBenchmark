@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 # ---------- OPTIONS -----------
 OVERWRITE = True
-PROJECT_STR = "0711_TBFF_InputInf_RNN_Reconfig2"
-DATASET_STR = "tbff"
+PROJECT_STR = "0719_MotorNet_DataTrain"
+DATASET_STR = "RTR"
 RUN_TAG = datetime.now().strftime("%Y%m%d-%H%M%S")
 RUN_DIR = (
     Path("/snel/share/runs/lfads-NODE") / PROJECT_STR / DATASET_STR / "single" / RUN_TAG

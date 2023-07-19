@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
-from ray.tune.suggest.basic_variant import BasicVariantGenerator
+from ray.tune.search.basic_variant import BasicVariantGenerator
 
 from utils import make_data_tag
 
@@ -23,19 +23,23 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 # torch.autograd.set_detect_anomaly(True)
 # ---------------Options---------------
-LOCAL_MODE = False
+LOCAL_MODE = True
 OVERWRITE = True
-RUN_DESC = "TBFF_RNN_Final"
+RUN_DESC = "NBFF_NODE"
 NUM_SAMPLES = 1
-TASK = "Nbff"
-MODEL = "RNN"
+TASK = "NBFF"
+MODEL = "NODE"
 
 
 SEARCH_SPACE = dict(
     # -----------------Model Parameters -----------------------------------
     model=dict(
         # -----------------Model Parameters -----------------------------------
-        latent_size = tune.grid_search([64]),
+        # latent_size = tune.grid_search([128]),
+    ),
+    task_wrapper=dict(
+        # -----------------Task Wrapper Parameters -----------------------------------
+        learning_rate = tune.grid_search([1e-3]),
     ),
     params=dict(seed=tune.grid_search([0]),
     )    
@@ -43,9 +47,10 @@ SEARCH_SPACE = dict(
 
 # -----------------Default Parameter Sets -----------------------------------
 path_dict = dict(
-    model=Path(f"configs/model/task_trained_{MODEL}_{TASK}.yaml"),
-    task_env=Path(f"configs/task_env/task_trained_{TASK}.yaml"),
-    simulator = Path(f"configs/simulator/default.yaml"),
+    model=Path(f"configs/model/{MODEL}.yaml"),
+    task_wrapper = Path(f"configs/task_wrapper/{TASK}.yaml"),
+    datamodule=Path(f"configs/datamodule/task_trained_{TASK}.yaml"),
+    simulator = Path(f"configs/simulator/default_{TASK}.yaml"),
     callbacks=Path(f"configs/callbacks/default_{TASK}.yaml"),
     loggers=Path("configs/logger/default.yaml"),
     trainer=Path(f"configs/trainer/default.yaml"),
@@ -87,7 +92,7 @@ def main(
         config=SEARCH_SPACE,
         resources_per_trial=dict(cpu=3, gpu=0.4),
         num_samples=NUM_SAMPLES,
-        local_dir=RUN_DIR,
+        storage_path=str(RUN_DIR),
         search_alg=BasicVariantGenerator(),
         scheduler=FIFOScheduler(),
         verbose=1,

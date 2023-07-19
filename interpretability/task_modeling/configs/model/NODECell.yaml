@@ -1,0 +1,7 @@
+_target_: interpretability.task_modeling.model.NODECell.BiasedNODECell
+
+input_size: 12
+latent_size: 20
+output_size: 4
+num_layers: 3
+layer_hidden_size: 128

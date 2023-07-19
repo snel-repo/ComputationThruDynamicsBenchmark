@@ -50,14 +50,14 @@ class NeuralDataSimulator():
         self.orig_std = None
 
 
-    def simulate_neural_data(self, task_trained_model, datamodule, seed):
+    def simulate_neural_data(self, task_trained_model, datamodule, coupled = False, seed=0):
 
 
         # Make a filename based on the system being modeled, the number of neurons, 
         # the nonlinearity, the observation noise, the epoch number, the model type,
         # and the seed
 
-        filename = (f"{datamodule.task_env.dataset_name}_"
+        filename = (f"{datamodule.data_env.dataset_name}_"
                     f"model_{type(task_trained_model).__name__}_"
                     f"n_neurons_{self.n_neurons}_"
                     f"nonlin_embed_{self.nonlin_embed}_"
@@ -68,8 +68,14 @@ class NeuralDataSimulator():
 
         # Get trajectories and model predictions
         train_data = datamodule.train_dataloader().dataset.tensors
-        _, latents = task_trained_model(train_data[0])
-        inputs = train_data[1].numpy()
+        val_data = datamodule.val_dataloader().dataset.tensors
+
+        # combine the first tensor of train and val data
+        if coupled:
+            inputs = torch.vstack((train_data[0], val_data[0]))
+        else:
+            inputs = torch.vstack((train_data[1], val_data[1]))
+            _, latents = task_trained_model(inputs)
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
 
@@ -121,37 +127,34 @@ class NeuralDataSimulator():
 
         # Perform data splits
         inds = np.arange(n_trials)
-        train_inds, test_inds = train_test_split(
-            inds, test_size=0.2, random_state=seed
-        )
         train_inds, valid_inds = train_test_split(
-            train_inds, test_size=0.2, random_state=seed
+            inds, test_size=0.2, random_state=seed
         )
         # Save the trajectories
         with h5py.File(fpath, "w") as h5file:
             h5file.create_dataset("train_encod_data", data=data[train_inds])
             h5file.create_dataset("valid_encod_data", data=data[valid_inds])
-            h5file.create_dataset("test_encod_data", data=data[test_inds])
+            # h5file.create_dataset("test_encod_data", data=data[test_inds])
 
             h5file.create_dataset("train_recon_data", data=data[train_inds])
             h5file.create_dataset("valid_recon_data", data=data[valid_inds])
-            h5file.create_dataset("test_recon_data", data=data[test_inds])
+            # h5file.create_dataset("test_recon_data", data=data[test_inds])
 
             h5file.create_dataset("train_inputs", data=inputs[train_inds])
             h5file.create_dataset("valid_inputs", data=inputs[valid_inds])
-            h5file.create_dataset("test_inputs", data=inputs[test_inds])
+            # h5file.create_dataset("test_inputs", data=inputs[test_inds])
 
             h5file.create_dataset("train_activity", data=activity[train_inds])
             h5file.create_dataset("valid_activity", data=activity[valid_inds])
-            h5file.create_dataset("test_activity", data=activity[test_inds])
+            # h5file.create_dataset("test_activity", data=activity[test_inds])
 
             h5file.create_dataset("train_latents", data=latents[train_inds])
             h5file.create_dataset("valid_latents", data=latents[valid_inds])
-            h5file.create_dataset("test_latents", data=latents[test_inds])
+            # h5file.create_dataset("test_latents", data=latents[test_inds])
 
             h5file.create_dataset("train_inds", data=train_inds)
             h5file.create_dataset("valid_inds", data=valid_inds)
-            h5file.create_dataset("test_inds", data=test_inds)
+            # h5file.create_dataset("test_inds", data=test_inds)
 
             h5file.create_dataset("readout", data=readout)
             h5file.create_dataset("orig_mean", data=orig_mean)
@@ -174,8 +177,8 @@ class NeuralDataSimulator():
 
         activity = (activity - self.orig_mean) / self.orig_std
 
+        rng = np.random.default_rng(seed)
         if self.nonlin_embed:
-            rng = np.random.default_rng(seed)
             scaling_matrix = np.logspace(0.2, 1, (self.n_neurons))
             activity = activity * scaling_matrix[None, :]
         # Add noise to the observations

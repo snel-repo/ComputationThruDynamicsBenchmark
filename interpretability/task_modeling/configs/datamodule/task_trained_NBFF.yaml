@@ -1,0 +1,13 @@
+_target_: interpretability.task_modeling.datamodule.task_datamodule.TaskDataModule
+data_env:  
+  _target_: interpretability.task_modeling.task_env.task_env.NBitFlipFlop
+  N: 3
+  n_timesteps: 200
+  n_samples: 1000
+  noise: 0.01
+n_samples: 1000
+n_timesteps: 200
+seed: 0
+noise: 0.01
+batch_size: 64
+num_workers: 4

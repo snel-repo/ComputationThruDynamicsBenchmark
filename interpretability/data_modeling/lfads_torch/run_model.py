@@ -33,7 +33,7 @@ def run_model(
     config_path = Path(config_path)
     overrides = [f"{k}={v}" for k, v in flatten(overrides).items()]
     with hydra.initialize(
-        config_path=config_path.parent,
+        config_path=str(config_path.parent),
         job_name="run_model",
     ):
         config = hydra.compose(config_name=config_path.name, overrides=overrides)
@@ -69,12 +69,11 @@ def run_model(
         config.trainer,
         callbacks=[instantiate(c) for c in config.callbacks.values()],
         logger=[instantiate(lg) for lg in config.logger.values()],
-        gpus=int(torch.cuda.is_available()),
+        accelerator='auto',
     )
     data_trained_wrapper = DataTrainWrapper(model, datamodule, trainer)
     basePath = '/home/csverst/Github/InterpretabilityBenchmark/model_saves/data_trained/'
     path1 = basePath + project_str + '.pkl'
-    data_trained_wrapper.tune_model()
     data_trained_wrapper.train_model()
 
     data_trained_wrapper.save_wrapper(path1)

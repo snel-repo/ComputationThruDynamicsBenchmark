@@ -6,8 +6,6 @@ class DataTrainWrapper():
         self.datamodule = data_mod
         self.seed = 0
         
-    def tune_model(self):
-        self.trainer.tune(model = self.model, datamodule = self.datamodule)
 
     def train_model(self):
         self.trainer.fit(model = self.model, datamodule = self.datamodule)

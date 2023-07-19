@@ -1,0 +1,4 @@
+_target_: motornet.environment.RandomTargetReach 
+effector:
+  _target_: motornet.effector.ReluPointMass24
+max_ep_duration: 1.0

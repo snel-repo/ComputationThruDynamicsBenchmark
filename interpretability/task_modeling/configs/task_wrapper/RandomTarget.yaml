@@ -1,0 +1,19 @@
+_target_: interpretability.task_modeling.task_wrapper.coupled.TaskTrainedCoupled
+task_env:
+  _target_: motornet.environment.RandomTargetReach
+  effector:
+    _target_: motornet.effector.ReluPointMass24
+  max_ep_duration: 1.0
+input_size: 12
+output_size: 4
+
+state_label: fingertip
+loss_func: 
+  _target_: interpretability.task_modeling.model.modules.loss_func.RandomTargetLoss
+  position_loss:
+    _target_: torch.nn.L1Loss
+  pos_weight: 0.5
+  act_weight: 0.5
+
+learning_rate: 1.0e-4
+weight_decay: 0

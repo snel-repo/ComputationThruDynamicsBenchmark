@@ -1,0 +1,6 @@
+_target_: interpretability.task_modeling.model.NODE.NODE
+input_size: 3
+num_layers: 3
+layer_hidden_size: 128
+latent_size: 3
+

@@ -168,7 +168,7 @@ class BasicDataModule(pl.LightningDataModule):
                 ds,
                 batch_size=batch_size,
                 shuffle=shuffle,
-                drop_last=True,
+                drop_last=False,
             )
             for i, ds in enumerate(self.train_ds)
         }

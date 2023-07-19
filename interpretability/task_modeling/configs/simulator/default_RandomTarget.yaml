@@ -1,0 +1,3 @@
+_target_: interpretability.task_modeling.simulator.neural_simulator_coupled.NeuralDataSimulatorCoupled
+n_neurons: 50
+nonlin_embed: False

@@ -76,7 +76,7 @@ class StateTransitionCallback(pl.Callback):
         outputs = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
         
-        logger = trainer.logger[2].experiment
+        logger = trainer.loggers[2].experiment
         # Pass the data through the model
         pred_outputs, lats = pl_module.forward(inputs)
         # Create plots for different cases
@@ -114,7 +114,7 @@ class StateTransitionCallback(pl.Callback):
             plt.tight_layout()
         # Log the plot to tensorboard
         im = fig_to_rgb_array(fig)
-        trainer.logger.experiment[0].add_image(
+        trainer.loggers[0].experiment.add_image(
             "state_plot", im, trainer.global_step, dataformats="HWC"
         )
         logger.log(
@@ -170,7 +170,7 @@ class LatentTrajectoryPlot(pl.Callback):
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
 
-        logger = trainer.logger[2].experiment
+        logger = trainer.loggers[2].experiment
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()
@@ -194,7 +194,7 @@ class LatentTrajectoryPlot(pl.Callback):
         ax.scatter(*lats_train[:,-1,:].T, alpha=0.1, s=10, c ='r')
         ax.set_title(f"explained variance: {exp_var:.2f}")
         plt.tight_layout()
-        trainer.logger.experiment[0].add_figure("latent_trajectory", fig, global_step=trainer.global_step)
+        trainer.loggers[0].experiment.add_figure("latent_trajectory", fig, global_step=trainer.global_step)
         logger.log(
             {"latent_traj": wandb.Image(fig), "global_step": trainer.global_step}
         )

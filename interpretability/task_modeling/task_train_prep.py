@@ -4,7 +4,6 @@ from typing import List
 import hydra
 import pytorch_lightning as pl
 import torch
-from interpretability.task_modeling.task_trained_wrapper.tasktrain_wrapper import TaskTrainWrapper
 from interpretability.task_modeling.simulator.neural_simulator import NeuralDataSimulator
 from gymnasium import Env
 
@@ -33,7 +32,7 @@ def train(
     # Compose the configs for all components
     config_all = {}
     for field in compose_list:
-        with hydra.initialize(config_path=path_dict[field].parent, job_name=field):
+        with hydra.initialize(config_path=str(path_dict[field].parent), job_name=field):
             if field in overrides_flat.keys():
                 config_all[field] = hydra.compose(
                     config_name=path_dict[field].name, overrides=overrides_flat[field]
@@ -44,13 +43,18 @@ def train(
     # Set seed for pytorch, numpy, and python.random
     if "params" in overrides:
         pl.seed_everything(overrides["params"]["seed"], workers=True)
+        if "coupled" in overrides["params"]:
+            coupled = overrides["params"]["coupled"]
+        else:
+            coupled = False
     else:
         pl.seed_everything(0, workers=True)
+        coupled = True
 
-    # --------------------------Instantiate Gym Env-------------------------------
-    log.info("Instantiating task_env")
-    task_env: Env = hydra.utils.instantiate(
-        config_all["task_env"], _convert_="all"
+    # --------------------------Instantiate datamodule----------------------------
+    log.info("Instantiating datamodule")
+    datamodule: pl.LightningDataModule = hydra.utils.instantiate(
+        config_all["datamodule"], _convert_="all"
     )
 
     # ---------------------------Instantiate simulator---------------------------
@@ -87,11 +91,18 @@ def train(
                     lg_conf["name"] = run_name
                 logger.append(hydra.utils.instantiate(lg_conf))
 
+    # -----------------------------Instantiate task-wrapper----------------------------
+    log.info(f"Instantiating task-wrapper <{config_all['task_wrapper']._target_}")
+    task_wrapper: Env = hydra.utils.instantiate(
+        config_all["task_wrapper"], _convert_="all"
+    )                
+
     # ------------------------------Instantiate model--------------------------------
     log.info(f"Instantiating model <{config_all['model']._target_}")
     model: pl.LightningModule = hydra.utils.instantiate(
         config_all["model"], _convert_="all"
     )
+    task_wrapper.set_model(model)
 
     # -----------------------------Instantiate trainer---------------------------
     targ_string = config_all["trainer"]._target_
@@ -100,27 +111,11 @@ def train(
         config_all["trainer"],
         logger=logger,
         callbacks=callbacks,
-        gpus=int(torch.cuda.is_available()),
+        accelerator= 'auto',
         _convert_="all",
     )
 
-    # -----------------------------Instantiate wrapper---------------------------
-    log.info("Instantiating wrapper")
-    wrapper = TaskTrainWrapper(
-        task_env = task_env,
-        model = model,
-        data_simulator = simulator,
-        trainer = trainer,
-    )
-
-    # -----------------------------Tune model---------------------------
-    log.info("Tuning model")
-    wrapper.tune_model()
-
     # -----------------------------Train model---------------------------
     log.info("Training model")
-    wrapper.train_and_simulate()
-    
-    # -----------------------------Save wrapper---------------------------
-    log.info("Saving wrapper")
-    wrapper.save_wrapper(f"/home/csverst/Github/InterpretabilityBenchmark/task_trained_models/{run_tag}_{run_name}.pkl")
+    trainer.fit(model=task_wrapper, datamodule=datamodule)    
+    simulator.simulate_neural_data(task_wrapper, datamodule, seed = 0)
