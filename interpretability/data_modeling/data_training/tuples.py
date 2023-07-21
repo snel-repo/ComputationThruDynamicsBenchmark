@@ -26,3 +26,29 @@ SessionOutput = namedtuple(
         "con_states",
     ],
 )
+Batch = namedtuple(
+    "Batch",
+    [
+        "encod_data",
+        "recon_data",
+        "ext_input",
+        "truth",
+        "sv_mask",
+    ],
+)
+
+Output = namedtuple(
+    "Output",
+    [
+        "output_params",
+        "factors",
+        "ic_mean",
+        "ic_std",
+        "co_means",
+        "co_stds",
+        "gen_states",
+        "gen_init",
+        "gen_inputs",
+        "con_states",
+    ],
+)

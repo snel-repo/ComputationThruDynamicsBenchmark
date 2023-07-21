@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 import torch
 from interpretability.task_modeling.task_trained_wrapper.tasktrain_wrapper import TaskTrainWrapper
-from interpretability.data_modeling.lfads_torch.data_trained_wrapper.data_trained_wrapper import DataTrainWrapper
+from interpretability.data_modeling.data_training.data_trained_wrapper.data_trained_wrapper import DataTrainWrapper
 # import lr from sklearn
 from sklearn.linear_model import LinearRegression
 import numpy as np

@@ -10,7 +10,6 @@ import torch
 from hydra.utils import call, instantiate
 from omegaconf import OmegaConf, open_dict
 from ray import tune
-from interpretability.data_modeling.lfads_torch.data_trained_wrapper.data_trained_wrapper import DataTrainWrapper
 
 from .utils import flatten
 
@@ -71,12 +70,8 @@ def run_model(
         logger=[instantiate(lg) for lg in config.logger.values()],
         accelerator='auto',
     )
-    data_trained_wrapper = DataTrainWrapper(model, datamodule, trainer)
-    basePath = '/home/csverst/Github/InterpretabilityBenchmark/model_saves/data_trained/'
-    path1 = basePath + project_str + '.pkl'
-    data_trained_wrapper.train_model()
 
-    data_trained_wrapper.save_wrapper(path1)
+    trainer.fit(model, datamodule=datamodule)
 
 
 

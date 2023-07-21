@@ -1,6 +1,5 @@
-_target_: interpretability.data_modeling.lfads_torch.datamodules.BasicDataModule
-data_paths:
-  - ${relpath:datasets/RandomTargetReach_model_TaskTrainedCoupled_n_neurons_50_nonlin_embed_False_obs_noise_poisson_seed_0.h5}
+_target_: interpretability.data_modeling.data_training.datamodule.BasicDataModule
+data_path: ${relpath:datasets/RandomTargetReach_model_TaskTrainedCoupled_n_neurons_50_nonlin_embed_False_obs_noise_poisson_seed_0.h5}
 batch_keys:
   # - inputs
   - latents

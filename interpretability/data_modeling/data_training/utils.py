@@ -1,6 +1,6 @@
 import torch
 
-from .tuples import SessionBatch
+from .tuples import SessionBatch, Batch
 
 
 def flatten(dictionary, level=[]):
@@ -51,6 +51,8 @@ def send_batch_to_device(batch, device):
             return [send_to_device(o) for o in obj]
         elif obj_type == SessionBatch:
             return SessionBatch(*[send_to_device(o) for o in obj])
+        elif obj_type == Batch:
+            return Batch(send_to_device(obj))
         else:
             raise NotImplementedError(
                 f"`send_batch_to_device` has not been implemented for {str(obj_type)}."

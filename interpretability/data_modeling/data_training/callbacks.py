@@ -96,8 +96,6 @@ class RasterPlot(pl.Callback):
         else:
             dataloader = trainer.datamodule.train_dataloader(shuffle=False)
         batch = next(iter(dataloader))
-        # Determine which sessions are in the batch
-        sessions = sorted(batch.keys())
         # Move data to the right device
         batch = send_batch_to_device(batch, pl_module.device)
         # Compute model output
@@ -107,52 +105,51 @@ class RasterPlot(pl.Callback):
             sample_posteriors=False,
         )
         # Discard the extra data - only the SessionBatches are relevant here
-        batch = {s: b[0] for s, b in batch.items()}
+        batch = batch[0]
         # Log a few example outputs for each session
-        for s in sessions:
             # Convert everything to numpy
-            encod_data = batch[s].encod_data.detach().cpu().numpy()
-            recon_data = batch[s].recon_data.detach().cpu().numpy()
-            truth = batch[s].truth.detach().cpu().numpy()
-            means = output[s].output_params.detach().cpu().numpy()
-            inputs = output[s].gen_inputs.detach().cpu().numpy()
-            # Compute data sizes
-            _, steps_encod, neur_encod = encod_data.shape
-            _, steps_recon, neur_recon = recon_data.shape
-            # Decide on how to plot panels
-            if np.all(np.isnan(truth)):
-                plot_arrays = [recon_data, means, inputs]
-                height_ratios = [3, 3, 1]
-            else:
-                plot_arrays = [recon_data, truth, means, inputs]
-                height_ratios = [3, 3, 3, 1]
-            # Create subplots
-            fig, axes = plt.subplots(
-                len(plot_arrays),
-                self.n_samples,
-                sharex=True,
-                sharey="row",
-                figsize=(3 * self.n_samples, 10),
-                gridspec_kw={"height_ratios": height_ratios},
-            )
-            for i, ax_col in enumerate(axes.T):
-                for j, (ax, array) in enumerate(zip(ax_col, plot_arrays)):
-                    if j < len(plot_arrays) - 1:
-                        ax.imshow(array[i].T, interpolation="none", aspect="auto")
-                        ax.vlines(steps_encod, 0, neur_recon, color="orange")
-                        ax.hlines(neur_encod, 0, steps_recon, color="orange")
-                        ax.set_xlim(0, steps_recon)
-                        ax.set_ylim(0, neur_recon)
-                    else:
-                        ax.plot(array[i])
-            plt.tight_layout()
-            # Log the figure
-            log_figure(
-                trainer.loggers,
-                f"{self.split}/raster_plot/sess{s}",
-                fig,
-                trainer.global_step,
-            )
+        encod_data = batch.encod_data.detach().cpu().numpy()
+        recon_data = batch.recon_data.detach().cpu().numpy()
+        truth = batch.truth.detach().cpu().numpy()
+        means = output.output_params.detach().cpu().numpy()
+        inputs = output.gen_inputs.detach().cpu().numpy()
+        # Compute data sizes
+        _, steps_encod, neur_encod = encod_data.shape
+        _, steps_recon, neur_recon = recon_data.shape
+        # Decide on how to plot panels
+        if np.all(np.isnan(truth)):
+            plot_arrays = [recon_data, means, inputs]
+            height_ratios = [3, 3, 1]
+        else:
+            plot_arrays = [recon_data, truth, means, inputs]
+            height_ratios = [3, 3, 3, 1]
+        # Create subplots
+        fig, axes = plt.subplots(
+            len(plot_arrays),
+            self.n_samples,
+            sharex=True,
+            sharey="row",
+            figsize=(3 * self.n_samples, 10),
+            gridspec_kw={"height_ratios": height_ratios},
+        )
+        for i, ax_col in enumerate(axes.T):
+            for j, (ax, array) in enumerate(zip(ax_col, plot_arrays)):
+                if j < len(plot_arrays) - 1:
+                    ax.imshow(array[i].T, interpolation="none", aspect="auto")
+                    ax.vlines(steps_encod, 0, neur_recon, color="orange")
+                    ax.hlines(neur_encod, 0, steps_recon, color="orange")
+                    ax.set_xlim(0, steps_recon)
+                    ax.set_ylim(0, neur_recon)
+                else:
+                    ax.plot(array[i])
+        plt.tight_layout()
+        # Log the figure
+        log_figure(
+            trainer.loggers,
+            f"{self.split}/raster_plot",
+            fig,
+            trainer.global_step,
+        )
 
 
 class TrajectoryPlot(pl.Callback):

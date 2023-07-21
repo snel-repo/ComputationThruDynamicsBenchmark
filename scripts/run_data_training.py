@@ -4,13 +4,13 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from interpretability.data_modeling.lfads_torch.run_model import run_model
+from interpretability.data_modeling.data_training.run_model import run_model
 
 logger = logging.getLogger(__name__)
 
 # ---------- OPTIONS -----------
 OVERWRITE = True
-PROJECT_STR = "0719_MotorNet_DataTrain"
+PROJECT_STR = "0721_SessionBatchRemoval3"
 DATASET_STR = "RTR"
 RUN_TAG = datetime.now().strftime("%Y%m%d-%H%M%S")
 RUN_DIR = (
