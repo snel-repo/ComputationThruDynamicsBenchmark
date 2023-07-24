@@ -33,7 +33,6 @@ def apply_data_warp_sigmoid(data):
         data[:, i] = firingMax[np.mod(j, len(firingMax))] * warp_functions[
             int(np.floor((j) / (len(warp_functions) + 1)))
         ](module, data[:, i])
-
     return data
 
 class NeuralDataSimulatorCoupled():

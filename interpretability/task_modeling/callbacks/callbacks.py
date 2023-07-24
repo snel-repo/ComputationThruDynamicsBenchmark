@@ -174,7 +174,7 @@ class LatentTrajectoryPlot(pl.Callback):
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()
-        inputs_train = torch.cat([batch[1] for batch in train_dataloader]).to(pl_module.device)
+        inputs_train = torch.cat([batch[0] for batch in train_dataloader]).to(pl_module.device)
         _, lats_train = pl_module.forward(inputs_train)
         
         lats_train = lats_train.detach().cpu().numpy()
@@ -184,6 +184,8 @@ class LatentTrajectoryPlot(pl.Callback):
             lats_train = pca1.fit_transform(lats_train.reshape(-1, n_lat_dim))
             lats_train = lats_train.reshape(n_trials, n_times, 3)
             exp_var = np.sum(pca1.explained_variance_ratio_)
+        else:
+            exp_var = 1.0
         
         # Plot trajectories
         fig = plt.figure(figsize=(10, 10))

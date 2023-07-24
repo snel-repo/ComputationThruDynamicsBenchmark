@@ -1,22 +1,35 @@
 import torch
 from torch import nn
-
+# TODO: Rename lowercase
 class NODE(nn.Module):
-    def __init__(self, input_size, num_layers, layer_hidden_size, latent_size):
+    def __init__(self, num_layers, layer_hidden_size, latent_size, output_size = None, input_size = None, ):
         super().__init__()
-        self.cell = MLPCell(input_size, num_layers, layer_hidden_size, latent_size)
+        self.num_layers = num_layers
+        self.layer_hidden_size = layer_hidden_size
         self.latent_size = latent_size
+        self.output_size = output_size
+        self.input_size = input_size
+        self.generator = None
+        self.readout = None
 
-    def forward(self, input):
-        n_samples, n_times, n_inputs = input.shape
-        dev = input.device
-        hidden = torch.zeros((n_samples, self.latent_size), device= dev)
-        states = []
-        for input_step in input.transpose(0, 1):
-            hidden = self.cell(input_step, hidden)
-            states.append(hidden)
-        states = torch.stack(states, dim=1)
-        return states, hidden
+    def init_model(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.generator = MLPCell(input_size, self.num_layers, self.layer_hidden_size, self.latent_size)
+        self.readout = nn.Linear(self.latent_size, output_size)
+
+    def forward(self, inputs, hidden = None):
+        n_samples, n_times, n_inputs = inputs.shape
+        dev = inputs.device
+        if hidden == None:
+            hidden = torch.zeros((n_samples, self.latent_size), device= dev)
+        latents = []
+        for input_step in range(inputs.shape[1]):
+            hidden = self.generator(inputs[:,input_step,:], hidden[:,0,:])
+            latents.append(hidden)
+        latents = torch.stack(latents, dim=1)
+        output = self.readout(latents)
+        return output, latents
 
 class MLPCell(nn.Module):
     def __init__(self, input_size, num_layers, layer_hidden_size, latent_size):

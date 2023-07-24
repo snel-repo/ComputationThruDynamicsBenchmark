@@ -49,6 +49,7 @@ class TaskTrainedCoupled(pl.LightningModule):
         return optimizer
 
     def forward(self, joints, goal):
+        # TODO: Make coupled loop more abstract for non-MotorNet tasks
         terminated = False
         # Pass data through the model
         batch_size = joints.shape[0]
@@ -63,7 +64,7 @@ class TaskTrainedCoupled(pl.LightningModule):
         tg = [info["goal"][:,None,:]]
         actions = []
         while not terminated:
-            action, h = self.model(obs, h)
+            action, h = self.model(obs, h) # TODO: Pop out action from model
             obs, reward, terminated, truncated, info = self.task_env.step(action=action)
             xy.append(info["states"][self.state_label][:,None,:])
             tg.append(info["goal"][:,None,:])

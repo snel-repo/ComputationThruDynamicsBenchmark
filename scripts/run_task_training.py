@@ -25,10 +25,10 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = True
 OVERWRITE = True
-RUN_DESC = "NBFF_NODE"
+RUN_DESC = "NBFF_RNN"
 NUM_SAMPLES = 1
 TASK = "NBFF"
-MODEL = "NODE"
+MODEL = "RNN"
 
 
 SEARCH_SPACE = dict(
@@ -39,7 +39,7 @@ SEARCH_SPACE = dict(
     ),
     task_wrapper=dict(
         # -----------------Task Wrapper Parameters -----------------------------------
-        learning_rate = tune.grid_search([1e-3]),
+        learning_rate = tune.grid_search([1e-4]),
     ),
     params=dict(seed=tune.grid_search([0]),
     )    
@@ -47,9 +47,10 @@ SEARCH_SPACE = dict(
 
 # -----------------Default Parameter Sets -----------------------------------
 path_dict = dict(
-    model=Path(f"configs/model/{MODEL}.yaml"),
     task_wrapper = Path(f"configs/task_wrapper/{TASK}.yaml"),
-    datamodule=Path(f"configs/datamodule/task_trained_{TASK}.yaml"),
+    task_env = Path(f"configs/task_env/{TASK}.yaml"),
+    model=Path(f"configs/model/{MODEL}.yaml"),
+    datamodule=Path(f"configs/datamodule/datamodule_decoupled.yaml"),
     simulator = Path(f"configs/simulator/default_{TASK}.yaml"),
     callbacks=Path(f"configs/callbacks/default_{TASK}.yaml"),
     loggers=Path("configs/logger/default.yaml"),

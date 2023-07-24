@@ -5,24 +5,48 @@ import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 import gymnasium as gym
 from gymnasium import spaces
+from abc import ABC, abstractmethod
+# TODO: Add abstract wrapper class for task environments
 
-class NBitFlipFlop(gym.Env):
-    metadata = {'render.modes': ['human']}
-    def __init__(self, N, n_timesteps, n_samples, noise):
-        super(NBitFlipFlop, self).__init__()
-        self.dataset_name = f'{N}BFF'
-        self.action_space = spaces.Box(low=-0.5, high=1.5, shape=(N,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-0.5, high=1.5, shape=(N,), dtype=np.float32)
-        self.N = N
-        self.state = np.zeros(N)
-        self.input_labels = [f'Input {i}' for i in range(N)]
-        self.output_labels = [f'Output {i}' for i in range(N)]
-        self.n_samples = n_samples
+class DecoupledEnvironment(gym.Env, ABC):
+    """
+    Abstract class representing a decoupled environment.
+    This class is abstract and cannot be instantiated.
+    """
+    @abstractmethod
+    def __init__(self, n_timesteps: int, noise: float):
+        super().__init__()
         self.n_timesteps = n_timesteps
         self.noise = noise
 
+    @abstractmethod
     def step(self, action):
-        for i in range(self.N):
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+
+class NBitFlipFlop(DecoupledEnvironment):
+    """
+    An environment for an N-bit flip flop.
+    This is a simple toy text environment where the goal is to flip the required bit.
+    """
+    def __init__(self, n_timesteps: int, noise: float, n=1):
+        super().__init__(n_timesteps=n_timesteps, noise=noise)
+        # TODO: Seed environment
+        self.dataset_name = f'{n}BFF'
+        self.action_space = spaces.Box(low=-0.5, high=1.5, shape=(n,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-0.5, high=1.5, shape=(n,), dtype=np.float32)
+        self.n = n
+        self.state = np.zeros(n)
+        self.input_labels = [f'Input {i}' for i in range(n)]
+        self.output_labels = [f'Output {i}' for i in range(n)]
+        self.noise = noise
+
+    def step(self, action):
+        for i in range(self.n):
             if action[i] ==1:
                 self.state[i] = 1
             elif action[i]==-1:
@@ -30,12 +54,12 @@ class NBitFlipFlop(gym.Env):
 
     def generate_trial(self):
         self.reset()
-        inputRand = np.random.random(size = (self.n_timesteps, self.N))
-        inputs = np.zeros((self.n_timesteps, self.N))
+        inputRand = np.random.random(size = (self.n_timesteps, self.n))
+        inputs = np.zeros((self.n_timesteps, self.n))
         inputs[inputRand > 0.98] = 1
         inputs[inputRand <0.02] = -1
         inputs = inputs 
-        outputs = np.zeros((self.n_timesteps, self.N))
+        outputs = np.zeros((self.n_timesteps, self.n))
         for i in range(self.n_timesteps):
             self.step(inputs[i,:])
             outputs[i,:] = self.state + np.random.normal(loc = 0.0, scale = self.noise, size= (outputs[i,:].shape))
@@ -43,22 +67,21 @@ class NBitFlipFlop(gym.Env):
         return inputs, outputs
     
     def reset(self):
-        self.state = np.zeros(self.N)
+        self.state = np.zeros(self.n)
         return self.state
 
-    def generate_dataset(self):
-        n_samples = self.n_samples
+    def generate_dataset(self, n_samples):
+        # TODO: Maybe batch this?
+        # TODO: Code formatter
+        # TODO: Inputs then outputs
         n_timesteps = self.n_timesteps
-        outputs_ds = np.zeros(shape= (n_samples, n_timesteps, self.N))
-        inputs_ds = np.zeros(shape= (n_samples, n_timesteps, self.N))
-        comb_ds = np.zeros(shape = (n_samples, n_timesteps, 2*self.N))
+        outputs_ds = np.zeros(shape= (n_samples, n_timesteps, self.n))
+        inputs_ds = np.zeros(shape= (n_samples, n_timesteps, self.n))
         for i in range(n_samples):
             inputs, outputs = self.generate_trial()
             outputs_ds[i, :, :] = outputs
             inputs_ds[i, :, :] = inputs
-            comb_ds[i,:,0:self.N] = outputs
-            comb_ds[i,:,self.N:2*self.N] = inputs
-        return  outputs_ds, inputs_ds, comb_ds,
+        return  inputs_ds, outputs_ds
 
     def render(self):
         states, inputs = self.generate_trial()
@@ -74,7 +97,7 @@ class NBitFlipFlop(gym.Env):
 
         
 
-class ReadySetGoTask(gym.Env):
+class ReadySetGoTask(DecoupledEnvironment):
     def __init__(self,n_timesteps, n_samples, noise):
         super(ReadySetGoTask, self).__init__()
 
@@ -125,9 +148,7 @@ class ReadySetGoTask(gym.Env):
             inputs, outputs = self.generate_trial()
             input_ds[i, :, :] = inputs
             output_ds[i, :, :] = outputs
-            comb_ds[i, :, :4] = inputs
-            comb_ds[i,:, 4:6] = outputs
-        return output_ds, input_ds, comb_ds
+        return input_ds, output_ds
 
     def plot_trial(self):
         inputs, outputs = self.generate_trial()

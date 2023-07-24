@@ -27,29 +27,28 @@ class TaskDataModule(pl.LightningDataModule):
         self,
         data_env: Env = None,
         n_samples: int = 2000,
-        n_timesteps: int = 200,
         seed: int = 0,
-        noise: float = 0,
         batch_size: int = 64,
         num_workers: int = 4,
-        task_params: dict = None,
     ):
         super().__init__()
         self.save_hyperparameters()
         # Generate the dataset tag
         self.data_env = data_env
-        self.noise = noise
+        self.name = None
+        self.input_labels = None
+        self.output_labels = None
+    
+    def set_environment(self, data_env):
+        self.data_env = data_env
         self.name = (
-            f"{data_env.dataset_name}_{n_samples}S_{data_env.n_timesteps}T"
-            f"_{seed}seed_{self.noise}"
+            f"{data_env.dataset_name}_{self.hparams.n_samples}S_{data_env.n_timesteps}T"
+            f"_{self.hparams.seed}seed_{data_env.noise}"
         )
-        # Append the task_params to the name
-        if task_params is not None:
-            for key, val in task_params.items():
-                self.name += f"_{key}_{val}"
 
         self.input_labels = self.data_env.input_labels
         self.output_labels = self.data_env.output_labels
+
 
     def prepare_data(self):
         hps = self.hparams
@@ -61,7 +60,7 @@ class TaskDataModule(pl.LightningDataModule):
             return
         logger.info(f"Generating dataset {self.name}")
         # Simulate the task
-        outputs_ds, inputs_ds, comb_ds = self.data_env.generate_dataset()
+        inputs_ds, outputs_ds = self.data_env.generate_dataset(self.hparams.n_samples)
         # Standardize and record original mean and standard deviations
                 # Perform data splits
         inds = np.arange(hps.n_samples)
@@ -71,17 +70,14 @@ class TaskDataModule(pl.LightningDataModule):
 
         # Save the trajectories
         with h5py.File(fpath, "w") as h5file:
-            h5file.create_dataset("train_data", data = comb_ds[train_inds])
-            h5file.create_dataset("valid_data", data = comb_ds[valid_inds])
-            # h5file.create_dataset("test_data", data = comb_ds[test_inds])
-            
-            h5file.create_dataset("train_outputs", data = outputs_ds[train_inds])
-            h5file.create_dataset("valid_outputs", data = outputs_ds[valid_inds])
-            # h5file.create_dataset("test_outputs", data = outputs_ds[test_inds])
-            
+
             h5file.create_dataset("train_inputs", data = inputs_ds[train_inds])
             h5file.create_dataset("valid_inputs", data = inputs_ds[valid_inds])
             # h5file.create_dataset("test_inputs", data = inputs_ds[test_inds])
+
+            h5file.create_dataset("train_outputs", data = outputs_ds[train_inds])
+            h5file.create_dataset("valid_outputs", data = outputs_ds[valid_inds])
+            # h5file.create_dataset("test_outputs", data = outputs_ds[test_inds])
             
             h5file.create_dataset("train_inds", data = train_inds)
             h5file.create_dataset("valid_inds", data = valid_inds)
@@ -91,10 +87,6 @@ class TaskDataModule(pl.LightningDataModule):
         # Load data arrays from file
         data_path = os.path.join(DATA_HOME, f"{self.name}.h5")
         with h5py.File(data_path, "r") as h5file:
-            # Load the data
-            train_comb = to_tensor(h5file["train_data"][()])
-            valid_comb = to_tensor(h5file["valid_data"][()])
-            # test_comb = to_tensor(h5file["test_data"][()])
            
             train_outputs = to_tensor(h5file["train_outputs"][()])
             valid_outputs = to_tensor(h5file["valid_outputs"][()])
@@ -110,11 +102,12 @@ class TaskDataModule(pl.LightningDataModule):
             # test_inds = to_tensor(h5file["test_inds"][()])
 
         # Store datasets
+        # TODO - inputs, outputs, get rid of comb,
         self.train_ds = TensorDataset(
-            train_outputs, train_inputs, train_comb, train_inds
+            train_outputs, train_inputs, train_inds
         )
         self.valid_ds = TensorDataset(
-            valid_outputs, valid_inputs, valid_comb, valid_inds
+            valid_outputs, valid_inputs, valid_inds
         )
         # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 

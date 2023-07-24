@@ -51,11 +51,36 @@ def train(
         pl.seed_everything(0, workers=True)
         coupled = True
 
+
+    #--------------------------Instantiate environment----------------------------
+    log.info("Instantiating environment")
+    task_env: Env = hydra.utils.instantiate(
+        config_all["task_env"], _convert_="all"
+    )
+
+    # ------------------------------Instantiate model--------------------------------
+    log.info(f"Instantiating model <{config_all['model']._target_}")
+    model: pl.LightningModule = hydra.utils.instantiate(
+        config_all["model"], _convert_="all"
+    )
+    n_outputs = task_env.action_space.shape[0]
+    n_inputs = task_env.observation_space.shape[0]
+    model.init_model(n_inputs, n_outputs)
+
+    # -----------------------------Instantiate task-wrapper----------------------------
+    log.info(f"Instantiating task-wrapper <{config_all['task_wrapper']._target_}")
+    task_wrapper: pl.LightningModule = hydra.utils.instantiate(
+        config_all["task_wrapper"], _convert_="all"
+    )
+    task_wrapper.set_environment(task_env)
+    task_wrapper.set_model(model)
+    
     # --------------------------Instantiate datamodule----------------------------
     log.info("Instantiating datamodule")
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule"], _convert_="all"
     )
+    datamodule.set_environment(task_env)
 
     # ---------------------------Instantiate simulator---------------------------
     log.info("Instantiating neural data simulator")
@@ -90,19 +115,6 @@ def train(
                     lg_conf["group"] = run_tag
                     lg_conf["name"] = run_name
                 logger.append(hydra.utils.instantiate(lg_conf))
-
-    # -----------------------------Instantiate task-wrapper----------------------------
-    log.info(f"Instantiating task-wrapper <{config_all['task_wrapper']._target_}")
-    task_wrapper: Env = hydra.utils.instantiate(
-        config_all["task_wrapper"], _convert_="all"
-    )                
-
-    # ------------------------------Instantiate model--------------------------------
-    log.info(f"Instantiating model <{config_all['model']._target_}")
-    model: pl.LightningModule = hydra.utils.instantiate(
-        config_all["model"], _convert_="all"
-    )
-    task_wrapper.set_model(model)
 
     # -----------------------------Instantiate trainer---------------------------
     targ_string = config_all["trainer"]._target_

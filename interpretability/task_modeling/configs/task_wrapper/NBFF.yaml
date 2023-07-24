@@ -1,6 +1,4 @@
 _target_: interpretability.task_modeling.task_wrapper.decoupled.TaskTrainedDecoupled
-input_size: 3
-output_size: 3
 
 learning_rate: 5.0e-3
 weight_decay: 1.0e-5
