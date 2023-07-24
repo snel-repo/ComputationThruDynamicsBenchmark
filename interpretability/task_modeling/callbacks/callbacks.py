@@ -1,12 +1,11 @@
 import io
-import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-from sklearn.model_selection import train_test_split
-import h5py
+
 # import PCA from sklearn.decomposition
 from sklearn.decomposition import PCA
 
@@ -16,6 +15,7 @@ DATA_HOME = "/home/csverst/Documents/tempData/"
 
 def sigmoidActivation(module, input):
     return 1 / (1 + module.exp(-1 * input))
+
 
 def apply_data_warp_sigmoid(data):
     warp_functions = [sigmoidActivation, sigmoidActivation, sigmoidActivation]
@@ -40,6 +40,7 @@ def apply_data_warp_sigmoid(data):
 
     return data
 
+
 def fig_to_rgb_array(fig):
     # Convert the figure to a numpy array for TB logging
     with io.BytesIO() as buff:
@@ -61,8 +62,9 @@ def get_wandb_logger(loggers):
     else:
         return None
 
+
 class StateTransitionCallback(pl.Callback):
-    def __init__(self, log_every_n_epochs=100, plot_n_trials = 5):
+    def __init__(self, log_every_n_epochs=100, plot_n_trials=5):
 
         self.log_every_n_epochs = log_every_n_epochs
         self.plot_n_trials = plot_n_trials
@@ -75,17 +77,22 @@ class StateTransitionCallback(pl.Callback):
         dataloader = trainer.datamodule.val_dataloader()
         outputs = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
-        
+
         logger = trainer.loggers[2].experiment
         # Pass the data through the model
         pred_outputs, lats = pl_module.forward(inputs)
         # Create plots for different cases
-        fig, axes = plt.subplots(nrows = 3, ncols = self.plot_n_trials, figsize=(8*self.plot_n_trials, 6),sharex=True)
+        fig, axes = plt.subplots(
+            nrows=3,
+            ncols=self.plot_n_trials,
+            figsize=(8 * self.plot_n_trials, 6),
+            sharex=True,
+        )
         for trial_num in range(self.plot_n_trials):
             ax1 = axes[0][trial_num]
             ax2 = axes[1][trial_num]
             ax3 = axes[2][trial_num]
-            
+
             outputs = outputs.cpu()
             inputs = inputs.cpu()
             pred_outputs = pred_outputs.cpu()
@@ -94,32 +101,31 @@ class StateTransitionCallback(pl.Callback):
             output_labels = trainer.datamodule.output_labels
 
             for i in range(n_outputs):
-                ax1.plot(outputs[trial_num,:,i], label = output_labels[i])
-            ax1.legend(loc = 'right')
+                ax1.plot(outputs[trial_num, :, i], label=output_labels[i])
+            ax1.legend(loc="right")
             ax1.set_ylabel("Actual Outputs")
-            
-            for i in range(n_outputs):
-                ax2.plot(pred_outputs[trial_num,:,i], label = output_labels[i])
-            ax2.set_ylabel("Predicted Outputs")
-            ax2.legend(loc = 'right')
 
-            _,_, n_inputs = inputs.shape
+            for i in range(n_outputs):
+                ax2.plot(pred_outputs[trial_num, :, i], label=output_labels[i])
+            ax2.set_ylabel("Predicted Outputs")
+            ax2.legend(loc="right")
+
+            _, _, n_inputs = inputs.shape
             for i in range(n_inputs):
-                ax3.plot(inputs[trial_num,:,i], label = input_labels[i])
-            
-            ax3.legend(loc = 'right')
+                ax3.plot(inputs[trial_num, :, i], label=input_labels[i])
+
+            ax3.legend(loc="right")
             ax3.set_xlabel("Time")
             ax3.set_ylabel("Inputs")
-            
+
             plt.tight_layout()
         # Log the plot to tensorboard
         im = fig_to_rgb_array(fig)
         trainer.loggers[0].experiment.add_image(
             "state_plot", im, trainer.global_step, dataformats="HWC"
         )
-        logger.log(
-            {"state_plot": wandb.Image(fig), "global_step": trainer.global_step}
-        )
+        logger.log({"state_plot": wandb.Image(fig), "global_step": trainer.global_step})
+
 
 class TrajectoryPlotOverTimeCallback(pl.Callback):
     def __init__(self, log_every_n_epochs=100, num_trials_to_plot=5, axis_num=0):
@@ -141,7 +147,7 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
             np.random.randint(0, trajs_out.shape[0], self.num_trials_to_plot)
         )
         fig, ax = plt.subplots()
-        traj_in = data
+        traj_in = 1  # TODO: Fix this
         t1 = np.linspace(0, 1, len(trial_vec) * trajs_out.shape[1])
 
         def prep_trajs(x):
@@ -161,8 +167,10 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
 
 
 class LatentTrajectoryPlot(pl.Callback):
-    def __init__(self, log_every_n_epochs=10, 
-                 ):
+    def __init__(
+        self,
+        log_every_n_epochs=10,
+    ):
         self.log_every_n_epochs = log_every_n_epochs
 
     def on_validation_epoch_end(self, trainer, pl_module):
@@ -174,29 +182,33 @@ class LatentTrajectoryPlot(pl.Callback):
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()
-        inputs_train = torch.cat([batch[0] for batch in train_dataloader]).to(pl_module.device)
+        inputs_train = torch.cat([batch[0] for batch in train_dataloader]).to(
+            pl_module.device
+        )
         _, lats_train = pl_module.forward(inputs_train)
-        
+
         lats_train = lats_train.detach().cpu().numpy()
         n_trials, n_times, n_lat_dim = lats_train.shape
-        if n_lat_dim >3:
-            pca1= PCA(n_components=3)
+        if n_lat_dim > 3:
+            pca1 = PCA(n_components=3)
             lats_train = pca1.fit_transform(lats_train.reshape(-1, n_lat_dim))
             lats_train = lats_train.reshape(n_trials, n_times, 3)
             exp_var = np.sum(pca1.explained_variance_ratio_)
         else:
             exp_var = 1.0
-        
+
         # Plot trajectories
         fig = plt.figure(figsize=(10, 10))
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
         for traj in lats_train:
             ax.plot(*traj.T, alpha=0.2, linewidth=0.5)
-        ax.scatter(*lats_train[:,0,:].T, alpha=0.1, s=10, c ='g')
-        ax.scatter(*lats_train[:,-1,:].T, alpha=0.1, s=10, c ='r')
+        ax.scatter(*lats_train[:, 0, :].T, alpha=0.1, s=10, c="g")
+        ax.scatter(*lats_train[:, -1, :].T, alpha=0.1, s=10, c="r")
         ax.set_title(f"explained variance: {exp_var:.2f}")
         plt.tight_layout()
-        trainer.loggers[0].experiment.add_figure("latent_trajectory", fig, global_step=trainer.global_step)
+        trainer.loggers[0].experiment.add_figure(
+            "latent_trajectory", fig, global_step=trainer.global_step
+        )
         logger.log(
             {"latent_traj": wandb.Image(fig), "global_step": trainer.global_step}
         )

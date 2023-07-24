@@ -1,6 +1,13 @@
 import torch
 from torch import nn
-from torch.distributions import Independent, Laplace, Normal, StudentT, Bernoulli, kl_divergence
+from torch.distributions import (
+    Bernoulli,
+    Independent,
+    Laplace,
+    Normal,
+    StudentT,
+    kl_divergence,
+)
 from torch.distributions.transforms import AffineTransform
 
 
@@ -142,7 +149,8 @@ class SparseMultivariateNormal(nn.Module):
         # Compute KL analytically
         kl_batch = kl_divergence(posterior, prior)
         return torch.mean(kl_batch)
-    
+
+
 class SparseBernoulli(nn.Module):
     def __init__(
         self,

@@ -2,5 +2,3 @@ _target_: interpretability.task_modeling.model.RNN.RNN
 input_size: 3
 latent_size: 64
 output_size: 3
-
-

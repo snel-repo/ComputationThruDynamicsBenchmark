@@ -1,13 +1,10 @@
 import logging
-import os
 import warnings
-from glob import glob
 from pathlib import Path
 
 import hydra
 import pytorch_lightning as pl
-import torch
-from hydra.utils import call, instantiate
+from hydra.utils import instantiate
 from omegaconf import OmegaConf, open_dict
 from ray import tune
 
@@ -53,11 +50,6 @@ def run_model(
     datamodule = instantiate(config.datamodule, _convert_="all")
     model = instantiate(config.model)
 
-    # If `checkpoint_dir` is passed, find the most recent checkpoint in the directory
-    if checkpoint_dir:
-        ckpt_pattern = os.path.join(checkpoint_dir, "*.ckpt")
-        ckpt_path = max(glob(ckpt_pattern), key=os.path.getctime)
-
     # If both ray.tune and wandb are being used, ensure that loggers use same name
     if "single" not in str(config_path) and "wandb_logger" in config.logger:
         with open_dict(config):
@@ -68,10 +60,7 @@ def run_model(
         config.trainer,
         callbacks=[instantiate(c) for c in config.callbacks.values()],
         logger=[instantiate(lg) for lg in config.logger.values()],
-        accelerator='auto',
+        accelerator="auto",
     )
 
     trainer.fit(model, datamodule=datamodule)
-
-
-

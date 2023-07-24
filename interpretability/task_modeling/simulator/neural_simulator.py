@@ -1,17 +1,20 @@
-import torch
-import numpy as np
 import os
+
+import h5py
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from sklearn.model_selection import train_test_split
-import h5py
 
 # plt.switch_backend("Agg")
-DATA_HOME = "/home/csverst/Github/InterpretabilityBenchmark/interpretability/data_modeling/datasets"
+DATA_HOME = (
+    "/home/csverst/Github/InterpretabilityBenchmark/"
+    "interpretability/data_modeling/datasets"
+)
+
 
 def sigmoidActivation(module, input):
     return 1 / (1 + module.exp(-1 * input))
+
 
 def apply_data_warp_sigmoid(data):
     warp_functions = [sigmoidActivation, sigmoidActivation, sigmoidActivation]
@@ -36,12 +39,13 @@ def apply_data_warp_sigmoid(data):
 
     return data
 
-class NeuralDataSimulator():
+
+class NeuralDataSimulator:
     def __init__(
-            self, 
-            n_neurons = 50,
-            nonlin_embed = False,
-            ):
+        self,
+        n_neurons=50,
+        nonlin_embed=False,
+    ):
         self.n_neurons = n_neurons
         self.nonlin_embed = nonlin_embed
         self.obs_noise = "poisson"
@@ -49,21 +53,23 @@ class NeuralDataSimulator():
         self.orig_mean = None
         self.orig_std = None
 
+    def simulate_neural_data(
+        self, task_trained_model, datamodule, coupled=False, seed=0
+    ):
 
-    def simulate_neural_data(self, task_trained_model, datamodule, coupled = False, seed=0):
-
-
-        # Make a filename based on the system being modeled, the number of neurons, 
+        # Make a filename based on the system being modeled, the number of neurons,
         # the nonlinearity, the observation noise, the epoch number, the model type,
         # and the seed
 
-        filename = (f"{datamodule.data_env.dataset_name}_"
-                    f"model_{type(task_trained_model).__name__}_"
-                    f"n_neurons_{self.n_neurons}_"
-                    f"nonlin_embed_{self.nonlin_embed}_"
-                    f"obs_noise_{self.obs_noise}_"
-                    f"seed_{seed}.h5")
-        
+        filename = (
+            f"{datamodule.data_env.dataset_name}_"
+            f"model_{type(task_trained_model).__name__}_"
+            f"n_neurons_{self.n_neurons}_"
+            f"nonlin_embed_{self.nonlin_embed}_"
+            f"obs_noise_{self.obs_noise}_"
+            f"seed_{seed}.h5"
+        )
+
         fpath = os.path.join(DATA_HOME, filename)
 
         # Get trajectories and model predictions
@@ -79,13 +85,10 @@ class NeuralDataSimulator():
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
 
-
         if self.n_neurons is not None:
             rng = np.random.default_rng(seed)
             # Randomly sample, normalize, and sort readout
-            readout = rng.uniform(
-                -2, 2, (n_lat_dim, self.n_neurons)
-            )
+            readout = rng.uniform(-2, 2, (n_lat_dim, self.n_neurons))
             if not self.nonlin_embed:
                 readout = readout / np.linalg.norm(readout, ord=1, axis=0)
 
@@ -120,7 +123,7 @@ class NeuralDataSimulator():
             if self.nonlin_embed:
                 activity = apply_data_warp_sigmoid(activity)
             data = activity
-            
+
         latents = latents.reshape(n_trials, n_times, n_lat_dim)
         activity = activity.reshape(n_trials, n_times, self.n_neurons)
         data = data.reshape(n_trials, n_times, self.n_neurons)
@@ -193,7 +196,7 @@ class NeuralDataSimulator():
             if self.nonlin_embed:
                 activity = apply_data_warp_sigmoid(activity)
             data = activity
-            
+
         latents = latents.reshape(n_trials, n_times, n_lat_dim)
         activity = activity.reshape(n_trials, n_times, self.n_neurons)
         data = data.reshape(n_trials, n_times, self.n_neurons)

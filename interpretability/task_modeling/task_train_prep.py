@@ -3,10 +3,11 @@ from typing import List
 
 import hydra
 import pytorch_lightning as pl
-import torch
-from interpretability.task_modeling.simulator.neural_simulator import NeuralDataSimulator
 from gymnasium import Env
 
+from interpretability.task_modeling.simulator.neural_simulator import (
+    NeuralDataSimulator,
+)
 from utils import flatten
 
 log = logging.getLogger(__name__)
@@ -43,20 +44,12 @@ def train(
     # Set seed for pytorch, numpy, and python.random
     if "params" in overrides:
         pl.seed_everything(overrides["params"]["seed"], workers=True)
-        if "coupled" in overrides["params"]:
-            coupled = overrides["params"]["coupled"]
-        else:
-            coupled = False
     else:
         pl.seed_everything(0, workers=True)
-        coupled = True
 
-
-    #--------------------------Instantiate environment----------------------------
+    # --------------------------Instantiate environment----------------------------
     log.info("Instantiating environment")
-    task_env: Env = hydra.utils.instantiate(
-        config_all["task_env"], _convert_="all"
-    )
+    task_env: Env = hydra.utils.instantiate(config_all["task_env"], _convert_="all")
 
     # ------------------------------Instantiate model--------------------------------
     log.info(f"Instantiating model <{config_all['model']._target_}")
@@ -74,7 +67,7 @@ def train(
     )
     task_wrapper.set_environment(task_env)
     task_wrapper.set_model(model)
-    
+
     # --------------------------Instantiate datamodule----------------------------
     log.info("Instantiating datamodule")
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
@@ -123,11 +116,11 @@ def train(
         config_all["trainer"],
         logger=logger,
         callbacks=callbacks,
-        accelerator= 'auto',
+        accelerator="auto",
         _convert_="all",
     )
 
     # -----------------------------Train model---------------------------
     log.info("Training model")
-    trainer.fit(model=task_wrapper, datamodule=datamodule)    
-    simulator.simulate_neural_data(task_wrapper, datamodule, seed = 0)
+    trainer.fit(model=task_wrapper, datamodule=datamodule)
+    simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)

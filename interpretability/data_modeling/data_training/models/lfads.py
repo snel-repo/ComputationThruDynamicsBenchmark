@@ -4,7 +4,6 @@ from torch import nn
 
 from ..metrics import ExpSmoothedMetric, r2_score
 from ..tuples import SessionBatch, SessionOutput
-from ..utils import transpose_lists
 from .modules import augmentations
 from .modules.decoder import Decoder
 from .modules.encoder import Encoder
@@ -108,7 +107,6 @@ class LFADS(pl.LightningModule):
         encod_data = self.readin(batch.encod_data)
         # Collect the external inputs
         ext_input = batch.ext_input
-        batch_size = encod_data.shape[0]
         # Pass the data through the encoders
         ic_mean, ic_std, ci = self.encoder(encod_data)
         # Create the posterior distribution over initial conditions
@@ -221,7 +219,6 @@ class LFADS(pl.LightningModule):
         ic_std = output.ic_std
         co_means = output.co_means
         co_stds = output.co_stds
-        gen_inputs = output.gen_inputs
         # Compute the KL penalty on posteriors
         ic_kl = self.ic_prior(ic_mean, ic_std) * self.hparams.kl_ic_scale
         co_kl = self.co_prior(co_means, co_stds) * self.hparams.kl_co_scale
@@ -237,7 +234,7 @@ class LFADS(pl.LightningModule):
         else:
             r2 = float("nan")
         # Compute batch sizes for logging
-        batch_size = len(batch.encod_data) 
+        batch_size = len(batch.encod_data)
         # Log per-session metrics
         self.log(
             name=f"{split}/recon/",

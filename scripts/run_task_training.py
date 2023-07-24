@@ -39,22 +39,23 @@ SEARCH_SPACE = dict(
     ),
     task_wrapper=dict(
         # -----------------Task Wrapper Parameters -----------------------------------
-        learning_rate = tune.grid_search([1e-4]),
+        learning_rate=tune.grid_search([1e-4]),
     ),
-    params=dict(seed=tune.grid_search([0]),
-    )    
+    params=dict(
+        seed=tune.grid_search([0]),
+    ),
 )
 
 # -----------------Default Parameter Sets -----------------------------------
 path_dict = dict(
-    task_wrapper = Path(f"configs/task_wrapper/{TASK}.yaml"),
-    task_env = Path(f"configs/task_env/{TASK}.yaml"),
+    task_wrapper=Path(f"configs/task_wrapper/{TASK}.yaml"),
+    task_env=Path(f"configs/task_env/{TASK}.yaml"),
     model=Path(f"configs/model/{MODEL}.yaml"),
-    datamodule=Path(f"configs/datamodule/datamodule_decoupled.yaml"),
-    simulator = Path(f"configs/simulator/default_{TASK}.yaml"),
+    datamodule=Path("configs/datamodule/datamodule_decoupled.yaml"),
+    simulator=Path(f"configs/simulator/default_{TASK}.yaml"),
     callbacks=Path(f"configs/callbacks/default_{TASK}.yaml"),
     loggers=Path("configs/logger/default.yaml"),
-    trainer=Path(f"configs/trainer/default.yaml"),
+    trainer=Path("configs/trainer/default.yaml"),
 )
 
 # ------------------Data Management Variables --------------------------------

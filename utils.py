@@ -7,7 +7,6 @@ import requests
 import torch
 
 
-
 def softplusActivation(module, input):
     return module.log(1 + module.exp(input))
 

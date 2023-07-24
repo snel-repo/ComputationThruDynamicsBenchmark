@@ -1,10 +1,14 @@
-import pytorch_lightning as pl
-import torch
-from interpretability.task_modeling.task_trained_wrapper.tasktrain_wrapper import TaskTrainWrapper
-from interpretability.data_modeling.data_training.data_trained_wrapper.data_trained_wrapper import DataTrainWrapper
+import numpy as np
+from data_trained_wrapper import DataTrainWrapper
+
 # import lr from sklearn
 from sklearn.linear_model import LinearRegression
-import numpy as np
+
+from interpretability.task_modeling.task_trained_wrapper.tasktrain_wrapper import (
+    TaskTrainWrapper,
+)
+
+
 class ComparisonWrapper:
     def __init__(self, task_train_path, data_train_path):
         task_train = TaskTrainWrapper.load_wrapper(filepath=task_train_path)
@@ -20,17 +24,17 @@ class ComparisonWrapper:
         self.data_model.eval()  # set to evaluation mode
 
     def compare_latent_activity(self):
-        valid_dataloader_TT = self.task_datamod.train_dataloader(shuffle= False)
+        valid_dataloader_TT = self.task_datamod.train_dataloader(shuffle=False)
         latents_TT = []
         for i, batch in enumerate(valid_dataloader_TT):
             _, latents_temp = self.task_model(batch[1])
             latents_TT.append(latents_temp.detach().numpy())
         latents_TT = np.concatenate(latents_TT, axis=0)
 
-        valid_dataloader_DT = self.data_datamod.train_dataloader(shuffle = False)
+        valid_dataloader_DT = self.data_datamod.train_dataloader(shuffle=False)
         latents_DT = []
         for i, batch in enumerate(valid_dataloader_DT):
-            outputs_DT = self.data_model.predict_step(batch, batch_ix =i)
+            outputs_DT = self.data_model.predict_step(batch, batch_ix=i)
             latents_DT.append(outputs_DT[0][6].detach().numpy())
         latents_DT = np.concatenate(latents_DT, axis=0)
 
@@ -43,4 +47,3 @@ class ComparisonWrapper:
         r2_TT2DT = lr_TT2DT.score(latents_TT, latents_DT)
         r2_DT2TT = lr_DT2TT.score(latents_DT, latents_TT)
         return r2_TT2DT, r2_DT2TT
-

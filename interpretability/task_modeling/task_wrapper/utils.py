@@ -1,4 +1,3 @@
-
 def make_data_tag(dm_cfg):
     obs_dim = "" if "obs_dim" not in dm_cfg else dm_cfg.obs_dim
     obs_noise = "" if "obs_noise" not in dm_cfg else dm_cfg.obs_noise
@@ -18,4 +17,3 @@ def make_data_tag(dm_cfg):
     if obs_noise:
         data_tag += f"_{obs_noise}{obs_noise_params}"
     return data_tag
-

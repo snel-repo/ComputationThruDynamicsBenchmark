@@ -107,7 +107,7 @@ class RasterPlot(pl.Callback):
         # Discard the extra data - only the SessionBatches are relevant here
         batch = batch[0]
         # Log a few example outputs for each session
-            # Convert everything to numpy
+        # Convert everything to numpy
         encod_data = batch.encod_data.detach().cpu().numpy()
         recon_data = batch.recon_data.detach().cpu().numpy()
         truth = batch.truth.detach().cpu().numpy()

@@ -1,6 +1,6 @@
 import torch
 
-from .tuples import SessionBatch, Batch
+from .tuples import Batch, SessionBatch
 
 
 def flatten(dictionary, level=[]):

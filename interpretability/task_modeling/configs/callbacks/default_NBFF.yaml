@@ -12,7 +12,7 @@ tune_report_callback:
 state_transition_callback:
   _target_: interpretability.task_modeling.callbacks.callbacks.StateTransitionCallback
   log_every_n_epochs: 20
-  
+
 latent_traj:
- _target_: interpretability.task_modeling.callbacks.callbacks.LatentTrajectoryPlot
- log_every_n_epochs: 20
+  _target_: interpretability.task_modeling.callbacks.callbacks.LatentTrajectoryPlot
+  log_every_n_epochs: 20

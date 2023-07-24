@@ -1,9 +1,8 @@
 import pytorch_lightning as pl
 import torch
-import torch.nn.functional as F
+from gymnasium.envs import Environment
 from torch import nn
-from motornet.environment import Environment
-from motornet.effector import Effector
+
 from interpretability.task_modeling.model.modules.loss_func import LossFunc
 
 
@@ -53,21 +52,23 @@ class TaskTrainedCoupled(pl.LightningModule):
         terminated = False
         # Pass data through the model
         batch_size = joints.shape[0]
-        obs, info = self.task_env.reset(batch_size=batch_size, joint_state=joints, goal=goal)
+        obs, info = self.task_env.reset(
+            batch_size=batch_size, joint_state=joints, goal=goal
+        )
         # if the model has a init_hidden method, call it
         if hasattr(self.model, "init_hidden"):
             h = self.model.init_hidden(batch_size=batch_size).to(self.device)
         else:
             h = torch.zeros(batch_size, self.latent_size).to(self.device)
         h_all = [h]
-        xy = [info["states"][self.state_label][:,None,:]]
-        tg = [info["goal"][:,None,:]]
+        xy = [info["states"][self.state_label][:, None, :]]
+        tg = [info["goal"][:, None, :]]
         actions = []
         while not terminated:
-            action, h = self.model(obs, h) # TODO: Pop out action from model
+            action, h = self.model(obs, h)  # TODO: Pop out action from model
             obs, reward, terminated, truncated, info = self.task_env.step(action=action)
-            xy.append(info["states"][self.state_label][:,None,:])
-            tg.append(info["goal"][:,None,:])
+            xy.append(info["states"][self.state_label][:, None, :])
+            tg.append(info["goal"][:, None, :])
             actions.append(action)
             h_all.append(h)
         xy = torch.cat(xy, dim=1)
@@ -95,4 +96,3 @@ class TaskTrainedCoupled(pl.LightningModule):
         loss_all = self.loss_func(xy, tg, actions)
         self.log("valid/loss", loss_all)
         return loss_all
-    

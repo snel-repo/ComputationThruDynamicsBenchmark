@@ -2,14 +2,12 @@ import logging
 import os
 
 import dotenv
-import h5py
 import numpy as np
 import pytorch_lightning as pl
-from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 import torch
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, TensorDataset, Dataset
 from gymnasium import Env
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +38,7 @@ class TaskDataModuleCoupled(pl.LightningDataModule):
         hps = self.hparams
 
         # Standardize and record original mean and standard deviations
-                # Perform data splits
+        # Perform data splits
         # Make a tensor of dimension (n_samples) filled with batch_size entries
         inds = np.arange(hps.n_samples)
         # Generate a set of initial conditions from the data env
@@ -50,8 +48,8 @@ class TaskDataModuleCoupled(pl.LightningDataModule):
 
         for i in range(hps.n_samples):
             obs, info = self.data_env.reset()
-            joint_list.append(torch.squeeze(info['states']['joint']))
-            goal_list.append(torch.squeeze(info['goal']))
+            joint_list.append(torch.squeeze(info["states"]["joint"]))
+            goal_list.append(torch.squeeze(info["goal"]))
 
         joint_list = torch.stack(joint_list, axis=0)
         goal_list = torch.stack(goal_list, axis=0)
@@ -63,7 +61,6 @@ class TaskDataModuleCoupled(pl.LightningDataModule):
         self.train_goals = goal_list[train_inds]
         self.valid_joints = joint_list[valid_inds]
         self.valid_goals = goal_list[valid_inds]
-
 
     def setup(self, stage=None):
         # Store datasets
@@ -90,10 +87,9 @@ class TaskDataModuleCoupled(pl.LightningDataModule):
             self.valid_ds,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-
         )
         return valid_dl
-    
+
     # def test_dataloader(self):
     #     test_dl = DataLoader(
     #         self.test_ds,

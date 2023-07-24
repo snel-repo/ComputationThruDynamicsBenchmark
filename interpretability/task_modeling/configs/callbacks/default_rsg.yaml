@@ -12,4 +12,3 @@ tune_report_callback:
 state_transition_callback:
   _target_: interpretability.task_modeling.callbacks.StateTransitionCallback
   log_every_n_epochs: 10
-  

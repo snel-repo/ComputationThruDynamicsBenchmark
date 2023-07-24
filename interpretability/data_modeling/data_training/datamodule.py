@@ -2,7 +2,6 @@ import h5py
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.trainer.supporters import CombinedLoader
 from sklearn.model_selection import train_test_split
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
@@ -32,9 +31,7 @@ def attach_tensors(datamodule, data_dict: dict, extra_keys: list[str] = []):
         if hps.sv_rate > 0:
             # Create sample validation mask # TODO: Sparse and use complement?
             bern_p = 1 - hps.sv_rate if prefix != "test" else 1.0
-            sv_mask = (
-                torch.rand(encod_data.shape, generator=sv_gen) < bern_p
-            ).float()
+            sv_mask = (torch.rand(encod_data.shape, generator=sv_gen) < bern_p).float()
         else:
             # Create a placeholder tensor
             sv_mask = torch.ones(n_samps, 0, 0)
@@ -65,6 +62,7 @@ def attach_tensors(datamodule, data_dict: dict, extra_keys: list[str] = []):
             ),
             tuple(other),
         )
+
     # import pdb; pdb.set_trace()
     # Store the datasets on the datamodule
     datamodule.train_data = create_session_batch("train")
@@ -142,18 +140,24 @@ class BasicDataModule(pl.LightningDataModule):
             data_dict = {k: v[()] for k, v in h5file.items()}
 
         if hps.reshuffle_tv_seed is not None:
-            data_dict = reshuffle_train_valid(data_dict, hps.reshuffle_tv_seed, hps.reshuffle_tv_ratio)
+            data_dict = reshuffle_train_valid(
+                data_dict, hps.reshuffle_tv_seed, hps.reshuffle_tv_ratio
+            )
 
         attach_tensors(self, data_dict, extra_keys=hps.batch_keys)
         for attr_key in hps.attr_keys:
             setattr(self, attr_key, data_dict[attr_key])
 
     def train_dataloader(self, shuffle=True):
-        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, shuffle=shuffle, drop_last=False)
+        return DataLoader(
+            self.train_ds,
+            batch_size=self.hparams.batch_size,
+            shuffle=shuffle,
+            drop_last=False,
+        )
 
     def val_dataloader(self):
         return DataLoader(self.valid_ds, batch_size=self.hparams.batch_size)
-
 
     def predict_dataloader(self):
         # NOTE: Returning dicts of DataLoaders is incompatible with trainer.predict,
@@ -171,12 +175,12 @@ class BasicDataModule(pl.LightningDataModule):
                 shuffle=False,
             ),
         }
-            
+
         # Add the test dataset if it is available
         if hasattr(self, "test_ds"):
-                dataloader["test"] = DataLoader(
-                    self.test_ds,
-                    batch_size=self.hparams.batch_size,
-                    shuffle=False,
-                )
+            dataloader["test"] = DataLoader(
+                self.test_ds,
+                batch_size=self.hparams.batch_size,
+                shuffle=False,
+            )
         return dataloader

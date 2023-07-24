@@ -6,11 +6,9 @@ import pytorch_lightning as pl
 import torch
 from PIL import Image
 from sklearn.decomposition import FastICA
+
 # import linear regression
 from sklearn.linear_model import LinearRegression
-
-# import R2
-from sklearn.metrics import r2_score
 
 from ..utils import send_batch_to_device
 
@@ -65,12 +63,9 @@ class InputR2Plot(pl.Callback):
     inferred inputs and rates and logs to tensorboard.
     """
 
-    def __init__(self, 
-                 split="valid", 
-                 log_every_n_epochs=100, 
-                 n_samples=16, 
-                 use_ica = True
-                 ):
+    def __init__(
+        self, split="valid", log_every_n_epochs=100, n_samples=16, use_ica=True
+    ):
         """Initializes the callback.
         Parameters
         ----------
@@ -139,20 +134,36 @@ class InputR2Plot(pl.Callback):
             _, steps_recon, neur_recon = recon_data.shape
 
             # Fit lin model from inferred inputs to true inputs
-            lr = LinearRegression().fit(inf_inputs.reshape(-1, n_inf_inputs), true_inputs.reshape(-1, n_true_inputs))
+            lr = LinearRegression().fit(
+                inf_inputs.reshape(-1, n_inf_inputs),
+                true_inputs.reshape(-1, n_true_inputs),
+            )
             # Get R2
-            r2_inf_to_true = lr.score(inf_inputs.reshape(-1, n_inf_inputs), true_inputs.reshape(-1, n_true_inputs))
+            r2_inf_to_true = lr.score(
+                inf_inputs.reshape(-1, n_inf_inputs),
+                true_inputs.reshape(-1, n_true_inputs),
+            )
             # Fit lin model from true inputs to inferred inputs
-            lr2 = LinearRegression().fit(true_inputs.reshape(-1, n_true_inputs), inf_inputs.reshape(-1, n_inf_inputs))
-            
-            inf_inputs = lr.predict(inf_inputs.reshape(-1, n_inf_inputs)).reshape(-1, n_time, n_true_inputs)
-            inf_inputs = inf_inputs.reshape(-1, n_time, n_true_inputs)
-            
-            # Get R2
-            r2_true_to_inf = lr2.score(true_inputs.reshape(-1, n_true_inputs), inf_inputs.reshape(-1, n_inf_inputs))
+            lr2 = LinearRegression().fit(
+                true_inputs.reshape(-1, n_true_inputs),
+                inf_inputs.reshape(-1, n_inf_inputs),
+            )
 
-            metrics = {"input_R2/r2_inf_to_true": r2_inf_to_true,
-                       "input_R2/r2_true_to_inf": r2_true_to_inf,}
+            inf_inputs = lr.predict(inf_inputs.reshape(-1, n_inf_inputs)).reshape(
+                -1, n_time, n_true_inputs
+            )
+            inf_inputs = inf_inputs.reshape(-1, n_time, n_true_inputs)
+
+            # Get R2
+            r2_true_to_inf = lr2.score(
+                true_inputs.reshape(-1, n_true_inputs),
+                inf_inputs.reshape(-1, n_inf_inputs),
+            )
+
+            metrics = {
+                "input_R2/r2_inf_to_true": r2_inf_to_true,
+                "input_R2/r2_true_to_inf": r2_true_to_inf,
+            }
             # Log the figure
             pl_module.log_dict(
                 {
@@ -190,7 +201,6 @@ class InputR2Plot(pl.Callback):
                 fig,
                 trainer.global_step,
             )
-
 
             # Generate figure
 

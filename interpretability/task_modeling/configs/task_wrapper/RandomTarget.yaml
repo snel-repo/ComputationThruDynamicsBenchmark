@@ -8,7 +8,7 @@ input_size: 12
 output_size: 4
 
 state_label: fingertip
-loss_func: 
+loss_func:
   _target_: interpretability.task_modeling.model.modules.loss_func.RandomTargetLoss
   position_loss:
     _target_: torch.nn.L1Loss

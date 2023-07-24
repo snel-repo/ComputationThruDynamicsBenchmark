@@ -1,12 +1,12 @@
 import torch
-from torch import nn
+
 
 class BiasedRNNCell(torch.nn.Module):
     def __init__(self, input_size: int, latent_size: int, output_size: int):
         super().__init__()
         self.latent_size = latent_size
         self.n_layers = 1
-        
+
         self.gru = torch.nn.GRU(input_size, latent_size, 1, batch_first=True)
         self.fc = torch.nn.Linear(latent_size, output_size)
         self.sigmoid = torch.nn.Sigmoid()
@@ -24,7 +24,7 @@ class BiasedRNNCell(torch.nn.Module):
             elif name == "fc.weight":
                 torch.nn.init.xavier_uniform_(param)
             elif name == "fc.bias":
-                torch.nn.init.constant_(param, -5.)
+                torch.nn.init.constant_(param, -5.0)
             else:
                 raise ValueError
 
