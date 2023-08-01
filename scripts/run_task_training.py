@@ -23,23 +23,22 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 # torch.autograd.set_detect_anomaly(True)
 # ---------------Options---------------
-LOCAL_MODE = True
+LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "NBFF_RNN"
+RUN_DESC = "SimonSaysNODE"
 NUM_SAMPLES = 1
-TASK = "NBFF"
-MODEL = "RNN"
+TASK = "SimonSays"
+MODEL = "NODE"
 
 
 SEARCH_SPACE = dict(
     # -----------------Model Parameters -----------------------------------
     model=dict(
-        # -----------------Model Parameters -----------------------------------
-        # latent_size = tune.grid_search([128]),
+        latent_size=tune.grid_search([10]),
     ),
     task_wrapper=dict(
         # -----------------Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.grid_search([1e-4]),
+        learning_rate=tune.grid_search([5e-4]),
     ),
     params=dict(
         seed=tune.grid_search([0]),

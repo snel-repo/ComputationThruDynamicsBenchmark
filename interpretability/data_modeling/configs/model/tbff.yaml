@@ -1,53 +1,52 @@
 _target_: interpretability.data_modeling.data_training.models.lfads.LFADS
 
 # --------- architecture --------- #
-# gen_type: NODE
-# inv_encoder: True
-# encod_data_dim: 50
-# encod_seq_len: 100
-# recon_seq_len: 100
-# ext_input_dim: 0 # Ext. Inputs
-# ic_enc_seq_len: 0
-# ic_enc_dim: 256 # Encoder for latent ICs hidden units
-# ci_enc_dim: 0 # Controller encoder dimensionality
-# ci_lag: 1
-# con_dim: 0 # Hidden size of controller
-# co_dim: 0 # # of controller inputs
-# ic_dim: 50 # # neurons if Flow_inv, gen_dim if not
-# gen_dim: 10
-# fac_dim: 10
-
-gen_type: RNN
-inv_encoder: False
+gen_type: NODE
+inv_encoder: True
 encod_data_dim: 50
-encod_seq_len: 100
-recon_seq_len: 100
+encod_seq_len: 200
+recon_seq_len: 200
 ext_input_dim: 0 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 256 # Encoder for latent ICs hidden units
 ci_enc_dim: 256 # Controller encoder dimensionality
 ci_lag: 1
 con_dim: 256 # Hidden size of controller
-co_dim: 12 # # of controller inputs
-ic_dim: 256 # # neurons if Flow_inv, gen_dim if not
-gen_dim: 256
-fac_dim: 10
+co_dim: 3 # # of controller inputs
+ic_dim: 50 # # neurons if Flow_inv, gen_dim if not
+gen_dim: 3
+fac_dim: 3
+
+# gen_type: RNN
+# inv_encoder: False
+# encod_data_dim: 50
+# encod_seq_len: 200
+# recon_seq_len: 200
+# ext_input_dim: 0 # Ext. Inputs
+# ic_enc_seq_len: 0
+# ic_enc_dim: 256 # Encoder for latent ICs hidden units
+# ci_enc_dim: 256 # Controller encoder dimensionality
+# ci_lag: 1
+# con_dim: 256 # Hidden size of controller
+# co_dim: 3 # # of controller inputs
+# ic_dim: 256 # # neurons if Flow_inv, gen_dim if not
+# gen_dim: 256
+# fac_dim: 10
 
 # --------- readin / readout --------- #
 readin:
   - _target_: torch.nn.Identity
+# readout:
+#   - _target_: interpretability.data_modeling.data_training.models.modules.readin_readout.FanInLinear
+#     in_features: ${model.fac_dim}
+#     out_features: 50
 readout:
-  - _target_: interpretability.data_modeling.data_training.models.modules.readin_readout.FanInLinear
+  - _target_: interpretability.data_modeling.data_training.models.modules.readin_readout.Flow
     in_features: ${model.fac_dim}
     out_features: 50
-# readout:
-
-#     - _target_: interpretability.data_modeling.data_training.models.modules.readin_readout.Flow
-#       in_features: ${model.fac_dim}
-#       out_features: 50
-#       readout_num_layers: 3
-#       readout_hidden_size: 128
-#       flow_num_steps: 25
+    readout_num_layers: 3
+    readout_hidden_size: 128
+    flow_num_steps: 25
 # --------- augmentation --------- #
 train_aug_stack:
   _target_: interpretability.data_modeling.data_training.models.modules.augmentations.AugmentationStack
@@ -74,11 +73,11 @@ reconstruction:
 variational: True
 
 # Sparse input prior
-# co_prior:
-#   _target_: interpretability.data_modeling.data_training.models.modules.priors.SparseMultivariateNormal
-#   mean: 0
-#   scale: 1.0
-#   shape: ${model.co_dim}
+co_prior:
+  _target_: interpretability.data_modeling.data_training.models.modules.priors.SparseMultivariateNormal
+  mean: 0
+  scale: 1.0
+  shape: ${model.co_dim}
 
 # Bernoulli input prior
 # co_prior:
@@ -87,11 +86,11 @@ variational: True
 #   shape: ${model.co_dim}
 
 # Autoregressive input prior
-co_prior:
-  _target_: interpretability.data_modeling.data_training.models.modules.priors.AutoregressiveMultivariateNormal
-  tau: 10.0
-  nvar: 0.1
-  shape: ${model.co_dim}
+# co_prior:
+#   _target_: interpretability.data_modeling.data_training.models.modules.priors.AutoregressiveMultivariateNormal
+#   tau: 10.0
+#   nvar: 0.1
+#   shape: ${model.co_dim}
 
 ic_prior:
   _target_: interpretability.data_modeling.data_training.models.modules.priors.MultivariateNormal
@@ -117,14 +116,15 @@ lr_adam_epsilon: 1.0e-7
 lr_scheduler: True
 
 # --------- regularization --------- #
-weight_decay: 0.0
+weight_decay: 1.0e-5
 l2_start_epoch: 0
 l2_increase_epoch: 80
 l2_ic_enc_scale: 0.0
 l2_ci_enc_scale: 0.0
 l2_gen_scale: 0.0 # sampled
 l2_con_scale: 0.0 # sampled
+l2_readout_scale: 0
 kl_start_epoch: 0
 kl_increase_epoch: 80
 kl_ic_scale: 1.0e-6 # sampled
-kl_co_scale: 1.0e-3 # sampled
+kl_co_scale: 1.0e-5 # sampled

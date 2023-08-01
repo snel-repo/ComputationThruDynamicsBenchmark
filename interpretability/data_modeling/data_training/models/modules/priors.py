@@ -135,7 +135,7 @@ class SparseMultivariateNormal(nn.Module):
         # Create distribution parameter tensors
         means = torch.ones(shape) * mean
         scales = torch.ones(shape) * scale
-        self.mean = nn.Parameter(means, requires_grad=True)
+        self.mean = nn.Parameter(means, requires_grad=False)
         self.scale = nn.Parameter(scales, requires_grad=False)
 
     def make_posterior(self, post_mean, post_std):
@@ -145,7 +145,7 @@ class SparseMultivariateNormal(nn.Module):
         # Create the posterior distribution
         posterior = self.make_posterior(post_mean, post_std)
         # Create the prior with Laplace distribution
-        prior = Independent(Laplace(self.mean, self.scale), 1)
+        prior = Independent(Laplace(0, self.scale), 1)
         # Compute KL analytically
         kl_batch = kl_divergence(posterior, prior)
         return torch.mean(kl_batch)

@@ -1,0 +1,7 @@
+_target_: interpretability.task_modeling.model.policy_networks.NODEPolicy
+
+input_size: None
+latent_size: 20
+output_size: None
+num_layers: 3
+layer_hidden_size: 128

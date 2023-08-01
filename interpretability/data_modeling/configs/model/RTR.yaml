@@ -1,23 +1,7 @@
 _target_: interpretability.data_modeling.data_training.models.lfads.LFADS
 
 # --------- architecture --------- #
-# gen_type: NODE
-# inv_encoder: True
-# encod_data_dim: 50
-# encod_seq_len: 100
-# recon_seq_len: 100
-# ext_input_dim: 0 # Ext. Inputs
-# ic_enc_seq_len: 0
-# ic_enc_dim: 256 # Encoder for latent ICs hidden units
-# ci_enc_dim: 0 # Controller encoder dimensionality
-# ci_lag: 1
-# con_dim: 0 # Hidden size of controller
-# co_dim: 0 # # of controller inputs
-# ic_dim: 50 # # neurons if Flow_inv, gen_dim if not
-# gen_dim: 10
-# fac_dim: 10
-
-gen_type: RNN
+gen_type: NODE
 inv_encoder: False
 encod_data_dim: 50
 encod_seq_len: 100
@@ -25,13 +9,29 @@ recon_seq_len: 100
 ext_input_dim: 0 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 256 # Encoder for latent ICs hidden units
-ci_enc_dim: 256 # Controller encoder dimensionality
+ci_enc_dim: 0 # Controller encoder dimensionality
 ci_lag: 1
-con_dim: 256 # Hidden size of controller
-co_dim: 12 # # of controller inputs
-ic_dim: 256 # # neurons if Flow_inv, gen_dim if not
-gen_dim: 256
+con_dim: 0 # Hidden size of controller
+co_dim: 0 # # of controller inputs
+ic_dim: 50 # # neurons if Flow_inv, gen_dim if not
+gen_dim: 10
 fac_dim: 10
+
+# gen_type: RNN
+# inv_encoder: False
+# encod_data_dim: 50
+# encod_seq_len: 100
+# recon_seq_len: 100
+# ext_input_dim: 0 # Ext. Inputs
+# ic_enc_seq_len: 0
+# ic_enc_dim: 256 # Encoder for latent ICs hidden units
+# ci_enc_dim: 256 # Controller encoder dimensionality
+# ci_lag: 1
+# con_dim: 256 # Hidden size of controller
+# co_dim: 12 # # of controller inputs
+# ic_dim: 256 # # neurons if Flow_inv, gen_dim if not
+# gen_dim: 256
+# fac_dim: 10
 
 # --------- readin / readout --------- #
 readin:

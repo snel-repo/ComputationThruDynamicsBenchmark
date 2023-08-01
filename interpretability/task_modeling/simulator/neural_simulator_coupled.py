@@ -60,7 +60,7 @@ class NeuralDataSimulatorCoupled:
 
         filename = (
             f"{type(datamodule.data_env).__name__}_"
-            f"model_{type(task_trained_model).__name__}_"
+            f"model_{type(task_trained_model.model).__name__}_"
             f"n_neurons_{self.n_neurons}_"
             f"nonlin_embed_{self.nonlin_embed}_"
             f"obs_noise_{self.obs_noise}_"

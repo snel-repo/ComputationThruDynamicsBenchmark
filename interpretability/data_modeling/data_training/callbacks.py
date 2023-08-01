@@ -184,44 +184,42 @@ class TrajectoryPlot(pl.Callback):
         if not has_image_loggers(trainer.loggers):
             return
         # Get only the validation dataloaders
-        pred_dls = trainer.datamodule.predict_dataloader()
-        dataloaders = {s: dls["valid"] for s, dls in pred_dls.items()}
+        dataloader = trainer.datamodule.train_dataloader()
         # Compute outputs and plot for one session at a time
-        for s, dataloader in dataloaders.items():
-            latents = []
-            for batch in dataloader:
-                # Move data to the right device
-                batch = send_batch_to_device({s: batch}, pl_module.device)
-                # Perform the forward pass through the model
-                output = pl_module.predict_step(batch, None, sample_posteriors=False)[s]
-                latents.append(output.gen_states)
-            latents = torch.cat(latents).detach().cpu().numpy()
-            # Reduce dimensionality if necessary
-            n_samp, n_step, n_lats = latents.shape
-            if n_lats > 3:
-                latents_flat = latents.reshape(-1, n_lats)
-                pca = PCA(n_components=3)
-                latents = pca.fit_transform(latents_flat)
-                latents = latents.reshape(n_samp, n_step, 3)
-                explained_variance = np.sum(pca.explained_variance_ratio_)
-            else:
-                explained_variance = 1.0
-            # Create figure and plot trajectories
-            fig = plt.figure(figsize=(10, 10))
-            ax = fig.add_subplot(111, projection="3d")
-            for traj in latents:
-                ax.plot(*traj.T, alpha=0.2, linewidth=0.5)
-            ax.scatter(*latents[:, 0, :].T, alpha=0.1, s=10, c="g")
-            ax.scatter(*latents[:, -1, :].T, alpha=0.1, s=10, c="r")
-            ax.set_title(f"explained variance: {explained_variance:.2f}")
-            plt.tight_layout()
-            # Log the figure
-            log_figure(
-                trainer.loggers,
-                f"trajectory_plot/sess{s}",
-                fig,
-                trainer.global_step,
-            )
+        latents = []
+        for batch in dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, pl_module.device)
+            # Perform the forward pass through the model
+            output = pl_module.predict_step(batch, None, sample_posteriors=False)
+            latents.append(output.gen_states)
+        latents = torch.cat(latents).detach().cpu().numpy()
+        # Reduce dimensionality if necessary
+        n_samp, n_step, n_lats = latents.shape
+        if n_lats > 3:
+            latents_flat = latents.reshape(-1, n_lats)
+            pca = PCA(n_components=3)
+            latents = pca.fit_transform(latents_flat)
+            latents = latents.reshape(n_samp, n_step, 3)
+            explained_variance = np.sum(pca.explained_variance_ratio_)
+        else:
+            explained_variance = 1.0
+        # Create figure and plot trajectories
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        for traj in latents:
+            ax.plot(*traj.T, alpha=0.2, linewidth=0.5)
+        ax.scatter(*latents[:, 0, :].T, alpha=0.1, s=10, c="g")
+        ax.scatter(*latents[:, -1, :].T, alpha=0.1, s=10, c="r")
+        ax.set_title(f"explained variance: {explained_variance:.2f}")
+        plt.tight_layout()
+        # Log the figure
+        log_figure(
+            trainer.loggers,
+            "trajectory_plot",
+            fig,
+            trainer.global_step,
+        )
 
 
 class CondAvgTrajectoryPlot(pl.Callback):
@@ -256,50 +254,48 @@ class CondAvgTrajectoryPlot(pl.Callback):
         if not has_image_loggers(trainer.loggers):
             return
         # Get only the validation dataloaders
-        pred_dls = trainer.datamodule.predict_dataloader()
         train_conds = trainer.datamodule.train_cond_idx
-        dataloaders = {s: dls["train"] for s, dls in pred_dls.items()}
+        dataloader = trainer.datamodule.train_dataloader()
         # Compute outputs and plot for one session at a time
-        for s, dataloader in dataloaders.items():
-            latents = []
-            for batch in dataloader:
-                # Move data to the right device
-                batch = send_batch_to_device({s: batch}, pl_module.device)
-                # Perform the forward pass through the model
-                output = pl_module.predict_step(batch, None, sample_posteriors=False)[s]
-                latents.append(output.factors)
-            latents = torch.cat(latents).detach().cpu().numpy()
-            # Find the condition averaged trajectory
-            latents_cond_avg = np.empty((0, latents.shape[1], latents.shape[2]))
-            num_conds = len(np.unique(train_conds))
-            for cond in np.unique(train_conds):
-                cond_idx = np.where(train_conds == cond)[0]
-                cond_latents = latents[cond_idx]
-                cond_latents = cond_latents.mean(0, keepdims=True)
-                latents_cond_avg = np.concatenate([latents_cond_avg, cond_latents], 0)
-            # Reduce dimensionality if necessary
-            n_samp, n_step, n_lats = latents.shape
-            if n_lats > 3:
-                latents_flat = latents_cond_avg.reshape(-1, n_lats)
-                pca = PCA(n_components=3)
-                latents_cond_avg = pca.fit_transform(latents_flat)
-                latents_cond_avg = latents_cond_avg.reshape(num_conds, n_step, 3)
-                explained_variance = np.sum(pca.explained_variance_ratio_)
-            else:
-                explained_variance = 1.0
-            # Create figure and plot trajectories
-            fig = plt.figure(figsize=(10, 10))
-            ax = fig.add_subplot(111, projection="3d")
-            for traj in latents_cond_avg:
-                ax.plot(*traj.T, alpha=1, linewidth=2)
-            ax.scatter(*latents_cond_avg[:, 0, :].T, alpha=1, s=20, c="g")
-            ax.scatter(*latents_cond_avg[:, -1, :].T, alpha=1, s=20, c="r")
-            ax.set_title(f"explained variance: {explained_variance:.2f}")
-            plt.tight_layout()
-            # Log the figure
-            log_figure(
-                trainer.loggers,
-                f"trajectory_plot_cond_avg/sess{s}",
-                fig,
-                trainer.global_step,
-            )
+        latents = []
+        for batch in dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, pl_module.device)
+            # Perform the forward pass through the model
+            output = pl_module.predict_step(batch, None, sample_posteriors=False)
+            latents.append(output.factors)
+        latents = torch.cat(latents).detach().cpu().numpy()
+        # Find the condition averaged trajectory
+        latents_cond_avg = np.empty((0, latents.shape[1], latents.shape[2]))
+        num_conds = len(np.unique(train_conds))
+        for cond in np.unique(train_conds):
+            cond_idx = np.where(train_conds == cond)[0]
+            cond_latents = latents[cond_idx]
+            cond_latents = cond_latents.mean(0, keepdims=True)
+            latents_cond_avg = np.concatenate([latents_cond_avg, cond_latents], 0)
+        # Reduce dimensionality if necessary
+        n_samp, n_step, n_lats = latents.shape
+        if n_lats > 3:
+            latents_flat = latents_cond_avg.reshape(-1, n_lats)
+            pca = PCA(n_components=3)
+            latents_cond_avg = pca.fit_transform(latents_flat)
+            latents_cond_avg = latents_cond_avg.reshape(num_conds, n_step, 3)
+            explained_variance = np.sum(pca.explained_variance_ratio_)
+        else:
+            explained_variance = 1.0
+        # Create figure and plot trajectories
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        for traj in latents_cond_avg:
+            ax.plot(*traj.T, alpha=1, linewidth=2)
+        ax.scatter(*latents_cond_avg[:, 0, :].T, alpha=1, s=20, c="g")
+        ax.scatter(*latents_cond_avg[:, -1, :].T, alpha=1, s=20, c="r")
+        ax.set_title(f"explained variance: {explained_variance:.2f}")
+        plt.tight_layout()
+        # Log the figure
+        log_figure(
+            trainer.loggers,
+            "trajectory_plot_cond_avg",
+            fig,
+            trainer.global_step,
+        )

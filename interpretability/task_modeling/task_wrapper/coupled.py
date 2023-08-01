@@ -1,6 +1,6 @@
 import pytorch_lightning as pl
 import torch
-from gymnasium.envs import Environment
+from gymnasium import Env
 from torch import nn
 
 from interpretability.task_modeling.model.modules.loss_func import LossFunc
@@ -14,7 +14,7 @@ class TaskTrainedCoupled(pl.LightningModule):
         learning_rate: float,
         weight_decay: float,
         latent_size: int = None,
-        task_env: Environment = None,
+        task_env: Env = None,
         model: nn.Module = None,
         state_label: str = None,
         loss_func: LossFunc = None,
@@ -32,7 +32,7 @@ class TaskTrainedCoupled(pl.LightningModule):
         self.loss_func = loss_func
         self.save_hyperparameters()
 
-    def set_task_env(self, task_env: Environment):
+    def set_environment(self, task_env: Env):
         self.task_env = task_env
 
     def set_model(self, model: nn.Module):

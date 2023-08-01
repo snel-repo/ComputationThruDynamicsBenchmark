@@ -7,7 +7,7 @@ from ..tuples import SessionBatch, SessionOutput
 from .modules import augmentations
 from .modules.decoder import Decoder
 from .modules.encoder import Encoder
-from .modules.l2_simple import compute_l2_penalty
+from .modules.l2 import compute_l2_penalty
 from .modules.priors import Null
 
 
@@ -57,6 +57,7 @@ class LFADS(pl.LightningModule):
         l2_ci_enc_scale: float,
         l2_gen_scale: float,
         l2_con_scale: float,
+        l2_readout_scale: float,
         kl_start_epoch: int,
         kl_increase_epoch: int,
         kl_ic_scale: float,
@@ -108,6 +109,7 @@ class LFADS(pl.LightningModule):
         # Collect the external inputs
         ext_input = batch.ext_input
         # Pass the data through the encoders
+        # import pdb; pdb.set_trace()
         ic_mean, ic_std, ci = self.encoder(encod_data)
         # Create the posterior distribution over initial conditions
         ic_post = self.ic_prior.make_posterior(ic_mean, ic_std)

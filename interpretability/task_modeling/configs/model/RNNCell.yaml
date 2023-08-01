@@ -1,5 +1,0 @@
-_target_: interpretability.task_modeling.model.RNNCell.BiasedRNNCell
-
-input_size: 12
-latent_size: 64
-output_size: 4

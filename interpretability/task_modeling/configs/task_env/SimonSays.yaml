@@ -1,0 +1,9 @@
+_target_: interpretability.task_modeling.task_env.task_env.SimonSays
+
+n_samples: 1000
+n_timesteps: 180
+noise: 0.05
+n_pres_low: 2
+n_pres_high: 4
+n_targs: 4
+knownFIFO: True

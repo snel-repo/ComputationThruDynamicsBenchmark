@@ -15,7 +15,6 @@ class TaskTrainedDecoupled(pl.LightningModule):
         super().__init__()
 
         self.model = model
-        self.readout = readout
 
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
@@ -37,8 +36,6 @@ class TaskTrainedDecoupled(pl.LightningModule):
         self.model = model
 
     def forward(self, inputs):
-        # TODO: Move looping logic out of model,
-        # TODO: Check to see if basic torch models will work here
         # Pass data through the model
         n_samples, n_times, n_inputs = inputs.shape
         dev = inputs.device
@@ -63,7 +60,7 @@ class TaskTrainedDecoupled(pl.LightningModule):
         return loss_all
 
     def validation_step(self, batch, batch_ix):
-        outputs, inputs, valid_inds = batch
+        inputs, outputs, valid_inds = batch
         # Pass data through the model
         pred_outputs, _ = self.forward(inputs)
         # Compute the weighted loss

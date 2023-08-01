@@ -47,6 +47,20 @@ def train(
     else:
         pl.seed_everything(0, workers=True)
 
+    # Order of operations:
+    # 1. Instantiate environment
+    # 2. Instantiate model
+    #    - init_model with the correct input and output sizes
+    # 3. Instantiate task-wrapper
+    #    - Set wrapper environment and model
+    # 4. Instantiate datamodule
+    #    - Set datamodule environment
+    # 5. Instantiate simulator
+    # 6. Instantiate callbacks
+    # 7. Instantiate loggers
+    # 8. Instantiate trainer
+    # 9. Train model
+
     # --------------------------Instantiate environment----------------------------
     log.info("Instantiating environment")
     task_env: Env = hydra.utils.instantiate(config_all["task_env"], _convert_="all")

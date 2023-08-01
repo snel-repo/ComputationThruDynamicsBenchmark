@@ -8,6 +8,8 @@ def compute_l2_penalty(lfads, hps):
             (lfads.encoder.ic_enc.bwd_gru.cell.weight_hh, hps.l2_ic_enc_scale),
             (lfads.decoder.rnn.cell.gen_cell.weight_hh, hps.l2_gen_scale),
         ]
+        for param in lfads.readout.parameters():
+            recurrent_kernels_and_weights.append((param, hps.l2_readout_scale))
     elif hps.gen_type == "NODE":
         recurrent_kernels_and_weights = [
             (lfads.encoder.ic_enc.fwd_gru.cell.weight_hh, hps.l2_ic_enc_scale),
@@ -15,6 +17,8 @@ def compute_l2_penalty(lfads, hps):
         ]
         for param in lfads.decoder.rnn.cell.gen_cell.parameters():
             recurrent_kernels_and_weights.append((param, hps.l2_gen_scale))
+        for param in lfads.readout.parameters():
+            recurrent_kernels_and_weights.append((param, hps.l2_readout_scale))
     if lfads.use_con:
         recurrent_kernels_and_weights.extend(
             [
@@ -33,7 +37,6 @@ def compute_l2_penalty(lfads, hps):
     recurrent_penalty /= recurrent_size + 1e-8
     # Add recon penalty if applicable
     recon_penalty = 0.0
-    for recon in lfads.recon:
-        if hasattr(recon, "compute_l2"):
-            recon_penalty += recon.compute_l2()
+    if hasattr(lfads.recon, "compute_l2"):
+        recon_penalty = lfads.recon.compute_l2()
     return recurrent_penalty + recon_penalty

@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
-import wandb
 
 # import PCA from sklearn.decomposition
 from sklearn.decomposition import PCA
+
+import wandb
 
 # plt.switch_backend("Agg")
 DATA_HOME = "/home/csverst/Documents/tempData/"
@@ -75,8 +76,8 @@ class StateTransitionCallback(pl.Callback):
             return
         # Get trajectories and model predictions
         dataloader = trainer.datamodule.val_dataloader()
-        outputs = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
-        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        inputs = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        outputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
 
         logger = trainer.loggers[2].experiment
         # Pass the data through the model

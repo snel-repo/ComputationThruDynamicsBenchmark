@@ -1,6 +1,6 @@
 _target_: pytorch_lightning.Trainer
 log_every_n_steps: 100
-max_epochs: 1000
+max_epochs: 5000
 # Prevent console output from individual models
 gradient_clip_val: 1.0
 enable_progress_bar: False

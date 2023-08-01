@@ -1,6 +1,6 @@
 defaults:
-  - model: RTR_simple
-  - datamodule: RTR_simple
+  - model: tbff
+  - datamodule: tbff
   - callbacks: default
   - _self_
 

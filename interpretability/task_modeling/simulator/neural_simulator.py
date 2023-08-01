@@ -63,7 +63,7 @@ class NeuralDataSimulator:
 
         filename = (
             f"{datamodule.data_env.dataset_name}_"
-            f"model_{type(task_trained_model).__name__}_"
+            f"model_{type(task_trained_model.model).__name__}_"
             f"n_neurons_{self.n_neurons}_"
             f"nonlin_embed_{self.nonlin_embed}_"
             f"obs_noise_{self.obs_noise}_"
@@ -80,7 +80,7 @@ class NeuralDataSimulator:
         if coupled:
             inputs = torch.vstack((train_data[0], val_data[0]))
         else:
-            inputs = torch.vstack((train_data[1], val_data[1]))
+            inputs = torch.vstack((train_data[0], val_data[0]))
             _, latents = task_trained_model(inputs)
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()

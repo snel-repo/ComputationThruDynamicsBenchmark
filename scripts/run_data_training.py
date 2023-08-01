@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 # ---------- OPTIONS -----------
 OVERWRITE = True
-PROJECT_STR = "0721_SessionBatchRemoval3"
-DATASET_STR = "RTR"
+PROJECT_STR = "0728_TBFF_TaskTrainedRNN_ODIN_WeightDecay_0Mean"
+DATASET_STR = "tbff"
 RUN_TAG = datetime.now().strftime("%Y%m%d-%H%M%S")
 RUN_DIR = (
     Path("/snel/share/runs/lfads-NODE") / PROJECT_STR / DATASET_STR / "single" / RUN_TAG

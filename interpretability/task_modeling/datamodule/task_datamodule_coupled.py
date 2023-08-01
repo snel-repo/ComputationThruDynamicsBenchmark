@@ -34,6 +34,9 @@ class TaskDataModuleCoupled(pl.LightningDataModule):
         self.save_hyperparameters()
         # Generate the dataset tag
 
+    def set_environment(self, data_env: Env):
+        pass
+
     def prepare_data(self):
         hps = self.hparams
 

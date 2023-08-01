@@ -63,6 +63,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         inputs = np.zeros((self.n_timesteps, self.n))
         inputs[inputRand > 0.98] = 1
         inputs[inputRand < 0.02] = -1
+        inputs[0:3, :] = 0
         inputs = inputs
         outputs = np.zeros((self.n_timesteps, self.n))
         for i in range(self.n_timesteps):
@@ -79,8 +80,6 @@ class NBitFlipFlop(DecoupledEnvironment):
 
     def generate_dataset(self, n_samples):
         # TODO: Maybe batch this?
-        # TODO: Code formatter
-        # TODO: Inputs then outputs
         n_timesteps = self.n_timesteps
         outputs_ds = np.zeros(shape=(n_samples, n_timesteps, self.n))
         inputs_ds = np.zeros(shape=(n_samples, n_timesteps, self.n))
@@ -101,6 +100,117 @@ class NBitFlipFlop(DecoupledEnvironment):
         ax2.set_xlabel("Time")
         ax2.set_ylabel("Inputs")
         plt.savefig("sampleTrial.png", dpi=300)
+
+
+class SimonSays(DecoupledEnvironment):
+    def __init__(
+        self,
+        n_timesteps,
+        n_samples,
+        noise,
+        n_pres_low=2,
+        n_pres_high=4,
+        n_targs=4,
+        knownFIFO=True,
+    ):
+        super(SimonSays, self).__init__(n_timesteps=n_timesteps, noise=noise)
+
+        self.dataset_name = "SimonSays"
+        self.n_pres_low = n_pres_low
+        self.n_pres_high = n_pres_high + 1
+        self.n_targs = n_targs
+        self.action_space = spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=-2, high=2, shape=(5,), dtype=np.float32
+        )
+        self.input_labels = ["targX", "targY", "delay", "go", "isFIFO"]
+        self.output_labels = ["Reach0", "Reach1"]
+        self.noise = noise
+        self.knownFIFO = knownFIFO
+
+    def generate_targets(self, num_targets):
+        targets = np.zeros((num_targets, 2))
+        for i in range(num_targets):
+            # draw target location from 8 different targets on unit circle
+            target = np.random.randint(0, self.n_targs)
+            targets[i, 0] = np.round(np.cos(target * np.pi / (self.n_targs / 2)), 2)
+            targets[i, 1] = np.round(np.sin(target * np.pi / (self.n_targs / 2)), 2)
+        return targets
+
+    def step(self):
+        pass
+
+    def generate_target_vec(self, targets):
+        # Make a time varying signal of what the shown target is,
+        # with each target seperated by 5 timesteps
+        num_targs = targets.shape[0]
+        target_vec = np.zeros((15 * num_targs + 5, 2))
+        for i in range(len(targets)):
+            target_vec[5 + i * 15 : i * 15 + 15, :] = targets[i, :]
+        return target_vec
+
+    def reset(self):
+        self.state = np.zeros(5)
+        return self.state
+
+    def render(self):
+        inputs, outputs = self.generate_trial()
+        fig1, axes = plt.subplots(nrows=2, ncols=1, sharex=True)
+        ax1 = axes[0]
+        ax1.plot(inputs, label=self.input_labels)
+        ax1.set_ylabel("Inputs")
+        ax1.set_ylim([-1.5, 1.5])
+        ax1.legend()
+        ax2 = axes[1]
+        ax2.plot(outputs, label=self.output_labels)
+        ax2.set_xlabel("Time")
+        ax2.set_ylabel("Outputs")
+        ax2.set_ylim([-1.5, 1.5])
+        ax2.legend()
+
+        plt.savefig("sampleTrial.png", dpi=300)
+
+    def generate_dataset(self, n_samples):
+        # TODO: Maybe batch this?
+        n_timesteps = self.n_timesteps
+        n_outputs = self.action_space.shape[0]
+        n_inputs = self.observation_space.shape[0]
+        outputs_ds = np.zeros(shape=(n_samples, n_timesteps, n_outputs))
+        inputs_ds = np.zeros(shape=(n_samples, n_timesteps, n_inputs))
+        for i in range(n_samples):
+            inputs, outputs = self.generate_trial()
+            outputs_ds[i, :, :] = outputs
+            inputs_ds[i, :, :] = inputs
+        inputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=inputs_ds.shape)
+        outputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=outputs_ds.shape)
+        return inputs_ds, outputs_ds
+
+    def generate_trial(self):
+        self.reset()
+        n_pres = np.random.randint(self.n_pres_low, self.n_pres_high)
+        targets = self.generate_targets(n_pres)
+        target_vec = self.generate_target_vec(targets)
+        targ_len = target_vec.shape[0]
+        isFIFO = np.random.randint(0, 2)
+        isFIFO = isFIFO * 2 - 1  # Convert from 0,1 to -1,1
+        delay = np.random.randint(20, 40)
+        inputs = np.zeros((self.n_timesteps, 5))
+        outputs = np.zeros((self.n_timesteps, 2))
+        inputs[0:targ_len, 0:2] = target_vec
+        inputs[targ_len : targ_len + delay, 2] = 1
+        inputs[targ_len + delay :, 3] = 1
+        if not self.knownFIFO:
+            inputs[targ_len + delay - 5 :, 4] = isFIFO
+        else:
+            inputs[:, 4] = isFIFO
+
+        if isFIFO == 1:
+            outputs[targ_len + delay : 2 * targ_len + delay, 0] = target_vec[:, 0]
+            outputs[targ_len + delay : 2 * targ_len + delay, 1] = target_vec[:, 1]
+        else:  # Stack outputs in reverse
+            outputs[targ_len + delay : 2 * targ_len + delay, 0] = target_vec[::-1, 0]
+            outputs[targ_len + delay : 2 * targ_len + delay, 1] = target_vec[::-1, 1]
+        return inputs, outputs
 
 
 class ReadySetGoTask(DecoupledEnvironment):

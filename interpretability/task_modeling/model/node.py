@@ -54,11 +54,12 @@ class MLPCell(nn.Module):
         for i in range(num_layers):
             if i == 0:
                 layers.append(nn.Linear(input_size + latent_size, layer_hidden_size))
+                layers.append(nn.ReLU())
             elif i == num_layers - 1:
                 layers.append(nn.Linear(layer_hidden_size, latent_size))
             else:
                 layers.append(nn.Linear(layer_hidden_size, layer_hidden_size))
-        self.relu = nn.ReLU()
+                layers.append(nn.ReLU())
         self.vf_net = nn.Sequential(*layers)
 
     def forward(self, input, hidden):

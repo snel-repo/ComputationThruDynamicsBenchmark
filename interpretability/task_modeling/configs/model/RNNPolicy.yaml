@@ -1,0 +1,5 @@
+_target_: interpretability.task_modeling.model.policy_networks.RNNPolicy
+
+input_size: None
+latent_size: 64
+output_size: None

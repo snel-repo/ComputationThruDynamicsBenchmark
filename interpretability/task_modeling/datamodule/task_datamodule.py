@@ -100,9 +100,8 @@ class TaskDataModule(pl.LightningDataModule):
             # test_inds = to_tensor(h5file["test_inds"][()])
 
         # Store datasets
-        # TODO - inputs, outputs, get rid of comb,
-        self.train_ds = TensorDataset(train_outputs, train_inputs, train_inds)
-        self.valid_ds = TensorDataset(valid_outputs, valid_inputs, valid_inds)
+        self.train_ds = TensorDataset(train_inputs, train_outputs, train_inds)
+        self.valid_ds = TensorDataset(valid_inputs, valid_outputs, valid_inds)
         # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 
     def train_dataloader(self, shuffle=True):

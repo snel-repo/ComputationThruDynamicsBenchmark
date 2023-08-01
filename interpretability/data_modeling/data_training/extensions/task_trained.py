@@ -100,8 +100,6 @@ class InputR2Plot(pl.Callback):
         else:
             dataloader = trainer.datamodule.train_dataloader(shuffle=False)
         batch = next(iter(dataloader))
-        # Determine which sessions are in the batch
-        sessions = sorted(batch.keys())
         # Move data to the right device
         batch = send_batch_to_device(batch, pl_module.device)
         # Compute model output
@@ -111,98 +109,97 @@ class InputR2Plot(pl.Callback):
             sample_posteriors=False,
         )
         # Discard the extra data - only the SessionBatches are relevant here
-        extra = batch[0][1][0]
-        batch = {s: b[0] for s, b in batch.items()}
-        n_batch, n_time, n_inf_inputs = output[0].gen_inputs.shape
+        extra = batch[1][0]
+        batch = batch[0]
+        n_batch, n_time, n_inf_inputs = output.gen_inputs.shape
         n_true_inputs = extra.shape[-1]
-        # Log a few example outputs for each session
-        for s in sessions:
-            # Convert everything to numpy
-            encod_data = batch[s].encod_data.detach().cpu().numpy()
-            recon_data = batch[s].recon_data.detach().cpu().numpy()
-            means = output[s].output_params.detach().cpu().numpy()
-            inf_inputs = output[s].gen_inputs.detach().cpu().numpy()
-            # perform ICA on inferred inputs
-            if self.use_ica:
-                ica = FastICA(n_components=n_inf_inputs)
-                inf_inputs = ica.fit_transform(inf_inputs.reshape(-1, n_inf_inputs))
-                inf_inputs = inf_inputs.reshape(-1, n_time, n_inf_inputs)
-            true_inputs = extra.detach().cpu().numpy()
-            # true_inputs = batch[s].ext_input.detach().cpu().numpy()
-            # Compute data sizes
-            _, steps_encod, neur_encod = encod_data.shape
-            _, steps_recon, neur_recon = recon_data.shape
 
-            # Fit lin model from inferred inputs to true inputs
-            lr = LinearRegression().fit(
-                inf_inputs.reshape(-1, n_inf_inputs),
-                true_inputs.reshape(-1, n_true_inputs),
-            )
-            # Get R2
-            r2_inf_to_true = lr.score(
-                inf_inputs.reshape(-1, n_inf_inputs),
-                true_inputs.reshape(-1, n_true_inputs),
-            )
-            # Fit lin model from true inputs to inferred inputs
-            lr2 = LinearRegression().fit(
-                true_inputs.reshape(-1, n_true_inputs),
-                inf_inputs.reshape(-1, n_inf_inputs),
-            )
+        # Convert everything to numpy
+        encod_data = batch.encod_data.detach().cpu().numpy()
+        recon_data = batch.recon_data.detach().cpu().numpy()
+        means = output.output_params.detach().cpu().numpy()
+        inf_inputs = output.gen_inputs.detach().cpu().numpy()
+        # perform ICA on inferred inputs
+        if self.use_ica:
+            ica = FastICA(n_components=n_inf_inputs)
+            inf_inputs = ica.fit_transform(inf_inputs.reshape(-1, n_inf_inputs))
+            inf_inputs = inf_inputs.reshape(-1, n_time, n_inf_inputs)
+        true_inputs = extra.detach().cpu().numpy()
+        # true_inputs = batch[s].ext_input.detach().cpu().numpy()
+        # Compute data sizes
+        _, steps_encod, neur_encod = encod_data.shape
+        _, steps_recon, neur_recon = recon_data.shape
 
-            inf_inputs = lr.predict(inf_inputs.reshape(-1, n_inf_inputs)).reshape(
-                -1, n_time, n_true_inputs
-            )
-            inf_inputs = inf_inputs.reshape(-1, n_time, n_true_inputs)
+        # Fit lin model from inferred inputs to true inputs
+        lr = LinearRegression().fit(
+            inf_inputs.reshape(-1, n_inf_inputs),
+            true_inputs.reshape(-1, n_true_inputs),
+        )
+        # Get R2
+        r2_inf_to_true = lr.score(
+            inf_inputs.reshape(-1, n_inf_inputs),
+            true_inputs.reshape(-1, n_true_inputs),
+        )
+        # Fit lin model from true inputs to inferred inputs
+        lr2 = LinearRegression().fit(
+            true_inputs.reshape(-1, n_true_inputs),
+            inf_inputs.reshape(-1, n_inf_inputs),
+        )
 
-            # Get R2
-            r2_true_to_inf = lr2.score(
-                true_inputs.reshape(-1, n_true_inputs),
-                inf_inputs.reshape(-1, n_inf_inputs),
-            )
+        inf_inputs = lr.predict(inf_inputs.reshape(-1, n_inf_inputs)).reshape(
+            -1, n_time, n_true_inputs
+        )
+        inf_inputs = inf_inputs.reshape(-1, n_time, n_true_inputs)
 
-            metrics = {
-                "input_R2/r2_inf_to_true": r2_inf_to_true,
-                "input_R2/r2_true_to_inf": r2_true_to_inf,
+        # Get R2
+        r2_true_to_inf = lr2.score(
+            true_inputs.reshape(-1, n_true_inputs),
+            inf_inputs.reshape(-1, n_inf_inputs),
+        )
+
+        metrics = {
+            "input_R2/r2_inf_to_true": r2_inf_to_true,
+            "input_R2/r2_true_to_inf": r2_true_to_inf,
+        }
+        # Log the figure
+        pl_module.log_dict(
+            {
+                **metrics,
             }
-            # Log the figure
-            pl_module.log_dict(
-                {
-                    **metrics,
-                }
-            )
-            labels = ["ReconFR", "InferredFR", "TrueInputs", "InfInputs"]
-            plot_arrays = [recon_data, means, true_inputs, inf_inputs]
-            height_ratios = [3, 3, 1, 1]
-            fig, axes = plt.subplots(
-                len(plot_arrays),
-                self.n_samples,
-                sharex=True,
-                sharey="row",
-                figsize=(3 * self.n_samples, 10),
-                gridspec_kw={"height_ratios": height_ratios},
-            )
-            for i, ax_col in enumerate(axes.T):
-                for j, (ax, array) in enumerate(zip(ax_col, plot_arrays)):
-                    if j < len(plot_arrays) - 2:
-                        ax.imshow(array[i].T, interpolation="none", aspect="auto")
-                        ax.vlines(steps_encod, 0, neur_recon, color="orange")
-                        ax.hlines(neur_encod, 0, steps_recon, color="orange")
-                        ax.set_xlim(0, steps_recon)
-                        ax.set_ylim(0, neur_recon)
-                    else:
-                        ax.plot(array[i])
-                    if i == 0:
-                        ax.set_ylabel(labels[j])
-            plt.tight_layout()
-            # Log the figure
-            log_figure(
-                trainer.loggers,
-                f"{self.split}/raster_plot_inputs/sess{s}",
-                fig,
-                trainer.global_step,
-            )
+        )
+        labels = ["ReconFR", "InferredFR", "TrueInputs", "InfInputs"]
+        plot_arrays = [recon_data, means, true_inputs, inf_inputs]
+        height_ratios = [3, 3, 1, 1]
+        fig, axes = plt.subplots(
+            len(plot_arrays),
+            self.n_samples,
+            sharex=True,
+            sharey="row",
+            figsize=(3 * self.n_samples, 10),
+            gridspec_kw={"height_ratios": height_ratios},
+        )
+        for i, ax_col in enumerate(axes.T):
+            for j, (ax, array) in enumerate(zip(ax_col, plot_arrays)):
+                if j < len(plot_arrays) - 2:
+                    ax.imshow(array[i].T, interpolation="none", aspect="auto")
+                    ax.vlines(steps_encod, 0, neur_recon, color="orange")
+                    ax.hlines(neur_encod, 0, steps_recon, color="orange")
+                    ax.set_xlim(0, steps_recon)
+                    ax.set_ylim(0, neur_recon)
+                else:
+                    ax.plot(array[i])
+                if i == 0:
+                    ax.set_ylabel(labels[j])
+        plt.tight_layout()
+        # Log the figure
+        log_figure(
+            trainer.loggers,
+            f"{self.split}/raster_plot_inputs",
+            fig,
+            trainer.global_step,
+        )
 
-            # Generate figure
+        # Generate figure
 
 
 class CondAvgRaster(pl.Callback):
