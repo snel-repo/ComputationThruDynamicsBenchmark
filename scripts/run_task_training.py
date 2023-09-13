@@ -11,7 +11,27 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
-from utils import make_data_tag
+
+def make_data_tag(dm_cfg):
+    obs_dim = "" if "obs_dim" not in dm_cfg else dm_cfg.obs_dim
+    obs_noise = "" if "obs_noise" not in dm_cfg else dm_cfg.obs_noise
+    if "obs_noise_params" in dm_cfg:
+        obs_noise_params = ",".join(
+            [f"{k}={v}" for k, v in dm_cfg.obs_noise_params.items()]
+        )
+    else:
+        obs_noise_params = ""
+    data_tag = (
+        f"{dm_cfg.system}{obs_dim}_"
+        f"{dm_cfg.n_samples}S_"
+        f"{dm_cfg.n_timesteps}T_"
+        f"{dm_cfg.pts_per_period}P_"
+        f"{dm_cfg.seed}seed"
+    )
+    if obs_noise:
+        data_tag += f"_{obs_noise}{obs_noise_params}"
+    return data_tag
+
 
 # Load data directory and run directory as environment variables.
 # These variables are used when the config is resolved.
@@ -25,21 +45,22 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "SimonSaysNODE"
+RUN_DESC = "3BFF_DataGen3_GRU_RNN"
 NUM_SAMPLES = 1
-TASK = "SimonSays"
-MODEL = "NODE"
+TASK = "NBFF"
+MODEL = "GRU_RNN"
 
 
 SEARCH_SPACE = dict(
     # -----------------Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([10]),
+        latent_size=tune.grid_search([128]),
     ),
     task_wrapper=dict(
         # -----------------Task Wrapper Parameters -----------------------------------
         learning_rate=tune.grid_search([5e-4]),
     ),
+    # -----------------Data Parameters -----------------------------------
     params=dict(
         seed=tune.grid_search([0]),
     ),
