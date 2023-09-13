@@ -42,6 +42,8 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # torch.autograd.set_detect_anomaly(True)
+
+
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
@@ -59,6 +61,10 @@ SEARCH_SPACE = dict(
     task_wrapper=dict(
         # -----------------Task Wrapper Parameters -----------------------------------
         learning_rate=tune.grid_search([5e-4]),
+    ),
+    task_env=dict(
+        # -----------------Task Environment Parameters ------------------------------
+        N=tune.grid_search([3]),
     ),
     # -----------------Data Parameters -----------------------------------
     params=dict(
