@@ -267,9 +267,12 @@ class Comparisons:
     def compareLatentActivityPath(dtLatentsPath, ttLatentsPath):
 
         with open(dtLatentsPath, "rb") as f:
-            dt_latents = pickle.load(f)
+            dt_dict = pickle.load(f)
         with open(ttLatentsPath, "rb") as f:
-            tt_latents = pickle.load(f)
+            tt_dict = pickle.load(f)
+
+        tt_latents = tt_dict["tt_latents"]
+        dt_latents = dt_dict["dt_latents"]
 
         tt_latents_flat = tt_latents.reshape(-1, tt_latents.shape[-1])
         dt_latents_flat = dt_latents.reshape(-1, dt_latents.shape[-1])
@@ -285,6 +288,7 @@ class Comparisons:
         Bdt, Tdt, Ndt = dt_latents.shape
         dt_latents_flat = dt_latents.reshape(-1, Ndt)
 
+        print("Fitting all latent dimensions")
         # Fit linear regression between the latents
         lr_getSys = LinearRegression().fit(dt_latents_flat, tt_latents_flat)
         r2_getSys = lr_getSys.score(dt_latents_flat, tt_latents_flat)
@@ -294,6 +298,7 @@ class Comparisons:
         print(f"R2 for getting system: {r2_getSys}")
         print(f"R2 for no extra: {r2_noExtra}")
 
+        print("Fitting top 3 PCs only")
         lr_getSysPCA = LinearRegression().fit(dt_lats_pca, tt_lats_pca)
         r2_getSysPCA = lr_getSysPCA.score(dt_lats_pca, tt_lats_pca)
         lr_noExtraPCA = LinearRegression().fit(tt_lats_pca, dt_lats_pca)
@@ -328,6 +333,11 @@ class Comparisons:
             "r2_getSysPCA": r2_getSysPCA,
             "r2_noExtraPCA": r2_noExtraPCA,
         }
+
+        # if "tt_fps" in tt_dict.keys() and "dt_fps" in dt_dict.keys():
+        #     tt_fps = tt_dict["tt_fps"]
+        #     dt_fps = dt_dict["dt_fps"]
+
         return return_dict
 
     def saveComparisonDict(self):
@@ -400,17 +410,20 @@ class Comparisons:
 
         # Save latents as pickle
         with open(self.latents_path + self.suffix + "_tt_latents.pkl", "wb") as f:
-            pickle.dump(tt_latents_val, f)
+            pickle.dump(tt_dict, f)
         with open(self.latents_path + self.suffix + "_dt_latents.pkl", "wb") as f:
-            pickle.dump(dt_latents, f)
+            pickle.dump(dt_dict, f)
 
     def compareLatentActivity(self):
         # Compute latent activity from task trained model
         self.tt_model.eval()
         tt_train_ds = self.tt_datamodule.train_ds
         tt_val_ds = self.tt_datamodule.valid_ds
-        tt_inputs = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
-        tt_model_out, tt_latents = self.task_train_wrapper(tt_inputs)
+        tt_ics = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
+        tt_inputs = torch.vstack((tt_train_ds.tensors[1], tt_val_ds.tensors[1]))
+        tt_model_out, tt_latents, tt_actions = self.task_train_wrapper(
+            tt_ics, tt_inputs
+        )
         dt_train_ds = self.dt_datamodule.train_ds
         dt_val_ds = self.dt_datamodule.valid_ds
         dt_train_inds = dt_train_ds.tensors[4]
@@ -564,7 +577,7 @@ class Comparisons:
                 n_inits=1024,
                 noise_scale=0.01,
                 learning_rate=1e-2,
-                tol_q=1e-6,
+                tol_q=1e-7,
                 tol_dq=1e-20,
                 tol_unique=1e-2,
                 max_iters=10000,
@@ -595,3 +608,95 @@ class Comparisons:
 
         self.tt_fps = tt_fps
         self.dt_fps = dt_fps
+
+    def compareFPs(self):
+        tt_fps = self.tt_fps
+        dt_fps = self.dt_fps
+        tt_fp_loc = tt_fps.xstar
+        dt_fp_loc = dt_fps.xstar
+
+        self.tt_model.eval()
+        tt_train_ds = self.tt_datamodule.train_ds
+        tt_val_ds = self.tt_datamodule.valid_ds
+        tt_ics = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
+        tt_inputs = torch.vstack((tt_train_ds.tensors[1], tt_val_ds.tensors[1]))
+        tt_model_out, tt_latents, tt_actions = self.task_train_wrapper(
+            tt_ics, tt_inputs
+        )
+        dt_train_ds = self.dt_datamodule.train_ds
+        dt_val_ds = self.dt_datamodule.valid_ds
+        dt_train_inds = dt_train_ds.tensors[4]
+        dt_val_inds = dt_val_ds.tensors[4]
+        # transform to int
+        dt_train_inds = dt_train_inds.type(torch.int64)
+        dt_val_inds = dt_val_inds.type(torch.int64)
+
+        tt_latents_val = tt_latents[dt_val_inds]
+        tt_model_out_val = tt_model_out[dt_val_inds]
+        tt_latents_val = tt_latents_val.detach().numpy()
+        tt_model_out_val = tt_model_out_val.detach().numpy()
+        dt_spikes = dt_val_ds.tensors[0]
+        dt_inputs = dt_val_ds.tensors[2]
+        dt_log_rates, dt_latents = self.dt_model(dt_spikes, dt_inputs)
+        dt_latents = dt_latents.detach().numpy()
+        dt_log_rates = dt_log_rates.detach().numpy()
+
+        tt_lats_flat = tt_latents_val.reshape(-1, tt_latents_val.shape[-1])
+        dt_lats_flat = dt_latents.reshape(-1, dt_latents.shape[-1])
+
+        # Find latent activity near to the fixed points
+        tt_fp_inds_list = []
+        tt_lats_fp = []
+        dt_lats_at_tt_fp = []
+        # Iterate through the task-trained FPs
+        for i in range(len(tt_fp_loc)):
+            tt_fp = tt_fp_loc[i]
+            # Find the latent activity closest to the fixed point
+            tt_fp_inds = np.argmin(np.linalg.norm(tt_lats_flat - tt_fp, axis=-1))
+            tt_fp_inds_list.append(tt_fp_inds)
+
+            # Get the data-trained latent activity at that index
+            tt_lats_fp.append(tt_lats_flat[tt_fp_inds])
+            dt_lats_at_tt_fp.append(dt_lats_flat[tt_fp_inds])
+        tt_lats_fp_flat = np.vstack(tt_lats_fp)
+
+        # Iterate through the DT latents and find the closest data trained fixed point
+        dt_fp_inds_list = []
+        matched_dt_fp = []
+        for i in range(tt_lats_fp_flat.shape[0]):
+            dt_loc_temp = dt_lats_at_tt_fp[i]
+            dt_fp_inds = np.argmin(np.linalg.norm(dt_fp_loc - dt_loc_temp, axis=-1))
+            dt_fp_inds_list.append(dt_fp_inds)
+            matched_dt_fp.append(dt_fp_loc[dt_fp_inds])
+        matched_dt_fp = np.vstack(matched_dt_fp)
+
+        # Do PCA and plot the FPs
+        pca_tt = PCA(n_components=3)
+        tt_fps_pca = pca_tt.fit_transform(tt_fp_loc)
+        pca_dt = PCA(n_components=3)
+        dt_fps_pca = pca_dt.fit_transform(matched_dt_fp)
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(1, 1, 1, projection="3d")
+        ax.scatter(
+            tt_fps_pca[:, 0],
+            tt_fps_pca[:, 1],
+            tt_fps_pca[:, 2],
+            color="k",
+            s=100,
+            label="Task trained",
+        )
+        ax.scatter(
+            dt_fps_pca[:, 0],
+            dt_fps_pca[:, 1],
+            dt_fps_pca[:, 2],
+            color="r",
+            s=50,
+            label="Data trained",
+        )
+        ax.set_title("Task trained FPs")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        ax.legend()
+        plt.savefig(self.plot_path + self.suffix + "_tt_fps_match.png")

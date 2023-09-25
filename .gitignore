@@ -5,9 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
-*.h5
 *.pyc
 *.pkl
+*.h5
 
 # Distribution / packaging
 .Python

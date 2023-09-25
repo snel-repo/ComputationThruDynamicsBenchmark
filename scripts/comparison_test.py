@@ -19,6 +19,18 @@ comp_GRU2GRU.load_data_train_wrapper(
 )
 # dict_g2g = comp_GRU2GRU.compareLatentActivity()
 comp_GRU2GRU.computeFPs()
-comp_GRU2GRU.plotTrial(0)
-comp_GRU2GRU.plotLatentActivity()
+# comp_GRU2GRU.plotTrial(0)
+# comp_GRU2GRU.plotLatentActivity()
 comp_GRU2GRU.saveComparisonDict()
+
+comp_GRU2GRU.compareFPs()
+comp_dict = Comparisons.compareLatentActivityPath(
+    dtLatentsPath=(
+        "/home/csverst/Github/InterpretabilityBenchmark/"
+        "interpretability/comparison/latents/GRU2GRU_dt_latents.pkl"
+    ),
+    ttLatentsPath=(
+        "/home/csverst/Github/InterpretabilityBenchmark/"
+        "interpretability/comparison/latents/GRU2GRU_tt_latents.pkl"
+    ),
+)

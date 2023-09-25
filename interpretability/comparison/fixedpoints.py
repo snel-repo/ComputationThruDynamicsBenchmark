@@ -163,6 +163,7 @@ def find_fixed_points(
         n_iters=unique_fps.n_iters[best_fps],
         tol_unique=tol_unique,
     )
+    print(f"Found {len(best_fps.xstar)} unique fixed points.")
 
     # Compute the Jacobian for each fixed point
     def J_func(x):
