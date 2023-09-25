@@ -1,7 +1,6 @@
-_target_: interpretability.task_modeling.models.task_trained_RNN.TaskTrainedRNN
-input_size: 4
-latent_size: 64
-output_size: 2
+_target_: interpretability.task_modeling.task_wrapper.decoupled.TaskTrainedDecoupled
+learning_rate: 5.0e-3
+weight_decay: 1.0e-5
 
-learning_rate: 5.0e-4
-weight_decay: 1.0e-9
+loss_func:
+  _target_: torch.nn.MSELoss

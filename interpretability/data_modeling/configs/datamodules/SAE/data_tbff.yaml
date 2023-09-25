@@ -1,0 +1,15 @@
+_target_: dmfc_learning.datasets.tbff_data.TaskTrainedRNNDataModule
+system: ThreeBitFlipFlop
+obs_dim: 12
+obs_noise: poisson
+dyn_noise: 0.01
+n_samples: 500
+n_timesteps: 75
+seed: 0
+batch_size: 250
+num_workers: 4
+warp_traj: False
+warp_bound: 2
+provide_inputs: True
+smooth_inputs: True
+input_smoothing: 1

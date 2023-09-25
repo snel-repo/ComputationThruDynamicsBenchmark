@@ -52,6 +52,7 @@ class NeuralDataSimulator:
         self.readout = None
         self.orig_mean = None
         self.orig_std = None
+        self.use_neurons = True
 
     def simulate_neural_data(
         self, task_trained_model, datamodule, coupled=False, seed=0
@@ -76,33 +77,45 @@ class NeuralDataSimulator:
         train_data = datamodule.train_dataloader().dataset.tensors
         val_data = datamodule.val_dataloader().dataset.tensors
 
-        # combine the first tensor of train and val data
-        if coupled:
-            inputs = torch.vstack((train_data[0], val_data[0]))
-        else:
-            inputs = torch.vstack((train_data[0], val_data[0]))
-            _, latents = task_trained_model(inputs)
+        ics = torch.cat([train_data[0], val_data[0]])
+        inputs = torch.cat([train_data[1], val_data[1]])
+        targets = torch.cat([train_data[2], val_data[2]])
+
+        controlled, latents, actions = task_trained_model(ics, inputs, targets)
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
-
-        if self.n_neurons is not None:
+        if self.use_neurons:
+            # Make random permutation of latents
             rng = np.random.default_rng(seed)
-            # Randomly sample, normalize, and sort readout
-            readout = rng.uniform(-2, 2, (n_lat_dim, self.n_neurons))
-            if not self.nonlin_embed:
-                readout = readout / np.linalg.norm(readout, ord=1, axis=0)
-
-            readout = readout[:, np.argsort(readout[0])]
+            # get random permutation indices
+            perm_inds = rng.permutation(n_lat_dim)
+            latents_perm = latents[:, :, perm_inds]
+            activity = latents_perm[:, :, : self.n_neurons]
+            perm_neurons = perm_inds[: self.n_neurons]
+            # get the readout matrix
+            # should have a shape of (n_lat_dim, n_neurons)
+            readout = np.zeros((n_lat_dim, self.n_neurons))
+            for i in range(self.n_neurons):
+                readout[perm_inds[i], i] = 1
         else:
-            # Use an identity readout
-            readout = np.eye(n_lat_dim)
-        self.readout = readout
-        activity = latents @ readout
+            if self.n_neurons is not None:
+                rng = np.random.default_rng(seed)
+                # Randomly sample, normalize, and sort readout
+                readout = rng.uniform(-2, 2, (n_lat_dim, self.n_neurons))
+                if not self.nonlin_embed:
+                    readout = readout / np.linalg.norm(readout, ord=1, axis=0)
+
+                readout = readout[:, np.argsort(readout[0])]
+            else:
+                # Use an identity readout
+                readout = np.eye(n_lat_dim)
+            self.readout = readout
+            activity = latents @ readout
 
         # Standardize and record original mean and standard deviations
-        orig_mean = np.mean(activity, axis=0, keepdims=True)
-        orig_std = np.std(activity, axis=0, keepdims=True)
-        activity = (activity - orig_mean) / orig_std
+        orig_mean = np.mean(activity, keepdims=True)
+        orig_std = np.std(activity, keepdims=True)
+        activity = (activity - orig_mean) / (2 * orig_std)
 
         self.orig_mean = orig_mean
         self.orig_std = orig_std
@@ -162,6 +175,8 @@ class NeuralDataSimulator:
             h5file.create_dataset("readout", data=readout)
             h5file.create_dataset("orig_mean", data=orig_mean)
             h5file.create_dataset("orig_std", data=orig_std)
+            if self.use_neurons:
+                h5file.create_dataset("perm_neurons", data=perm_neurons)
 
     def simulate_new_data(self, task_trained_model, datamodule, seed):
 

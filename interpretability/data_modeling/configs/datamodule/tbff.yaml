@@ -1,7 +1,0 @@
-_target_: interpretability.data_modeling.data_training.datamodule.BasicDataModule
-data_path: ${relpath:datasets/3BFF_model_RNN_n_neurons_50_nonlin_embed_False_obs_noise_poisson_seed_0.h5}
-batch_keys:
-  - inputs
-  - latents
-  - activity
-batch_size: 256

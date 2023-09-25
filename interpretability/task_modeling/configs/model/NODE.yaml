@@ -1,5 +1,4 @@
-_target_: interpretability.task_modeling.model.task_networks.NODE
-
-num_layers: 3
+_target_: interpretability.task_modeling.model.node.NODE
+latent_size: 3
 layer_hidden_size: 128
-latent_size: 10
+num_layers: 3

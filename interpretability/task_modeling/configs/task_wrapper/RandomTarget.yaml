@@ -1,11 +1,9 @@
-_target_: interpretability.task_modeling.task_wrapper.coupled.TaskTrainedCoupled
+_target_: interpretability.task_modeling.task_wrapper.task_wrapper.TaskTrainedWrapper
 task_env:
   _target_: motornet.environment.RandomTargetReach
   effector:
     _target_: motornet.effector.ReluPointMass24
   max_ep_duration: 1.0
-input_size: 12
-output_size: 4
 
 state_label: fingertip
 loss_func:

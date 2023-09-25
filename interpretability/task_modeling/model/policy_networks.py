@@ -47,7 +47,7 @@ class NODEPolicy(nn.Module):
 
 
 class RNNPolicy(nn.Module):
-    def __init__(self, input_size: int, latent_size: int, output_size: int):
+    def __init__(self, latent_size: int, input_size=None, output_size=None):
         super().__init__()
         self.latent_size = latent_size
         self.input_size = input_size
@@ -79,10 +79,54 @@ class RNNPolicy(nn.Module):
                 raise ValueError
 
     def forward(self, x, h0):
-        y, h = self.gru(x[:, None, :], h0[None, :, :])
-        u = self.sigmoid(self.fc(y)).squeeze(dim=1)
-        h = h.squeeze(dim=0)
-        return u, h
+        y, latents = self.gru(x[:, None, :], h0[None, :, :])
+        output = self.sigmoid(self.fc(y)).squeeze(dim=1)
+        latents = latents.squeeze(dim=0)
+        return output, latents
+
+    def init_hidden(self, batch_size):
+        weight = next(self.parameters()).data
+        hidden = weight.new(batch_size, self.latent_size).zero_()
+        return hidden
+
+
+class VanillaRNNPolicy(nn.Module):
+    def __init__(self, latent_size: int, input_size=None, output_size=None):
+        super().__init__()
+        self.latent_size = latent_size
+        self.input_size = input_size
+        self.output_size = output_size
+        self.n_layers = 1
+
+    def init_model(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.gru = torch.nn.RNN(input_size, self.latent_size, 1, batch_first=True)
+        self.fc = torch.nn.Linear(self.latent_size, output_size)
+        self.sigmoid = torch.nn.Sigmoid()
+
+        # the default initialization in torch isn't ideal
+        for name, param in self.named_parameters():
+            if name == "gru.weight_ih_l0":
+                torch.nn.init.xavier_uniform_(param)
+            elif name == "gru.weight_hh_l0":
+                torch.nn.init.orthogonal_(param)
+            elif name == "gru.bias_ih_l0":
+                torch.nn.init.zeros_(param)
+            elif name == "gru.bias_hh_l0":
+                torch.nn.init.zeros_(param)
+            elif name == "fc.weight":
+                torch.nn.init.xavier_uniform_(param)
+            elif name == "fc.bias":
+                torch.nn.init.constant_(param, -5.0)
+            else:
+                raise ValueError
+
+    def forward(self, x, h0):
+        y, latents = self.gru(x[:, None, :], h0[None, :, :])
+        output = self.sigmoid(self.fc(y)).squeeze(dim=1)
+        latents = latents.squeeze(dim=0)
+        return output, latents
 
     def init_hidden(self, batch_size):
         weight = next(self.parameters()).data

@@ -1,10 +1,13 @@
 # Class to generate training data for task-trained RNN that does 3 bit memory task
 from abc import ABC, abstractmethod
+from typing import Any
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from gymnasium import spaces
+from motornet.environment import Environment
 
 # TODO: Add abstract wrapper class for task environments
 
@@ -49,6 +52,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.input_labels = [f"Input {i}" for i in range(n)]
         self.output_labels = [f"Output {i}" for i in range(n)]
         self.noise = noise
+        self.coupled_env = False
 
     def step(self, action):
         for i in range(self.n):
@@ -81,13 +85,14 @@ class NBitFlipFlop(DecoupledEnvironment):
     def generate_dataset(self, n_samples):
         # TODO: Maybe batch this?
         n_timesteps = self.n_timesteps
+        ics_ds = np.zeros(shape=(n_samples, self.n))
         outputs_ds = np.zeros(shape=(n_samples, n_timesteps, self.n))
         inputs_ds = np.zeros(shape=(n_samples, n_timesteps, self.n))
         for i in range(n_samples):
             inputs, outputs = self.generate_trial()
             outputs_ds[i, :, :] = outputs
             inputs_ds[i, :, :] = inputs
-        return inputs_ds, outputs_ds
+        return ics_ds, inputs_ds, outputs_ds
 
     def render(self):
         states, inputs = self.generate_trial()
@@ -127,12 +132,25 @@ class SimonSays(DecoupledEnvironment):
         self.output_labels = ["Reach0", "Reach1"]
         self.noise = noise
         self.knownFIFO = knownFIFO
+        self.coupled_env = False
+        if knownFIFO:
+            self.dataset_name += "_KnownFIFO"
+        else:
+            self.dataset_name += "_UnknownFIFO"
 
-    def generate_targets(self, num_targets):
-        targets = np.zeros((num_targets, 2))
-        for i in range(num_targets):
+    def generate_targets(self, num_pres):
+        targets = np.zeros((num_pres, 2))
+        for i in range(num_pres):
             # draw target location from 8 different targets on unit circle
             target = np.random.randint(0, self.n_targs)
+            targets[i, 0] = np.round(np.cos(target * np.pi / (self.n_targs / 2)), 2)
+            targets[i, 1] = np.round(np.sin(target * np.pi / (self.n_targs / 2)), 2)
+        return targets
+
+    def generate_targets_testing(self, target_inds):
+        targets = np.zeros((len(target_inds), 2))
+        for i in range(len(target_inds)):
+            target = target_inds[i]
             targets[i, 0] = np.round(np.cos(target * np.pi / (self.n_targs / 2)), 2)
             targets[i, 1] = np.round(np.sin(target * np.pi / (self.n_targs / 2)), 2)
         return targets
@@ -170,30 +188,38 @@ class SimonSays(DecoupledEnvironment):
 
         plt.savefig("sampleTrial.png", dpi=300)
 
-    def generate_dataset(self, n_samples):
+    def generate_dataset(self, n_samples, targets=None, isFIFO=None):
         # TODO: Maybe batch this?
         n_timesteps = self.n_timesteps
         n_outputs = self.action_space.shape[0]
         n_inputs = self.observation_space.shape[0]
+        ics_ds = np.zeros(shape=(n_samples, n_outputs))
         outputs_ds = np.zeros(shape=(n_samples, n_timesteps, n_outputs))
         inputs_ds = np.zeros(shape=(n_samples, n_timesteps, n_inputs))
         for i in range(n_samples):
-            inputs, outputs = self.generate_trial()
+            inputs, outputs = self.generate_trial(targets, isFIFO)
             outputs_ds[i, :, :] = outputs
             inputs_ds[i, :, :] = inputs
         inputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=inputs_ds.shape)
         outputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=outputs_ds.shape)
-        return inputs_ds, outputs_ds
+        return ics_ds, inputs_ds, outputs_ds
 
-    def generate_trial(self):
+    def generate_trial(self, target_inds=None, isFIFO=None):
         self.reset()
-        n_pres = np.random.randint(self.n_pres_low, self.n_pres_high)
-        targets = self.generate_targets(n_pres)
+        # if targets are not none
+        if target_inds is None:
+            n_pres = np.random.randint(self.n_pres_low, self.n_pres_high)
+            targets = self.generate_targets(n_pres)
+        else:
+            targets = self.generate_targets_testing(target_inds)
+
         target_vec = self.generate_target_vec(targets)
         targ_len = target_vec.shape[0]
-        isFIFO = np.random.randint(0, 2)
-        isFIFO = isFIFO * 2 - 1  # Convert from 0,1 to -1,1
+        if isFIFO is None:
+            isFIFO = np.random.randint(0, 2)
+            isFIFO = isFIFO * 2 - 1  # Convert from 0,1 to -1,1
         delay = np.random.randint(20, 40)
+
         inputs = np.zeros((self.n_timesteps, 5))
         outputs = np.zeros((self.n_timesteps, 2))
         inputs[0:targ_len, 0:2] = target_vec
@@ -214,19 +240,25 @@ class SimonSays(DecoupledEnvironment):
 
 
 class ReadySetGoTask(DecoupledEnvironment):
-    def __init__(self, n_timesteps, n_samples, noise):
-        super(ReadySetGoTask, self).__init__()
+    def __init__(
+        self,
+        n_timesteps,
+        noise,
+        n_samples,
+    ):
+        super(ReadySetGoTask, self).__init__(n_timesteps=n_timesteps, noise=noise)
 
         self.dataset_name = "ReadySetGo"
         self.action_space = spaces.Box(low=-0.5, high=1.5, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=-0.5, high=1.5, shape=(6,), dtype=np.float32
+            low=-0.5, high=1.5, shape=(4,), dtype=np.float32
         )
         self.input_labels = ["ShortPrior", "EyeTrial", "ReachDir", "PulseLine"]
         self.output_labels = ["Reach0", "Reach1"]
         self.noise = noise
+        self.coupled_env = False
 
-    def generate_trial(self):
+    def reset(self):
         self.short_prior = np.random.randint(0, 2)
         self.eye_trial = np.random.randint(0, 2)
         self.theta_trial = np.random.randint(0, 2)
@@ -235,21 +267,28 @@ class ReadySetGoTask(DecoupledEnvironment):
         else:
             prior = np.random.choice(a=[40, 45, 50, 55, 60])
         self.prior = prior
+
+    def step(self, i):
+        input_row = np.zeros((1, 4))
+        input_row[0][0] = self.short_prior
+        input_row[0][1] = self.eye_trial
+        output_row = np.zeros((1, 2))
+        input_row[0][2] = self.theta_trial
+        if i == 5:
+            input_row[0][3] = 1
+        if i == 5 + self.prior:
+            input_row[0][3] = 1
+        if i >= 5 + (2 * self.prior):
+            output_row[0][self.eye_trial] = (-1) ** self.theta_trial
+        return input_row, output_row
+
+    def generate_trial(self):
+        self.reset()
         inputs = np.zeros((self.n_timesteps, 4))
         outputs = np.zeros((self.n_timesteps, 2))
 
         for i in range(self.n_timesteps):
-            input_row = np.zeros((1, 4))
-            input_row[0][0] = self.short_prior
-            input_row[0][1] = self.eye_trial
-            output_row = np.zeros((1, 2))
-            input_row[0][2] = self.theta_trial
-            if i == 5:
-                input_row[0][3] = 1
-            if i == 5 + prior:
-                input_row[0][3] = 1
-            if i >= 5 + (2 * prior):
-                output_row[0][self.eye_trial] = (-1) ** self.theta_trial
+            input_row, output_row = self.step(i)
             inputs[i, :] = input_row + np.random.normal(
                 loc=0.0, scale=self.noise, size=input_row.shape
             )
@@ -258,18 +297,18 @@ class ReadySetGoTask(DecoupledEnvironment):
             )
         return inputs, outputs
 
-    def generate_dataset(self):
-        n_samples = self.n_samples
+    def generate_dataset(self, n_samples):
         n_timesteps = self.n_timesteps
 
         self.n_timesteps = n_timesteps
+        ics_ds = np.zeros(shape=(n_samples, 2))
         input_ds = np.zeros(shape=(n_samples, self.n_timesteps, 4))
         output_ds = np.zeros(shape=(n_samples, self.n_timesteps, 2))
         for i in range(n_samples):
             inputs, outputs = self.generate_trial()
             input_ds[i, :, :] = inputs
             output_ds[i, :, :] = outputs
-        return input_ds, output_ds
+        return ics_ds, input_ds, output_ds
 
     def plot_trial(self):
         inputs, outputs = self.generate_trial()
@@ -296,3 +335,106 @@ class ReadySetGoTask(DecoupledEnvironment):
 
         ax2.legend(loc="right")
         plt.savefig("sampleTrialRSG.png", dpi=300)
+
+
+class RandomTargetReach(Environment):
+    """A reach to a random target from a random starting position.
+
+    Args:
+        network: :class:`motornet.nets.layers.Network` object class or subclass.
+        This is the network that will perform the task.
+
+        name: `String`, the name of the task object instance.
+        deriv_weight: `Float`, the weight of the muscle activation's derivative
+        contribution to the default muscle L2 loss.
+
+        **kwargs: This is passed as-is to the parent :class:`Task` class.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.obs_noise[: self.skeleton.space_dim] = [
+            0.0
+        ] * self.skeleton.space_dim  # target info is noiseless
+        self.dataset_name = "RandomTargetReach"
+        self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
+        self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
+        self.output_labels = ["M1", "M2", "M3", "M4"]
+        self.coupled_env = True
+
+    def generate_dataset(self, n_samples):
+        initial_state = []
+        inputs = np.zeros((n_samples, self.n_timesteps, 0))
+        goal_list = []
+        for i in range(n_samples):
+            obs, info = self.reset()
+            initial_state.append(torch.squeeze(info["states"]["joint"]))
+            goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
+            goal_matrix[:, :2] = torch.squeeze(info["goal"])
+            goal_list.append(goal_matrix)
+
+        initial_state = torch.stack(initial_state, axis=0)
+        goal_list = torch.stack(goal_list, axis=0)
+        return initial_state, inputs, goal_list
+
+    def set_goal(
+        self,
+        goal: torch.Tensor,
+    ):
+        """
+        Sets the goal of the task. This is the target position of the effector.
+        """
+        self.goal = goal
+
+    def reset(
+        self,
+        batch_size: int = 1,
+        ic_state: Any | None = None,
+        target_state: Any | None = None,
+        deterministic: bool = False,
+        seed: int | None = None,
+    ) -> tuple[Any, dict[str, Any]]:
+
+        """
+        Uses the :meth:`Environment.reset()` method of the parent class
+        :class:`Environment` that can be overwritten to change the returned data.
+        Here the goals (`i.e.`, the targets) are drawn from a random uniform
+        distribution across the full joint space.
+        """
+
+        self._set_generator(seed=seed)
+
+        if ic_state is not None:
+            ic_state_shape = np.shape(self.detach(ic_state))
+            if ic_state_shape[0] > 1:
+                batch_size = ic_state_shape[0]
+        else:
+            ic_state = self.q_init
+
+        self.effector.reset(batch_size, ic_state)
+        if target_state is None:
+            self.goal = self.joint2cartesian(
+                self.effector.draw_random_uniform_states(batch_size)
+            ).chunk(2, dim=-1)[0]
+        else:
+            self.goal = target_state
+        self.elapsed = 0.0
+
+        action = torch.zeros((batch_size, self.action_space.shape[0])).to(self.device)
+
+        self.obs_buffer["proprioception"] = [self.get_proprioception()] * len(
+            self.obs_buffer["proprioception"]
+        )
+        self.obs_buffer["vision"] = [self.get_vision()] * len(self.obs_buffer["vision"])
+        self.obs_buffer["action"] = [action] * self.action_frame_stacking
+
+        action = action if self.differentiable else self.detach(action)
+
+        obs = self.get_obs(deterministic=deterministic)
+        info = {
+            "states": self._maybe_detach_states(),
+            "action": action,
+            "noisy action": action,
+            "goal": self.goal if self.differentiable else self.detach(self.goal),
+        }
+        return obs, info

@@ -1,4 +1,6 @@
 import logging
+import pickle
+from pathlib import Path
 from typing import List
 
 import hydra
@@ -11,6 +13,9 @@ from interpretability.task_modeling.simulator.neural_simulator import (
 from utils import flatten
 
 log = logging.getLogger(__name__)
+SAVE_PATH = (
+    "/home/csverst/Github/InterpretabilityBenchmark/trained_models/task-trained/"
+)
 
 
 def train(
@@ -138,3 +143,19 @@ def train(
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
     simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)
+
+    # Save the model, datamodule, and simulator to the directory
+    log.info("Saving model, datamodule, and simulator")
+    dir_path = SAVE_PATH + run_tag
+    Path(dir_path).mkdir(parents=True, exist_ok=True)
+    path1 = SAVE_PATH + run_tag + "/model.pkl"
+    with open(path1, "wb") as f:
+        pickle.dump(task_wrapper, f)
+
+    path2 = SAVE_PATH + run_tag + "/datamodule.pkl"
+    with open(path2, "wb") as f:
+        pickle.dump(datamodule, f)
+
+    path3 = SAVE_PATH + run_tag + "/simulator.pkl"
+    with open(path3, "wb") as f:
+        pickle.dump(simulator, f)

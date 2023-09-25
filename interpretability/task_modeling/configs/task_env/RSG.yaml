@@ -1,5 +1,5 @@
-_target_: interpretability.task_modeling.task_envs.task_envs.ReadySetGoTask
+_target_: interpretability.task_modeling.task_env.task_env.ReadySetGoTask
 
+noise: 0.01
 n_timesteps: 100
 n_samples: 500
-noise: 0.01

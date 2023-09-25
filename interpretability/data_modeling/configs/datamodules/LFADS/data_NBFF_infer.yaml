@@ -1,0 +1,13 @@
+_target_: interpretability.data_modeling.datamodules.LFADS.datamodule.BasicDataModule
+system: 3BFF
+gen_model: GRU_RNN
+n_neurons: 50
+nonlin_embed: False
+obs_noise: poisson
+seed: 0
+batch_keys:
+  - inputs
+  - latents
+  - activity
+batch_size: 250
+provide_inputs: False

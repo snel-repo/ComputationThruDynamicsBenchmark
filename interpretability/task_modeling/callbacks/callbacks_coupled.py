@@ -98,12 +98,13 @@ class MotorNetVideoGeneration(pl.Callback):
         train_dataloader = trainer.datamodule.train_dataloader()
         # Get trajectories and model predictions
         batch = next(iter(train_dataloader))
-        joints = batch[0].to(pl_module.device)
-        goal = batch[1].to(pl_module.device)
+        ics = batch[0].to(pl_module.device)
+        inputs = batch[1].to(pl_module.device)
+        targets = batch[2].to(pl_module.device)
 
-        xy, tg, lats, actions = pl_module.forward(joints, goal)
+        controlled, latents, actions = pl_module.forward(ics, inputs, targets)
 
-        B, T, N = xy.shape
+        B, T, N = controlled.shape
 
         # Create a list to store frames
         frames = []
@@ -115,11 +116,18 @@ class MotorNetVideoGeneration(pl.Callback):
                 fig, ax = plt.subplots(figsize=(3, 3))
 
                 # Plot hand position as a yellow dot
-                ax.scatter(xy[i, t, 0].item(), xy[i, t, 1].item(), color="yellow")
+                ax.scatter(
+                    controlled[i, t, 0].item(),
+                    controlled[i, t, 1].item(),
+                    color="yellow",
+                )
 
                 # Plot target position as a red square
                 target = patches.Rectangle(
-                    (tg[i, t, 0].item(), tg[i, t, 1].item()), 0.1, 0.1, color="red"
+                    (targets[i, t, 0].item(), targets[i, t, 1].item()),
+                    0.1,
+                    0.1,
+                    color="red",
                 )
                 ax.add_patch(target)
                 ax.set_xlim(-1, 1)

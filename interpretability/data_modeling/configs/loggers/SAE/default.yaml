@@ -1,0 +1,17 @@
+tensorboard_logger:
+  _target_: pytorch_lightning.loggers.TensorBoardLogger
+  save_dir: "."
+  version: ""
+  name: ""
+csv_logger:
+  _target_: pytorch_lightning.loggers.CSVLogger
+  save_dir: "."
+  version: ""
+  name: ""
+wandb_logger:
+  _target_: pytorch_lightning.loggers.WandbLogger
+  save_dir: "."
+  version: ""
+  name: ""
+  project: "data-trained"
+  group: ""

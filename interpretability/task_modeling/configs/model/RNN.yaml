@@ -1,4 +1,0 @@
-_target_: interpretability.task_modeling.model.task_networks.RNN
-input_size: 5
-latent_size: 256
-output_size: 2

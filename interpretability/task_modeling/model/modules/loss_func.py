@@ -22,6 +22,14 @@ class RandomTargetLoss(LossFunc):
         return pos_loss + act_loss
 
 
+class MatchTargetLossMSE(LossFunc):
+    def __init__(self):
+        pass
+
+    def __call__(self, pred, target, act):
+        return nn.MSELoss()(pred, target)
+
+
 class L1LossFunc(LossFunc):
     def __init__(self):
         pass

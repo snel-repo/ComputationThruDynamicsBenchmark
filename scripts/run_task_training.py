@@ -39,32 +39,29 @@ dotenv.load_dotenv(override=True)
 
 # Add custom resolver to create the data_tag so it can be used for run dir
 OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
-
 log = logging.getLogger(__name__)
-# torch.autograd.set_detect_anomaly(True)
-
 
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "3BFF_DataGen3_GRU_RNN"
+RUN_DESC = "NBFF_NODE_1000"
 NUM_SAMPLES = 1
 TASK = "NBFF"
-MODEL = "GRU_RNN"
+MODEL = "NODE"
 
 
 SEARCH_SPACE = dict(
     # -----------------Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([128]),
+        latent_size=tune.grid_search([3]),
     ),
-    task_wrapper=dict(
-        # -----------------Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.grid_search([5e-4]),
-    ),
-    task_env=dict(
-        # -----------------Task Environment Parameters ------------------------------
-        N=tune.grid_search([3]),
+    # task_wrapper=dict(
+    #     # -----------------Task Wrapper Parameters -----------------------------------
+    #     learning_rate=tune.grid_search([5e-2]),
+    # ),
+    trainer=dict(
+        # -----------------Trainer Parameters -----------------------------------
+        max_epochs=tune.grid_search([1000]),
     ),
     # -----------------Data Parameters -----------------------------------
     params=dict(
@@ -77,7 +74,7 @@ path_dict = dict(
     task_wrapper=Path(f"configs/task_wrapper/{TASK}.yaml"),
     task_env=Path(f"configs/task_env/{TASK}.yaml"),
     model=Path(f"configs/model/{MODEL}.yaml"),
-    datamodule=Path("configs/datamodule/datamodule_decoupled.yaml"),
+    datamodule=Path("configs/datamodule/datamodule.yaml"),
     simulator=Path(f"configs/simulator/default_{TASK}.yaml"),
     callbacks=Path(f"configs/callbacks/default_{TASK}.yaml"),
     loggers=Path("configs/logger/default.yaml"),

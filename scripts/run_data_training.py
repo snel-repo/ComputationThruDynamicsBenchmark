@@ -1,36 +1,121 @@
 import logging
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
-from interpretability.data_modeling.data_training.run_model import run_model
+import dotenv
+import ray
+from omegaconf import OmegaConf
+from ray import tune
+from ray.tune import CLIReporter
+from ray.tune.schedulers import FIFOScheduler
+from ray.tune.search.basic_variant import BasicVariantGenerator
 
-logger = logging.getLogger(__name__)
+from interpretability.data_modeling.extensions.SAE.utils import make_data_tag
+from interpretability.data_modeling.train_neural import train
 
-# ---------- OPTIONS -----------
+dotenv.load_dotenv(override=True)
+OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
+
+log = logging.getLogger(__name__)
+# ---------------Options---------------
+LOCAL_MODE = False
 OVERWRITE = True
-PROJECT_STR = "0728_TBFF_TaskTrainedRNN_ODIN_WeightDecay_0Mean"
-DATASET_STR = "tbff"
-RUN_TAG = datetime.now().strftime("%Y%m%d-%H%M%S")
-RUN_DIR = (
-    Path("/snel/share/runs/lfads-NODE") / PROJECT_STR / DATASET_STR / "single" / RUN_TAG
-)
-# ------------------------------
+RUN_DESC = "3BFF_GRU_RNN_ExtInputs3"
+NUM_SAMPLES = 1
+MODEL_CLASS = "SAE"
+MODEL = "GRU_RNN"
+DATA = "NBFF"
+INFER_INPUTS = False
 
-# Overwrite the directory if necessary
-if RUN_DIR.exists() and OVERWRITE:
-    shutil.rmtree(RUN_DIR)
-RUN_DIR.mkdir(parents=True)
-# Copy this script into the run directory
-shutil.copyfile(__file__, RUN_DIR / Path(__file__).name)
-# Switch to the `RUN_DIR` and train the model
-os.chdir(RUN_DIR)
-run_model(
-    project_str=PROJECT_STR,
-    overrides={
-        "datamodule": DATASET_STR,
-        "model": DATASET_STR,
-    },
-    config_path=f"../configs/{DATASET_STR}.yaml",
+# -------------------------------------
+SEARCH_SPACE = dict(
+    # model=dict(
+    #     latent_size=tune.grid_search([128]),
+    #     weight_decay = tune.grid_search([3e-5]),
+    # ),
+    datamodule=dict(
+        gen_model=tune.grid_search(["GRU_RNN"]),
+    ),
+    params=dict(
+        seed=tune.grid_search([0]),
+    ),
 )
+
+# -----------------Default Parameter Sets -----------------------------------
+cpath = "../data_modeling/configs"
+model_path = Path(
+    (
+        f"{cpath}/models/{MODEL_CLASS}/{DATA}/{DATA}_{MODEL}"
+        f"{'_infer' if INFER_INPUTS else ''}.yaml"
+    )
+)
+datamodule_path = Path(
+    (
+        f"{cpath}/datamodules/{MODEL_CLASS}/data_{DATA}"
+        f"{'_infer' if INFER_INPUTS else ''}.yaml"
+    )
+)
+
+callbacks_path = Path(f"{cpath}/callbacks/{MODEL_CLASS}/default_{DATA}.yaml")
+loggers_path = Path(f"{cpath}/loggers/{MODEL_CLASS}/default.yaml")
+trainer_path = Path(f"{cpath}/trainers/trainer_{DATA}.yaml")
+
+path_dict = dict(
+    model=model_path,
+    datamodule=datamodule_path,
+    callbacks=callbacks_path,
+    loggers=loggers_path,
+    trainer=trainer_path,
+)
+
+# ------------------Data Management Variables --------------------------------
+DATE_STR = datetime.now().strftime("%Y%m%d")
+RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
+RUNS_HOME = Path("/snel/share/runs/dysts-learning/")
+RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
+
+
+def trial_function(trial):
+    return trial.experiment_tag
+
+
+# -------------------Main Function----------------------------------
+def main(
+    run_tag_in: str,
+    path_dict: dict,
+):
+    if LOCAL_MODE:
+        ray.init(local_mode=True)
+    if RUN_DIR.exists() and OVERWRITE:
+        shutil.rmtree(RUN_DIR)
+
+    RUN_DIR.mkdir()
+    shutil.copyfile(__file__, RUN_DIR / Path(__file__).name)
+    run_dir = str(RUN_DIR)
+    tune.run(
+        tune.with_parameters(
+            train,
+            run_tag=run_tag_in,
+            path_dict=path_dict,
+        ),
+        config=SEARCH_SPACE,
+        resources_per_trial=dict(cpu=10, gpu=1),
+        num_samples=NUM_SAMPLES,
+        local_dir=run_dir,
+        search_alg=BasicVariantGenerator(),
+        scheduler=FIFOScheduler(),
+        verbose=1,
+        progress_reporter=CLIReporter(
+            metric_columns=["loss", "training_iteration"],
+            sort_by_metric=True,
+        ),
+        trial_dirname_creator=trial_function,
+    )
+
+
+if __name__ == "__main__":
+    main(
+        run_tag_in=RUN_TAG,
+        path_dict=path_dict,
+    )

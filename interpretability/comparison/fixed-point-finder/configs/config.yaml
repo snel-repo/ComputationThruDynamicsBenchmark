@@ -1,0 +1,24 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+model_class: dysts_learning.model.SequentialAutoencoder
+ckpt_path: /snel/share/runs/dysts-learning/Lorenz_2000S_150T_50P_0seed/single/2021-11-10_16-19-20/last.ckpt
+rnn_cell_attr: decoder.cell
+timesteps: 100
+n_fp_inits: 1024
+random_seed: 0
+datamodule:
+  _target_: dysts_learning.data.ChaoticDataModule
+  system: Lorenz
+  n_samples: 2000
+  n_timesteps: 150
+  pts_per_period: 50
+  seed: 0
+  batch_size: 64
+  num_workers: 4
+
+hydra:
+  run:
+    dir: "."
+  output_subdir: null
