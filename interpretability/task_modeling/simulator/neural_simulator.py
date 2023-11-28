@@ -62,6 +62,19 @@ class NeuralDataSimulator:
         # the nonlinearity, the observation noise, the epoch number, the model type,
         # and the seed
 
+        # Get trajectories and model predictions
+        train_data = datamodule.train_dataloader().dataset.tensors
+        val_data = datamodule.val_dataloader().dataset.tensors
+
+        ics = torch.cat([train_data[0], val_data[0]])
+        inputs = torch.cat([train_data[1], val_data[1]])
+        targets = torch.cat([train_data[2], val_data[2]])
+
+        controlled, latents, actions = task_trained_model(ics, inputs, targets)
+
+        if self.n_neurons > latents.shape[-1]:
+            self.n_neurons = latents.shape[-1]
+
         filename = (
             f"{datamodule.data_env.dataset_name}_"
             f"model_{type(task_trained_model.model).__name__}_"
@@ -72,16 +85,6 @@ class NeuralDataSimulator:
         )
 
         fpath = os.path.join(DATA_HOME, filename)
-
-        # Get trajectories and model predictions
-        train_data = datamodule.train_dataloader().dataset.tensors
-        val_data = datamodule.val_dataloader().dataset.tensors
-
-        ics = torch.cat([train_data[0], val_data[0]])
-        inputs = torch.cat([train_data[1], val_data[1]])
-        targets = torch.cat([train_data[2], val_data[2]])
-
-        controlled, latents, actions = task_trained_model(ics, inputs, targets)
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
         if self.use_neurons:

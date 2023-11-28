@@ -92,7 +92,13 @@ class NBitFlipFlop(DecoupledEnvironment):
             inputs, outputs = self.generate_trial()
             outputs_ds[i, :, :] = outputs
             inputs_ds[i, :, :] = inputs
-        return ics_ds, inputs_ds, outputs_ds
+
+        dataset_dict = {
+            "ics": ics_ds,
+            "inputs": inputs_ds,
+            "targets": outputs_ds,
+        }
+        return dataset_dict
 
     def render(self):
         states, inputs = self.generate_trial()
@@ -202,7 +208,12 @@ class SimonSays(DecoupledEnvironment):
             inputs_ds[i, :, :] = inputs
         inputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=inputs_ds.shape)
         outputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=outputs_ds.shape)
-        return ics_ds, inputs_ds, outputs_ds
+        dataset_dict = {
+            "ics": ics_ds,
+            "inputs": inputs_ds,
+            "targets": outputs_ds,
+        }
+        return dataset_dict
 
     def generate_trial(self, target_inds=None, isFIFO=None):
         self.reset()
@@ -308,7 +319,12 @@ class ReadySetGoTask(DecoupledEnvironment):
             inputs, outputs = self.generate_trial()
             input_ds[i, :, :] = inputs
             output_ds[i, :, :] = outputs
-        return ics_ds, input_ds, output_ds
+        dataset_dict = {
+            "ics": ics_ds,
+            "inputs": input_ds,
+            "targets": output_ds,
+        }
+        return dataset_dict
 
     def plot_trial(self):
         inputs, outputs = self.generate_trial()
@@ -375,7 +391,12 @@ class RandomTargetReach(Environment):
 
         initial_state = torch.stack(initial_state, axis=0)
         goal_list = torch.stack(goal_list, axis=0)
-        return initial_state, inputs, goal_list
+        dataset_dict = {
+            "ics": initial_state,
+            "inputs": inputs,
+            "targets": goal_list,
+        }
+        return dataset_dict
 
     def set_goal(
         self,

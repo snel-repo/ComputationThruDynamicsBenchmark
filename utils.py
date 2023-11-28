@@ -207,3 +207,7 @@ def send_error_message(run_name, server):
     response = requests.post(url, data=json.dumps(slack_data), headers=headers)
     if response.status_code != 200:
         raise Exception(response.status_code, response.text)
+
+
+def trial_function(trial):
+    return trial.experiment_tag

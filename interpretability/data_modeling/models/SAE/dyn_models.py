@@ -4,7 +4,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from interpretability.data_modeling.models.readouts import FeedForwardNet, FlowReadout
+from interpretability.data_modeling.models.SAE.readouts import (
+    FeedForwardNet,
+    FlowReadout,
+)
 
 
 class RNN(nn.Module):

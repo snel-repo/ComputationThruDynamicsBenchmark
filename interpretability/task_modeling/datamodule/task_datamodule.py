@@ -10,6 +10,11 @@ from gymnasium import Env
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 
+from interpretability.task_modeling.datamodule.samplers import (
+    RandomSampler,
+    SequentialSampler,
+)
+
 logger = logging.getLogger(__name__)
 
 # Load the project data home
@@ -50,23 +55,41 @@ class TaskDataModule(pl.LightningDataModule):
 
         self.input_labels = self.data_env.input_labels
         self.output_labels = self.data_env.output_labels
+        if hasattr(self.data_env, "extra"):
+            self.extra = self.data_env.extra
+        if hasattr(self.data_env, "sampler"):
+            self.sampler_func = data_env.sampler
+            self.val_sampler_func = SequentialSampler
+        else:
+            self.sampler_func = RandomSampler
+            self.val_sampler_func = SequentialSampler
 
     def prepare_data(self):
         hps = self.hparams
 
         filename = f"{self.name}.h5"
         fpath = os.path.join(DATA_HOME, filename)
-        if os.path.isfile(fpath):
-            logger.info(f"Loading dataset {self.name}")
-            return
+        # if os.path.isfile(fpath):
+        #     logger.info(f"Loading dataset {self.name}")
+        #     return
         logger.info(f"Generating dataset {self.name}")
         # Simulate the task
-        ics_ds, inputs_ds, targets_ds = self.data_env.generate_dataset(
-            self.hparams.n_samples
-        )
+        dataset_dict = self.data_env.generate_dataset(self.hparams.n_samples)
+        # Extract the inputs, outputs, and initial conditions
+        inputs_ds = dataset_dict["inputs"]
+        targets_ds = dataset_dict["targets"]
+        ics_ds = dataset_dict["ics"]
+
+        keys = list(dataset_dict.keys())
+        keys.remove("inputs")
+        keys.remove("targets")
+        keys.remove("ics")
+        self.all_data = dataset_dict
+
         # Standardize and record original mean and standard deviations
         # Perform data splits
-        inds = np.arange(hps.n_samples)
+        num_trials = ics_ds.shape[0]
+        inds = np.arange(num_trials)
         train_inds, valid_inds = train_test_split(
             inds, test_size=0.2, random_state=hps.seed
         )
@@ -110,21 +133,27 @@ class TaskDataModule(pl.LightningDataModule):
         self.valid_ds = TensorDataset(
             valid_ics, valid_inputs, valid_targets, valid_inds
         )
+        self.train_sampler = self.sampler_func(
+            data_source=self.train_ds, num_samples=self.hparams.batch_size
+        )
+        self.valid_sampler = self.val_sampler_func(
+            data_source=self.valid_ds, num_samples=self.hparams.batch_size
+        )
         # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 
     def train_dataloader(self, shuffle=True):
         train_dl = DataLoader(
             self.train_ds,
-            batch_size=self.hparams.batch_size,
+            batch_sampler=self.train_sampler,
             num_workers=self.hparams.num_workers,
-            shuffle=shuffle,
+            # shuffle=shuffle,
         )
         return train_dl
 
     def val_dataloader(self):
         valid_dl = DataLoader(
             self.valid_ds,
-            batch_size=self.hparams.batch_size,
+            batch_sampler=self.valid_sampler,
             num_workers=self.hparams.num_workers,
         )
         return valid_dl

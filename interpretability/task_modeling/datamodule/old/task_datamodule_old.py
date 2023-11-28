@@ -42,72 +42,57 @@ class TaskDataModule(pl.LightningDataModule):
         self.data_env = data_env
         self.name = (
             f"{data_env.dataset_name}_{self.hparams.n_samples}S_{data_env.n_timesteps}T"
-            f"_{self.hparams.seed}seed"
+            f"_{self.hparams.seed}seed_{data_env.noise}"
         )
-        # if data_env has a noise parameter, add it to the name
-        if hasattr(data_env, "noise"):
-            self.name += f"_{data_env.noise}"
 
         self.input_labels = self.data_env.input_labels
         self.output_labels = self.data_env.output_labels
-        self.extra = self.data_env.extra
 
     def prepare_data(self):
         hps = self.hparams
 
         filename = f"{self.name}.h5"
         fpath = os.path.join(DATA_HOME, filename)
-        # if os.path.isfile(fpath):
-        #     logger.info(f"Loading dataset {self.name}")
-        #     return
+        if os.path.isfile(fpath):
+            logger.info(f"Loading dataset {self.name}")
+            return
         logger.info(f"Generating dataset {self.name}")
         # Simulate the task
-        dataset_dict = self.data_env.generate_dataset(self.hparams.n_samples)
-        # Extract the inputs, outputs, and initial conditions
-        inputs_ds = dataset_dict["inputs"]
-        targets_ds = dataset_dict["targets"]
-        ics_ds = dataset_dict["ics"]
-
-        keys = list(dataset_dict.keys())
-        keys.remove("inputs")
-        keys.remove("targets")
-        keys.remove("ics")
-        self.all_data = dataset_dict
-
+        inputs_ds, outputs_ds = self.data_env.generate_dataset(self.hparams.n_samples)
         # Standardize and record original mean and standard deviations
         # Perform data splits
-        num_trials = ics_ds.shape[0]
-        inds = np.arange(num_trials)
+        inds = np.arange(hps.n_samples)
         train_inds, valid_inds = train_test_split(
             inds, test_size=0.2, random_state=hps.seed
         )
 
         # Save the trajectories
         with h5py.File(fpath, "w") as h5file:
-            h5file.create_dataset("train_ics", data=ics_ds[train_inds])
-            h5file.create_dataset("valid_ics", data=ics_ds[valid_inds])
 
             h5file.create_dataset("train_inputs", data=inputs_ds[train_inds])
             h5file.create_dataset("valid_inputs", data=inputs_ds[valid_inds])
+            # h5file.create_dataset("test_inputs", data = inputs_ds[test_inds])
 
-            h5file.create_dataset("train_targets", data=targets_ds[train_inds])
-            h5file.create_dataset("valid_targets", data=targets_ds[valid_inds])
+            h5file.create_dataset("train_outputs", data=outputs_ds[train_inds])
+            h5file.create_dataset("valid_outputs", data=outputs_ds[valid_inds])
+            # h5file.create_dataset("test_outputs", data = outputs_ds[test_inds])
 
             h5file.create_dataset("train_inds", data=train_inds)
             h5file.create_dataset("valid_inds", data=valid_inds)
+            # h5file.create_dataset("test_inds", data = test_inds)
 
     def setup(self, stage=None):
         # Load data arrays from file
         data_path = os.path.join(DATA_HOME, f"{self.name}.h5")
         with h5py.File(data_path, "r") as h5file:
-            train_ics = to_tensor(h5file["train_ics"][()])
-            valid_ics = to_tensor(h5file["valid_ics"][()])
 
             train_inputs = to_tensor(h5file["train_inputs"][()])
             valid_inputs = to_tensor(h5file["valid_inputs"][()])
+            # test_inputs = to_tensor(h5file["test_inputs"][()])
 
-            train_targets = to_tensor(h5file["train_targets"][()])
-            valid_targets = to_tensor(h5file["valid_targets"][()])
+            train_outputs = to_tensor(h5file["train_outputs"][()])
+            valid_outputs = to_tensor(h5file["valid_outputs"][()])
+            # test_outputs = to_tensor(h5file["test_outputs"][()])
 
             # Load the indices
             train_inds = to_tensor(h5file["train_inds"][()])
@@ -115,12 +100,8 @@ class TaskDataModule(pl.LightningDataModule):
             # test_inds = to_tensor(h5file["test_inds"][()])
 
         # Store datasets
-        self.train_ds = TensorDataset(
-            train_ics, train_inputs, train_targets, train_inds
-        )
-        self.valid_ds = TensorDataset(
-            valid_ics, valid_inputs, valid_targets, valid_inds
-        )
+        self.train_ds = TensorDataset(train_inputs, train_outputs, train_inds)
+        self.valid_ds = TensorDataset(valid_inputs, valid_outputs, valid_inds)
         # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 
     def train_dataloader(self, shuffle=True):

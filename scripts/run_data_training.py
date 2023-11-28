@@ -21,19 +21,19 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "3BFF_GRU_RNN_ExtInputs3"
+RUN_DESC = "3BFF_NODE_ExtInputs_decay"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
-MODEL = "GRU_RNN"
+MODEL = "NODE"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
-    # model=dict(
-    #     latent_size=tune.grid_search([128]),
-    #     weight_decay = tune.grid_search([3e-5]),
-    # ),
+    model=dict(
+        latent_size=tune.grid_search([5]),
+        decay_decoder=tune.grid_search([3e-5]),
+    ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
     ),

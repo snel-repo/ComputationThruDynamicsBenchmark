@@ -11,7 +11,27 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
-from utils import make_data_tag, trial_function
+
+def make_data_tag(dm_cfg):
+    obs_dim = "" if "obs_dim" not in dm_cfg else dm_cfg.obs_dim
+    obs_noise = "" if "obs_noise" not in dm_cfg else dm_cfg.obs_noise
+    if "obs_noise_params" in dm_cfg:
+        obs_noise_params = ",".join(
+            [f"{k}={v}" for k, v in dm_cfg.obs_noise_params.items()]
+        )
+    else:
+        obs_noise_params = ""
+    data_tag = (
+        f"{dm_cfg.system}{obs_dim}_"
+        f"{dm_cfg.n_samples}S_"
+        f"{dm_cfg.n_timesteps}T_"
+        f"{dm_cfg.pts_per_period}P_"
+        f"{dm_cfg.seed}seed"
+    )
+    if obs_noise:
+        data_tag += f"_{obs_noise}{obs_noise_params}"
+    return data_tag
+
 
 # Load data directory and run directory as environment variables.
 # These variables are used when the config is resolved.
@@ -22,37 +42,29 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = False  # Set to True to run locally (for debugging)
-OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "MT_GRU_RNN_256D_32Targets_Test"  # For WandB and run dir
-NUM_SAMPLES = (
-    1  # If doing random (non-grid) hyperparameter search, how many samples to run
-)
-TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
-MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
+LOCAL_MODE = False
+OVERWRITE = True
+RUN_DESC = "MultiTask_GRU_RNN_256D_32Targets_2"
+NUM_SAMPLES = 1
+TASK = "MultiTask"
+MODEL = "GRU_RNN"
 
-# ------------------Data Management Variables --------------------------------
-DATE_STR = datetime.now().strftime("%Y%m%d")
-RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUNS_HOME = Path("/snel/share/runs/dysts-learning/")
-RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
 
-# -----------------Parameter Selection / Sweeps -----------------------------------
 SEARCH_SPACE = dict(
-    # Model Parameters -----------------------------------
+    # -----------------Model Parameters -----------------------------------
     model=dict(
         latent_size=tune.grid_search([256]),
     ),
     task_wrapper=dict(
-        # Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.grid_search([1e-3]),
-        weight_decay=tune.grid_search([1e-6]),
+        # -----------------Task Wrapper Parameters -----------------------------------
+        learning_rate=tune.grid_search([5e-3]),
+        weight_decay=tune.grid_search([1e-4]),
     ),
     trainer=dict(
-        # Trainer Parameters -----------------------------------
-        max_epochs=tune.grid_search([300]),
+        # -----------------Trainer Parameters -----------------------------------
+        max_epochs=tune.grid_search([120]),
     ),
-    # Data Parameters -----------------------------------
+    # -----------------Data Parameters -----------------------------------
     params=dict(
         seed=tune.grid_search([0]),
     ),
@@ -63,12 +75,22 @@ path_dict = dict(
     task_wrapper=Path(f"configs/task_wrapper/{TASK}.yaml"),
     task_env=Path(f"configs/task_env/{TASK}.yaml"),
     model=Path(f"configs/model/{MODEL}.yaml"),
-    datamodule=Path(f"configs/datamodule/datamodule_{TASK}.yaml"),
+    datamodule=Path("configs/datamodule/datamodule.yaml"),
     simulator=Path(f"configs/simulator/default_{TASK}.yaml"),
     callbacks=Path(f"configs/callbacks/default_{TASK}.yaml"),
     loggers=Path("configs/logger/default.yaml"),
     trainer=Path("configs/trainer/default.yaml"),
 )
+
+# ------------------Data Management Variables --------------------------------
+DATE_STR = datetime.now().strftime("%Y%m%d")
+RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
+RUNS_HOME = Path("/snel/share/runs/dysts-learning/")
+RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
+
+
+def trial_function(trial):
+    return trial.experiment_tag
 
 
 # -------------------Main Function----------------------------------

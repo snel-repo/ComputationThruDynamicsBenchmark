@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -23,7 +24,7 @@ def find_fixed_points(
     model: pl.LightningModule,
     state_trajs: np.array,
     mode: str,
-    input_cond: np.array,
+    inputs: np.array,
     n_inits=1024,
     noise_scale=0.01,
     learning_rate=1e-2,
@@ -36,6 +37,8 @@ def find_fixed_points(
     device="cpu",
     seed=0,
     use_subspace=False,
+    compute_jacobians=False,
+    use_percent=False,
 ):
 
     assert mode in {"tt", "dt", "node", "node_resid"}
@@ -64,6 +67,7 @@ def find_fixed_points(
         state_pts = state_trajs
         idx = torch.randint(n_samples_steps, size=(n_inits,), device=device)
     states = state_pts[idx]
+    inputs = inputs[idx]
 
     mat1 = torch.from_numpy(state_pca.components_).to(device)
     # Add Gaussian noise to the sampled points
@@ -80,14 +84,14 @@ def find_fixed_points(
     q_prev = torch.full((n_inits,), float("nan"), device=device)
     while True:
         if mode == "tt":
-            input_size = 3
-            inputs = input_cond * torch.ones(n_inits, input_size, device=device)
+            # input_size = input_cond.shape[1]
+            # inputs = input_cond * torch.ones(n_inits, input_size, device=device)
             # add a dim to states
             _, F = model.model(inputs, states)
             q = 0.5 * torch.sum((F.squeeze() - states.squeeze()) ** 2, dim=1)
         elif mode == "dt":
-            input_size = 3
-            inputs = input_cond * torch.ones(n_inits, 1, input_size, device=device)
+            # input_size = 3
+            # inputs = input_cond * torch.ones(n_inits, 1, input_size, device=device)
             # add a dim to states
             # states = states.unsqueeze(1)
             _, F = model.decoder(inputs, states)
@@ -109,8 +113,6 @@ def find_fixed_points(
         q_scalar.backward()
         opt.step()
         opt.zero_grad()
-        # reduce the learning rate according to the scheduler
-        # scheduler.step(q_scalar)
 
         # Detach evaluation tensors
         q_np = q.cpu().detach().numpy()
@@ -149,10 +151,20 @@ def find_fixed_points(
     if do_fp_sort:
         all_fps = sort_fps(all_fps)
     unique_fps = all_fps.get_unique()
-    unique_fps = unique_fps.get_unique()
+    plot_qstar = True
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(1, 1, 1)
     # unique_fps = all_fps
+    if plot_qstar:
+        clipQ = np.clip(unique_fps.qstar, 1e-15, None)
+        ax.hist(np.log10(clipQ), bins=10)
+        # Set x axes to log
+        plt.savefig("qstar_hist1.png")
 
     # Reject FPs outside the tolerance
+    if use_percent:
+        tol_q = np.quantile(unique_fps.qstar, 0.5)
     best_fps = unique_fps.qstar < tol_q
     # best_fps = np.ones_like(unique_fps.qstar, dtype=bool)
     best_fps = FixedPoints(
@@ -164,52 +176,47 @@ def find_fixed_points(
         tol_unique=tol_unique,
     )
     print(f"Found {len(best_fps.xstar)} unique fixed points.")
+    if compute_jacobians:
+        # Compute the Jacobian for each fixed point
+        def J_func(x):
+            if mode == "tt":
+                # input_size = input_cond.shape[1]
+                # inputs = input_cond * torch.ones(1, input_size, device=device)
+                inputs = 0  # FIXME: this is a hack
+                _, F = model.model(inputs, x)
+                F = F.squeeze()
 
-    # Compute the Jacobian for each fixed point
-    def J_func(x):
-        if mode == "tt":
-            input_size = 3
-            inputs = input_cond * torch.ones(1, input_size, device=device)
-            _, F = model.model(inputs, x)
-            F = F.squeeze()
+            elif mode == "dt":
+                # input_size = 3
+                # inputs = input_cond * torch.ones(1, 1, input_size, device=device)
+                inputs = 0  # FIXME: this is a hack
+                _, F = model.decoder(inputs, x)
+                F = F.squeeze()
 
-        elif mode == "dt":
-            input_size = 3
-            inputs = input_cond * torch.ones(1, 1, input_size, device=device)
-            _, F = model.decoder(inputs, x)
-            F = F.squeeze()
+            elif mode == "node":
+                input_size = model.decoder.cell.input_size
+                inputs = torch.zeros(1, input_size, device=device)
+                input_hidden = torch.cat([x, inputs], dim=1)
+                F = 0.1 * model.decoder.cell.vf_net(input_hidden) + x
 
-        elif mode == "node":
-            input_size = model.decoder.cell.input_size
-            inputs = torch.zeros(1, input_size, device=device)
-            input_hidden = torch.cat([x, inputs], dim=1)
-            F = 0.1 * model.decoder.cell.vf_net(input_hidden) + x
+            return F.squeeze()
 
-        elif mode == "node_resid":
-            input_size = model.decoder.cell_1.input_size
-            inputs = torch.zeros(1, input_size, device=device)
-            input_hidden = torch.cat([x, inputs], dim=1)
-            F = (
-                0.1 * model.decoder.cell_1.vf_net(input_hidden)
-                + 0.1 * model.decoder.cell_2.vf_net(input_hidden)
-                + x
-            )
-        return F.squeeze()
+        all_J = []
+        x = torch.tensor(best_fps.xstar, device=device)
+        for i in range(best_fps.n):
+            single_x = x[i, :]
+            single_x = single_x.unsqueeze(0)
+            J = torch.autograd.functional.jacobian(J_func, single_x)
+            J = J.squeeze()
+            all_J.append(J)
+        # Recombine and decompose Jacobians for the whole batch
+        if all_J:
+            dFdx = torch.stack(all_J).cpu().detach().numpy()
+            best_fps.J_xstar = dFdx
+            best_fps.decompose_jacobians()
 
-    all_J = []
-    x = torch.tensor(best_fps.xstar, device=device)
-    for i in range(best_fps.n):
-        single_x = x[i, :]
-        single_x = single_x.unsqueeze(0)
-        J = torch.autograd.functional.jacobian(J_func, single_x)
-        J = J.squeeze()
-        all_J.append(J)
-    # Recombine and decompose Jacobians for the whole batch
-    if all_J:
-        dFdx = torch.stack(all_J).cpu().detach().numpy()
-        best_fps.J_xstar = dFdx
-        best_fps.decompose_jacobians()
-
-        return best_fps
+            return best_fps
+        else:
+            return []
     else:
-        return []
+        return best_fps

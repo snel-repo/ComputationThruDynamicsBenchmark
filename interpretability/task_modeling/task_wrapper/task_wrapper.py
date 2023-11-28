@@ -48,7 +48,6 @@ class TaskTrainedWrapper(pl.LightningModule):
         return optimizer
 
     def forward(self, ics, inputs, targets=None):
-
         terminated = False
         # Pass data through the model
         batch_size = ics.shape[0]
@@ -104,7 +103,13 @@ class TaskTrainedWrapper(pl.LightningModule):
         # Pass data through the model
         controlled, latents, actions = self.forward(ics, inputs, targets)
         # Compute the weighted loss
-        loss_all = self.loss_func(controlled, targets, actions)
+        loss_dict = {
+            "controlled": controlled,
+            "targets": targets,
+            "actions": actions,
+            "inputs": inputs,
+        }
+        loss_all = self.loss_func(loss_dict)
         self.log("train/loss", loss_all)
         return loss_all
 
@@ -114,7 +119,12 @@ class TaskTrainedWrapper(pl.LightningModule):
         targets = batch[2]
         # Pass data through the model
         controlled, latents, actions = self.forward(ics, inputs, targets)
-        # Compute the weighted loss
-        loss_all = self.loss_func(controlled, targets, actions)
+        loss_dict = {
+            "controlled": controlled,
+            "targets": targets,
+            "actions": actions,
+            "inputs": inputs,
+        }
+        loss_all = self.loss_func(loss_dict)
         self.log("valid/loss", loss_all)
         return loss_all

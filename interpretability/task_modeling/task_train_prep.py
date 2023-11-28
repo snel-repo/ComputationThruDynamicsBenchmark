@@ -142,7 +142,7 @@ def train(
     # -----------------------------Train model---------------------------
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
-    simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)
+    # simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)
 
     # Save the model, datamodule, and simulator to the directory
     log.info("Saving model, datamodule, and simulator")
