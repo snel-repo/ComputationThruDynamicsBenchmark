@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from gymnasium import spaces
 
-from interpretability.task_modeling.datamodule.samplers import GroupedSampler
+from interpretability.task_modeling.datamodule.samplers import (
+    GroupedSampler,
+    RandomSampler,
+)
 
 
 class DecoupledEnvironment(gym.Env, ABC):
@@ -43,6 +46,7 @@ class MultiTaskWrapper:
         n_timesteps: int,
         num_targets: int,
         noise: float,
+        grouped_sampler: bool = False,
     ):
         # TODO: Seed environment
         self.n_timesteps = n_timesteps
@@ -90,7 +94,10 @@ class MultiTaskWrapper:
         self.noise = noise
         self.coupled_env = False
         self.extra = "phase_dict"
-        self.sampler = GroupedSampler
+        if grouped_sampler:
+            self.sampler = GroupedSampler
+        else:
+            self.sampler = RandomSampler
 
     def generate_dataset(self, n_samples):
         # TODO: Maybe batch this?
@@ -489,9 +496,12 @@ class MultiTask:
         return inputs_noise, outputs, phase_dict, self.task_name, inputs
 
     def plot_trial(self):
-        inputs, outputs, phase_dict = self.generate_trial()
-        fig = plt.figure(figsize=(20, 10))
+        inputs, outputs, phase_dict, task_name, true_inputs = self.generate_trial()
+        fig = plt.figure(figsize=(10, 10))
 
+        plot_path = (
+            "/home/csverst/Github/InterpretabilityBenchmark/scripts/dev/multitask/plots"
+        )
         ax1 = fig.add_subplot(7, 1, 1)
         for phase in phase_dict:
             ax1.axvline(phase_dict[phase][0], color="k", linestyle="--")
@@ -566,7 +576,75 @@ class MultiTask:
         ax2.set_ylim(-1.5, 1.5)
 
         plt.suptitle(f"Trial: {self.task_name}")
-        plt.savefig(f"trial{self.task_name}.png")
+        plt.savefig(f"{plot_path}/{self.task_name}_state_diag.png")
+        fig = plt.figure()
+        # Plot stim1, stim2 and response as a scatter plot
+        ax1 = fig.add_subplot(3, 2, 1)
+        ax2 = fig.add_subplot(3, 2, 2)
+
+        if "stim1" in phase_dict.keys():
+            ax1.plot(
+                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 1],
+                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 2],
+                c="r",
+            )
+            ax2.plot(
+                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 3],
+                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 4],
+                c="b",
+            )
+
+            ax1.set_xlim([-1.5, 1.5])
+            ax1.set_ylim([-1.5, 1.5])
+
+            ax2.set_xlim([-1.5, 1.5])
+            ax2.set_ylim([-1.5, 1.5])
+
+            ax1.set_ylabel("Stim1")
+            ax1.set_title("Modality 1")
+            ax2.set_title("Modality 2")
+
+        ax1.set_aspect("equal", adjustable="box")
+        ax2.set_aspect("equal", adjustable="box")
+
+        ax1 = fig.add_subplot(3, 2, 3)
+        ax2 = fig.add_subplot(3, 2, 4)
+
+        if "stim2" in phase_dict.keys():
+            ax1.plot(
+                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 1],
+                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 2],
+                c="r",
+            )
+            ax2.plot(
+                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 3],
+                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 4],
+                c="b",
+            )
+
+            ax1.set_ylabel("Stim2")
+            ax1.set_xlim([-1.5, 1.5])
+            ax1.set_ylim([-1.5, 1.5])
+
+            ax2.set_xlim([-1.5, 1.5])
+            ax2.set_ylim([-1.5, 1.5])
+        ax1.set_aspect("equal", adjustable="box")
+        ax2.set_aspect("equal", adjustable="box")
+
+        ax1 = fig.add_subplot(3, 2, 5)
+        if "response" in phase_dict.keys():
+            ax1.plot(
+                outputs[phase_dict["response"][0] - 2 : phase_dict["response"][1], 1],
+                outputs[phase_dict["response"][0] - 2 : phase_dict["response"][1], 2],
+                c="r",
+            )
+            ax1.set_xlim([-1.5, 1.5])
+            ax1.set_ylim([-1.5, 1.5])
+            ax1.set_ylabel("Response")
+        ax1.set_aspect("equal", adjustable="box")
+
+        plt.suptitle(f"Trial: {self.task_name}")
+        plt.savefig(f"{plot_path}/{self.task_name}_radial.png")
 
     def reset(self):
         return super().reset()

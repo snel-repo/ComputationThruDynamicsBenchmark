@@ -1,5 +1,6 @@
 import logging
 import os
+import pickle
 
 import dotenv
 import h5py
@@ -14,6 +15,23 @@ from interpretability.task_modeling.datamodule.samplers import (
     RandomSampler,
     SequentialSampler,
 )
+
+
+def save_dict_to_pickle(dic, filename):
+    """
+    Save a dictionary to a pickle file.
+    """
+    with open(filename, "wb") as f:
+        pickle.dump(dic, f, pickle.HIGHEST_PROTOCOL)
+
+
+def load_dict_from_pickle(filename):
+    """
+    Load a dictionary from a pickle file.
+    """
+    with open(filename, "rb") as f:
+        return pickle.load(f)
+
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +85,13 @@ class TaskDataModule(pl.LightningDataModule):
     def prepare_data(self):
         hps = self.hparams
 
-        filename = f"{self.name}.h5"
-        fpath = os.path.join(DATA_HOME, filename)
-        # if os.path.isfile(fpath):
-        #     logger.info(f"Loading dataset {self.name}")
-        #     return
+        filename_h5 = f"{self.name}.h5"
+        filename_pkl = f"{self.name}.pkl"
+        fpath = os.path.join(DATA_HOME, filename_h5)
+        fpath_pkl = os.path.join(DATA_HOME, filename_pkl)
+        if os.path.isfile(fpath) and os.path.isfile(fpath_pkl):
+            logger.info(f"Loading dataset {self.name}")
+            return
         logger.info(f"Generating dataset {self.name}")
         # Simulate the task
         dataset_dict = self.data_env.generate_dataset(self.hparams.n_samples)
@@ -84,8 +104,6 @@ class TaskDataModule(pl.LightningDataModule):
         keys.remove("inputs")
         keys.remove("targets")
         keys.remove("ics")
-        self.all_data = dataset_dict
-
         # Standardize and record original mean and standard deviations
         # Perform data splits
         num_trials = ics_ds.shape[0]
@@ -108,9 +126,12 @@ class TaskDataModule(pl.LightningDataModule):
             h5file.create_dataset("train_inds", data=train_inds)
             h5file.create_dataset("valid_inds", data=valid_inds)
 
+        save_dict_to_pickle(dataset_dict, fpath_pkl)
+
     def setup(self, stage=None):
         # Load data arrays from file
         data_path = os.path.join(DATA_HOME, f"{self.name}.h5")
+        data_path_pkl = os.path.join(DATA_HOME, f"{self.name}.pkl")
         with h5py.File(data_path, "r") as h5file:
             train_ics = to_tensor(h5file["train_ics"][()])
             valid_ics = to_tensor(h5file["valid_ics"][()])
@@ -126,6 +147,7 @@ class TaskDataModule(pl.LightningDataModule):
             valid_inds = to_tensor(h5file["valid_inds"][()])
             # test_inds = to_tensor(h5file["test_inds"][()])
 
+        self.all_data = load_dict_from_pickle(data_path_pkl)
         # Store datasets
         self.train_ds = TensorDataset(
             train_ics, train_inputs, train_targets, train_inds

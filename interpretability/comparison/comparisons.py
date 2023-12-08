@@ -1,3 +1,4 @@
+import os
 import pickle
 
 import h5py
@@ -14,9 +15,132 @@ from sklearn.decomposition import PCA
 # import linear regression from SKLearn
 from sklearn.linear_model import LinearRegression
 
+from DSA import DSA
 from interpretability.comparison.fixedpoints import find_fixed_points
 
+
 #
+class MultiComparator:
+    def __init__(self, suffix):
+        self.task_train_wrapper = []
+        self.data_train_wrapper = []
+        self.env = []
+        self.tt_model = []
+        self.dt_model = []
+        self.simulator = []
+        self.tt_datamodule = []
+        self.dt_datamodule = []
+        self.suffix = suffix
+        self.plot_path = (
+            "/home/csverst/Github/InterpretabilityBenchmark/"
+            f"interpretability/comparison/plots/{suffix}/"
+        )
+        if not os.path.exists(self.plot_path):
+            os.makedirs(self.plot_path)
+
+        self.latents_path = (
+            "/home/csverst/Github/InterpretabilityBenchmark/"
+            "interpretability/comparison/latents/"
+        )
+        self.tt_fps = []
+        self.dt_fps = []
+        self.tt_names = []
+        self.dt_names = []
+
+    def load_task_train_wrapper(self, filepath):
+        # if self.task_train_wrapper is  empty, load the first one
+        with open(filepath + "model.pkl", "rb") as f:
+            wrapper = pickle.load(f)
+            self.task_train_wrapper.append(wrapper)
+        self.env.append(wrapper.task_env)
+        self.tt_model.append(wrapper.model)
+        with open(filepath + "datamodule.pkl", "rb") as f:
+            tt_datamodule = pickle.load(f)
+            tt_datamodule.prepare_data()
+            tt_datamodule.setup()
+            self.tt_datamodule.append(tt_datamodule)
+        with open(filepath + "simulator.pkl", "rb") as f:
+            self.simulator.append(pickle.load(f))
+        self.tt_names.append(filepath.split("/")[-2])
+
+    def load_data_train_wrapper(self, filepath):
+        with open(filepath + "model.pkl", "rb") as f:
+            self.data_train_wrapper.append(pickle.load(f))
+        self.dt_model.append(self.data_train_wrapper)
+        with open(filepath + "datamodule.pkl", "rb") as f:
+            self.dt_datamodule.append(pickle.load(f))
+        self.dt_names.append(filepath.split("/")[-2])
+
+    def get_tt_latents(self):
+        num_tt_models = len(self.tt_model)
+        tt_latents = []
+        for i in range(num_tt_models):
+            tt_model = self.tt_model[i]
+            tt_datamod = self.tt_datamodule[i]
+            tt_model.eval()
+            tt_train_ds = tt_datamod.train_ds
+            tt_val_ds = tt_datamod.valid_ds
+
+            tt_ics = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
+            tt_inputs = torch.vstack((tt_train_ds.tensors[1], tt_val_ds.tensors[1]))
+            tt_wrapper = self.task_train_wrapper[i]
+            tt_model_out, tt_latents_temp, tt_actions = tt_wrapper(tt_ics, tt_inputs)
+            tt_latents.append(tt_latents_temp.detach().numpy())
+
+        return tt_latents
+
+    def get_tt_latents_pca(self, num_PCs):
+        pca = PCA(n_components=num_PCs)
+        num_tt_models = len(self.tt_model)
+        tt_latents = self.get_tt_latents()
+        tt_latents_pca = []
+        for i in range(num_tt_models):
+            tt_latents_temp = tt_latents[i]
+            num_lats = tt_latents_temp.shape[-1]
+
+            tt_latents_temp = tt_latents_temp.reshape(-1, tt_latents_temp.shape[-1])
+            if num_lats < num_PCs:
+                # Pad with zeros to get to num_PCs
+                tt_latents_temp = np.pad(
+                    tt_latents_temp, ((0, 0), (0, num_PCs - num_lats)), "constant"
+                )
+            tt_latents_pca_temp = pca.fit_transform(tt_latents_temp)
+            tt_latents_pca_temp = tt_latents_pca_temp.reshape(
+                tt_latents[i].shape[0], tt_latents[i].shape[1], num_PCs
+            )
+            tt_latents_pca.append(tt_latents_pca_temp)
+        return tt_latents_pca
+
+    def perform_dsa(self, n_delays, rank, delay_interval, verbose, iters, lr, num_PCs):
+        # Compute latent activity from task trained model
+
+        # tt_latents = self.get_tt_latents_pca(num_PCs=num_PCs)
+        tt_latents = self.get_tt_latents()
+        similarities = np.zeros((len(self.tt_model), len(self.tt_model)))
+        for i in range(len(self.tt_model)):
+            for j in range(len(self.tt_model)):
+                tt_latents_1 = tt_latents[i]
+                tt_latents_2 = tt_latents[j]
+                dsa = DSA(
+                    X=tt_latents_1,
+                    Y=tt_latents_2,
+                    n_delays=n_delays,
+                    rank=rank,
+                    delay_interval=delay_interval,
+                    verbose=verbose,
+                    iters=iters,
+                    lr=lr,
+                )
+                similarities[i, j] = dsa.fit_score()
+                print(
+                    "Similarity between"
+                    f"{self.tt_names[i]} and"
+                    f"{self.tt_names[j]}:"
+                    f"{similarities[i,j]}"
+                )
+        print("Final Similarity")
+        print(similarities)
+        return similarities
 
 
 class Comparisons:
@@ -33,8 +157,10 @@ class Comparisons:
         self.suffix = suffix
         self.plot_path = (
             "/home/csverst/Github/InterpretabilityBenchmark/"
-            "interpretability/comparison/plots/"
+            f"interpretability/comparison/plots/{suffix}/"
         )
+        if not os.path.exists(self.plot_path):
+            os.makedirs(self.plot_path)
 
         self.latents_path = (
             "/home/csverst/Github/InterpretabilityBenchmark/"
@@ -62,6 +188,15 @@ class Comparisons:
         with open(filepath + "datamodule.pkl", "rb") as f:
             self.dt_datamodule = pickle.load(f)
 
+    def getTTLatentActivity(self):
+        self.tt_model.eval()
+        tt_train_ds = self.tt_datamodule.train_ds
+        tt_val_ds = self.tt_datamodule.valid_ds
+        tt_ics = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
+        tt_inputs = torch.vstack((tt_train_ds.tensors[1], tt_val_ds.tensors[1]))
+        _, tt_latents, _ = self.task_train_wrapper(tt_ics, tt_inputs)
+        return tt_latents
+
     def plotLatentActivity(self):
         # Compute latent activity from task trained model
         self.tt_model.eval()
@@ -70,9 +205,7 @@ class Comparisons:
         tt_ics = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
         tt_inputs = torch.vstack((tt_train_ds.tensors[1], tt_val_ds.tensors[1]))
         tt_outputs = torch.vstack((tt_train_ds.tensors[2], tt_val_ds.tensors[2]))
-        tt_model_out, tt_latents, tt_actions = self.task_train_wrapper(
-            tt_ics, tt_inputs
-        )
+        tt_model_out, tt_latents, _ = self.task_train_wrapper(tt_ics, tt_inputs)
         dt_train_ds = self.dt_datamodule.train_ds
         dt_val_ds = self.dt_datamodule.valid_ds
         dt_train_inds = dt_train_ds.tensors[4]
@@ -360,6 +493,45 @@ class Comparisons:
 
         return return_dict
 
+    def plotHandKinematics(self):
+        self.tt_model.eval()
+        tt_train_ds = self.tt_datamodule.train_ds
+        tt_val_ds = self.tt_datamodule.valid_ds
+        tt_ics = torch.vstack((tt_train_ds.tensors[0], tt_val_ds.tensors[0]))
+        tt_inputs = torch.vstack((tt_train_ds.tensors[1], tt_val_ds.tensors[1]))
+        tt_targets = torch.vstack((tt_train_ds.tensors[2], tt_val_ds.tensors[2]))
+        controlled, tt_latents, actions = self.task_train_wrapper(
+            tt_ics, tt_inputs, tt_targets
+        )
+        controlled = controlled.detach().numpy()
+        actions = actions.detach().numpy()
+        for i in range(10):
+            fig = plt.figure()
+            ax = fig.add_subplot(3, 1, 1)
+            # Make a yellow square at the target position
+            ax.plot(tt_targets[i, :, 0], tt_targets[i, :, 1], color="y", marker="s")
+            ax.plot(controlled[i, :, 0], controlled[i, :, 1])
+
+            ax.set_title(f"Trial {i}")
+            ax.set_xlim([-1.1, 1.1])
+            ax.set_ylim([-1.1, 1.1])
+            ax.set_aspect("equal", "box")
+
+            ax = fig.add_subplot(3, 1, 2)
+            ax.plot(np.diff(controlled[i, :, 0]), color="r", label="xVel")
+            ax.plot(np.diff(controlled[i, :, 1]), color="b", label="yVel")
+            ax.legend()
+
+            ax = fig.add_subplot(3, 1, 3)
+            ax.plot(actions[i, :, 0], color="r", label="M1")
+            ax.plot(actions[i, :, 1], color="b", label="M2")
+            ax.plot(actions[i, :, 2], color="g", label="M3")
+            ax.plot(actions[i, :, 3], color="k", label="M4")
+            # Legend aligned to right
+            ax.legend(loc="center right", bbox_to_anchor=(1, 0.5))
+
+            plt.savefig(self.plot_path + self.suffix + f"_trial_{i}.png")
+
     def saveComparisonDict(self):
         self.tt_model.eval()
         tt_train_ds = self.tt_datamodule.train_ds
@@ -564,6 +736,112 @@ class Comparisons:
         plt.savefig(f"{self.plot_path}{self.suffix}_trial{trial_num}_state_10.png")
         plt.savefig(f"{self.plot_path}{self.suffix}_trial{trial_num}_state_10.pdf")
 
+    def compute_TT_FPs_MultiTask(self, task_to_analyze, phase, plot_fps=False):
+        # Set model to Eval mode
+        self.tt_model.eval()
+
+        # Get the data from the datamodule
+        data_dict = self.tt_datamodule.all_data
+        ics = data_dict["ics"]
+        phase_dict = data_dict["phase_dict"]
+        task_names = data_dict["task_names"]
+        true_inputs = data_dict["true_inputs"]
+        readout = self.task_train_wrapper.model.readout
+
+        # find indices where task_to_analyze is the task
+        task_inds = [i for i, task in enumerate(task_names) if task == task_to_analyze]
+
+        # Get the inputs, ics, and phase_dict for the task
+        task_inputs = torch.Tensor(true_inputs[task_inds])
+        task_ics = torch.Tensor(ics[task_inds])
+        task_phase_dict = [
+            dict1 for i, dict1 in enumerate(phase_dict) if i in task_inds
+        ]
+
+        # Pass data through the model
+        tt_outputs, tt_latents, _ = self.task_train_wrapper(task_ics, task_inputs)
+
+        # Get the latents, inputs, and outputs for the phase of interest
+        task_ics_phase = []
+        task_inputs_phase = []
+        task_outputs_phase = []
+        tt_latents_phase = []
+        for i in range(len(task_phase_dict)):
+            phase_edges = task_phase_dict[i][phase]
+            task_ics_phase.append(task_ics[i][phase_edges[0] : phase_edges[1]])
+            task_inputs_phase.append(task_inputs[i][phase_edges[0] : phase_edges[1]])
+            task_outputs_phase.append(tt_outputs[i][phase_edges[0] : phase_edges[1]])
+            tt_latents_phase.append(tt_latents[i][phase_edges[0] : phase_edges[1]])
+
+        # Stack along first dimension
+        task_ics_phase = torch.vstack(task_ics_phase)
+        task_inputs_phase = torch.vstack(task_inputs_phase)
+        tt_outputs_phase = torch.vstack(task_outputs_phase)
+        tt_latents_phase = torch.vstack(tt_latents_phase)
+
+        # Compute the fixed points
+        tt_fps = find_fixed_points(
+            model=self.task_train_wrapper,
+            state_trajs=tt_latents_phase,
+            inputs=task_inputs_phase,
+            n_inits=1024,
+            noise_scale=0.1,
+            learning_rate=5e-3,
+            max_iters=10000,
+            device="cpu",
+            seed=0,
+            compute_jacobians=False,
+        )
+        self.tt_fps = tt_fps
+        q_vals = tt_fps.qstar
+
+        # Plot histogram of q values
+        if plot_fps:
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(1, 1, 1)
+            ax.hist(q_vals, bins=100)
+            ax.set_title("Histogram of Q values")
+            plt.savefig(self.plot_path + self.suffix + "_q_hist.png")
+
+        # PCA the latents
+        tt_fp_loc = tt_fps.xstar
+        tt_latents = tt_latents_phase.detach().numpy()
+        tt_outputs = tt_outputs_phase.detach().numpy()
+        tt_latents_flat = tt_latents.reshape(-1, tt_latents.shape[-1])
+        pca_tt = PCA(n_components=3)
+        tt_lats_pca = pca_tt.fit_transform(tt_latents_flat)
+        tt_fp_loc_pca = pca_tt.transform(tt_fp_loc)
+        tt_lats_pca = tt_lats_pca.reshape(tt_latents.shape[0], -1, 3)
+
+        # Get the projection onto the readout for the fps
+        tt_fp_readout = readout(torch.Tensor(tt_fp_loc))
+        if plot_fps:
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(1, 1, 1, projection="3d")
+            ax.scatter(
+                tt_fp_loc_pca[:, 0],
+                tt_fp_loc_pca[:, 1],
+                tt_fp_readout[:, 2],
+                # set color by q value
+                c=q_vals,
+                cmap="viridis",
+            )
+            ax.set_title("Task trained latents")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            maxXY = np.max(np.abs(tt_fp_loc_pca[:, :2]))
+            ax.set_xlim([-1.1 * maxXY, 1.1 * maxXY])
+            ax.set_ylim([-1.1 * maxXY, 1.1 * maxXY])
+            ax.set_zlim([-1.1, 1.1])
+            plt.savefig(
+                self.plot_path
+                + self.suffix
+                + f"_{task_to_analyze}_{phase}_latent_trajectories_fps.png"
+            )
+
+        return tt_fps, tt_fp_readout
+
     def computeFPs(self, input_conds=None):
         # Compute latent activity from task trained model
         self.tt_model.eval()
@@ -630,6 +908,7 @@ class Comparisons:
 
         self.tt_fps = tt_fps
         self.dt_fps = dt_fps
+        return tt_fps, dt_fps
 
     def compareFPs(self):
         tt_fps = self.tt_fps
@@ -879,7 +1158,7 @@ class Comparisons:
             state_trajs=panel1_lats,
             mode="tt",
             n_inits=4096,
-            noise_scale=0.01,
+            noise_scale=0.1,
             learning_rate=1e-2,
             tol_q=5e-6,
             tol_dq=1e-20,
@@ -899,7 +1178,7 @@ class Comparisons:
             state_trajs=phase_lats_tensor["stim1"],
             mode="tt",
             n_inits=4096,
-            noise_scale=0.01,
+            noise_scale=0.1,
             learning_rate=1e-2,
             tol_q=8e-6,
             tol_dq=1e-20,
@@ -919,7 +1198,7 @@ class Comparisons:
             state_trajs=phase_lats_tensor["response"],
             mode="tt",
             n_inits=4096,
-            noise_scale=0.01,
+            noise_scale=0.1,
             learning_rate=1e-2,
             tol_q=1e-4,
             tol_dq=1e-20,
@@ -1020,8 +1299,8 @@ class Comparisons:
                 yaxis_nticks=4,
                 yaxis_range=axis_limits,
                 zaxis_nticks=4,
-                zaxis_range=[-2, 2],
-                aspectmode="cube",  # This makes the aspect ratio of the plot cubic
+                zaxis_range=[-1.1, 1.1],
+                # aspectmode="cube",  # This makes the aspect ratio of the plot cubic
                 row=1,
                 col=i + 1,
             )
@@ -1048,6 +1327,8 @@ class Comparisons:
         # Save as interactive HTML
         fig.show()
         fig.write_html(f"{self.plot_path}{self.suffix}_tt_fps.html")
+        # Save as png
+        fig.write_image(f"{self.plot_path}{self.suffix}_tt_fps.png")
 
     def interpolate_FPs_MultiTask(self):
         # Compute latent activity from task trained model
@@ -1203,3 +1484,84 @@ class Comparisons:
 
         # Save as HTML
         fig.write_html(f"{self.plot_path}{self.suffix}_tt_fps_interp.html")
+
+
+class Comparator_TT:
+    # TODO
+    def __init__(self, suffix):
+        self.task_train_wrapper_1 = None
+        self.task_train_wrapper_2 = None
+        self.env_1 = None
+        self.env_2 = None
+        self.tt_model_1 = None
+        self.tt_model_2 = None
+        self.tt_datamodule_1 = None
+        self.tt_datamodule_2 = None
+        self.suffix = suffix
+        self.plot_path = (
+            "/home/csverst/Github/InterpretabilityBenchmark/"
+            f"interpretability/comparison/plots/{suffix}/"
+        )
+
+        self.latents_path = (
+            "/home/csverst/Github/InterpretabilityBenchmark/"
+            "interpretability/comparison/latents/"
+        )
+        self.tt_fps_1 = None
+        self.tt_fps_2 = None
+
+    def load_task_train_wrapper_1(self, filepath):
+        with open(filepath + "model.pkl", "rb") as f:
+            self.task_train_wrapper_1 = pickle.load(f)
+        self.env_1 = self.task_train_wrapper_1.task_env
+        self.tt_model_1 = self.task_train_wrapper_1.model
+        with open(filepath + "datamodule.pkl", "rb") as f:
+            self.tt_datamodule_1 = pickle.load(f)
+            self.tt_datamodule_1.prepare_data()
+            self.tt_datamodule_1.setup()
+
+    def load_task_train_wrapper_2(self, filepath):
+        with open(filepath + "model.pkl", "rb") as f:
+            self.task_train_wrapper_2 = pickle.load(f)
+        self.env_2 = self.task_train_wrapper_2.task_env
+        self.tt_model_2 = self.task_train_wrapper_2.model
+        with open(filepath + "datamodule.pkl", "rb") as f:
+            self.tt_datamodule_2 = pickle.load(f)
+            self.tt_datamodule_2.prepare_data()
+            self.tt_datamodule_2.setup()
+
+    def perform_dsa(self):
+        # Compute latent activity from task trained model
+
+        self.tt_model_1.eval()
+        tt_train_ds_1 = self.tt_datamodule_1.train_ds
+        tt_val_ds_1 = self.tt_datamodule_1.valid_ds
+        tt_ics_1 = torch.vstack((tt_train_ds_1.tensors[0], tt_val_ds_1.tensors[0]))
+        tt_inputs_1 = torch.vstack((tt_train_ds_1.tensors[1], tt_val_ds_1.tensors[1]))
+        tt_model_out_1, tt_latents_1, tt_actions_1 = self.task_train_wrapper_1(
+            tt_ics_1, tt_inputs_1
+        )
+        tt_latents_1 = tt_latents_1.detach().numpy()
+
+        self.tt_model_2.eval()
+        tt_train_ds_2 = self.tt_datamodule_2.train_ds
+        tt_val_ds_2 = self.tt_datamodule_2.valid_ds
+        tt_ics_2 = torch.vstack((tt_train_ds_2.tensors[0], tt_val_ds_2.tensors[0]))
+        tt_inputs_2 = torch.vstack((tt_train_ds_2.tensors[1], tt_val_ds_2.tensors[1]))
+        tt_model_out_2, tt_latents_2, tt_actions_2 = self.task_train_wrapper_2(
+            tt_ics_2, tt_inputs_2
+        )
+        tt_latents_2 = tt_latents_2.detach().numpy()
+
+        dsa = DSA(
+            X=tt_latents_1,
+            Y=tt_latents_2,
+            n_delays=10,
+            rank=30,
+            delay_interval=5,
+            verbose=True,
+            iters=1000,
+            lr=1e-2,
+        )
+        similarities = dsa.fit_score()
+        return similarities

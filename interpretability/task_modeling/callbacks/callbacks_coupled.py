@@ -54,10 +54,19 @@ class LatentTrajectoryPlot(pl.Callback):
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()
+        ics_train = torch.cat([batch[0] for batch in train_dataloader]).to(
+            pl_module.device
+        )
         inputs_train = torch.cat([batch[1] for batch in train_dataloader]).to(
             pl_module.device
         )
-        _, lats_train = pl_module.forward(inputs_train)
+        targets_train = torch.cat([batch[2] for batch in train_dataloader]).to(
+            pl_module.device
+        )
+
+        controlled, lats_train, actions = pl_module.forward(
+            ics_train, inputs_train, targets_train
+        )
 
         lats_train = lats_train.detach().cpu().numpy()
         n_trials, n_times, n_lat_dim = lats_train.shape
@@ -115,23 +124,35 @@ class MotorNetVideoGeneration(pl.Callback):
                 # Create a figure
                 fig, ax = plt.subplots(figsize=(3, 3))
 
-                # Plot hand position as a yellow dot
-                ax.scatter(
-                    controlled[i, t, 0].item(),
-                    controlled[i, t, 1].item(),
-                    color="yellow",
-                )
-
                 # Plot target position as a red square
                 target = patches.Rectangle(
-                    (targets[i, t, 0].item(), targets[i, t, 1].item()),
+                    (targets[i, t, 0].item() - 0.05, targets[i, t, 1].item() - 0.05),
                     0.1,
                     0.1,
                     color="red",
                 )
                 ax.add_patch(target)
+
+                # Plot hand position as a yellow dot
+                ax.scatter(
+                    controlled[i, t, 0].item(),
+                    controlled[i, t, 1].item(),
+                    color="black",
+                )
+
+                # Draw a dashed line from the start position to the current position
+                ax.plot(
+                    controlled[i, :t, 0].detach().cpu().numpy(),
+                    controlled[i, :t, 1].detach().cpu().numpy(),
+                    color="black",
+                    linestyle="--",
+                )
+
                 ax.set_xlim(-1, 1)
                 ax.set_ylim(-1, 1)
+
+                ax.set_xticks([])
+                ax.set_yticks([])
 
                 # Save figure to a numpy array
                 fig.canvas.draw()

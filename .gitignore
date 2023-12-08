@@ -36,6 +36,8 @@ MANIFEST
 *.mat
 *.p
 *.pyc
+*.html
+*.svg
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

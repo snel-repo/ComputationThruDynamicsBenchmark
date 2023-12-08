@@ -22,14 +22,12 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = False  # Set to True to run locally (for debugging)
+LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "MT_GRU_RNN_256D_32Targets_Test"  # For WandB and run dir
-NUM_SAMPLES = (
-    1  # If doing random (non-grid) hyperparameter search, how many samples to run
-)
-TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
-MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
+RUN_DESC = "RandomTargetDelay_NODE20D_v2"  # For WandB and run dir
+NUM_SAMPLES = 1  # For HP search
+TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
+MODEL = "NODE"  # Model to train (see configs/model for options)
 
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
@@ -41,16 +39,20 @@ RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([256]),
+        latent_size=tune.grid_search([20]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.grid_search([1e-3]),
-        weight_decay=tune.grid_search([1e-6]),
+        learning_rate=tune.grid_search([5e-3]),
+        weight_decay=tune.grid_search([0]),
     ),
+    # task_env = dict(
+    # grouped_sampler = tune.grid_search([False]),
+    # noise = tune.grid_search([0.15]),
+    # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.grid_search([300]),
+        max_epochs=tune.grid_search([500]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

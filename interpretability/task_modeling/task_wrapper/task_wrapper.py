@@ -48,14 +48,16 @@ class TaskTrainedWrapper(pl.LightningModule):
         return optimizer
 
     def forward(self, ics, inputs, targets=None):
-        terminated = False
+
         # Pass data through the model
         batch_size = ics.shape[0]
+
         # If we are in a coupled environment, set the environment state
         if self.task_env.coupled_env:
             env_states, info = self.task_env.reset(
                 batch_size=batch_size, ic_state=ics, target_state=targets[:, 0, :]
             )
+
         # Set the model's initial hidden state
         if hasattr(self.model, "init_hidden"):
             hidden = self.model.init_hidden(batch_size=batch_size).to(self.device)
@@ -68,13 +70,16 @@ class TaskTrainedWrapper(pl.LightningModule):
         actions = []
 
         count = 0
+        terminated = False
         while not terminated and len(controlled) < self.task_env.n_timesteps:
+
             # Get the appropriate model input for coupled and decoupled envs
             if self.task_env.coupled_env:
-                model_input = env_states
+                model_input = torch.hstack((env_states, inputs[:, count, :]))
             else:
                 model_input = inputs[:, count, :]
-            # Run the modelon the input
+
+            # Run the model on the input
             action, hidden = self.model(model_input, hidden)
 
             # If we are in a coupled environment, step the environment
@@ -85,12 +90,15 @@ class TaskTrainedWrapper(pl.LightningModule):
                 )
                 controlled.append(info["states"][self.state_label])
                 actions.append(action)
+
             # If we are in a decoupled environment, just record the action
             else:
                 controlled.append(action)
                 actions.append(action)
+
             latents.append(hidden)
             count += 1
+
         controlled = torch.stack(controlled, dim=1)
         latents = torch.stack(latents, dim=1)
         actions = torch.stack(actions, dim=1)

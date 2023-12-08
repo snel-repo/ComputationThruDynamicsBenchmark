@@ -1,6 +1,6 @@
-_target_: interpretability.task_modeling.task_wrapper.decoupled.TaskTrainedDecoupled
+_target_: interpretability.task_modeling.task_wrapper.task_wrapper.TaskTrainedWrapper
 learning_rate: 5.0e-3
 weight_decay: 1.0e-5
 
 loss_func:
-  _target_: torch.nn.MSELoss
+  _target_: interpretability.task_modeling.model.modules.loss_func.MatchTargetLossMSE

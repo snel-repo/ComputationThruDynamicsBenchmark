@@ -1,5 +1,5 @@
 _target_: interpretability.task_modeling.datamodule.task_datamodule.TaskDataModule
-n_samples: 500
+n_samples: 1000
 seed: 0
-batch_size: 200
+batch_size: 256
 num_workers: 4

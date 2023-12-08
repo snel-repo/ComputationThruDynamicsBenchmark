@@ -12,3 +12,7 @@ tune_report_callback:
 state_transition_callback:
   _target_: interpretability.task_modeling.callbacks.callbacks_multitask.StateTransitionCallback
   log_every_n_epochs: 20
+
+performance_callback:
+  _target_: interpretability.task_modeling.callbacks.callbacks_multitask.MultiTaskPerformanceCallback
+  log_every_n_epochs: 20

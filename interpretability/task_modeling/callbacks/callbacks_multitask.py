@@ -13,6 +13,27 @@ from sklearn.decomposition import PCA
 DATA_HOME = "/home/csverst/Documents/tempData/"
 
 
+def angle_diff(angle1, angle2):
+    """
+    Calculate the smallest angle between two angles.
+
+    Args:
+    angle1 (float): The first angle in degrees.
+    angle2 (float): The second angle in degrees.
+
+    Returns:
+    float: The smallest angle between angle1 and angle2 in degrees.
+    """
+    # Calculate the difference in angles and take modulo 360
+    diff = (angle2 - angle1) % 2 * np.pi
+
+    # Adjust the difference to ensure it's the smallest angle
+    if diff > np.pi:
+        diff -= 2 * np.pi
+
+    return abs(diff)
+
+
 def sigmoidActivation(module, input):
     return 1 / (1 + module.exp(-1 * input))
 
@@ -141,6 +162,74 @@ class StateTransitionCallback(pl.Callback):
             "state_plot", im, trainer.global_step, dataformats="HWC"
         )
         logger.log({"state_plot": wandb.Image(fig), "global_step": trainer.global_step})
+
+
+class MultiTaskPerformanceCallback(pl.Callback):
+    def __init__(self, log_every_n_epochs=100, plot_n_trials=20):
+
+        self.log_every_n_epochs = log_every_n_epochs
+        self.plot_n_trials = plot_n_trials
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+        # Get trajectories and model predictions
+
+        # Get the data from the datamodule
+        data_dict = trainer.datamodule.all_data
+        ics = data_dict["ics"]
+        phase_dict = data_dict["phase_dict"]
+        task_names = data_dict["task_names"]
+        targets = data_dict["targets"]
+        inputs = data_dict["inputs"]
+
+        logger = trainer.loggers[2].experiment
+        percent_success = np.zeros(len(trainer.datamodule.data_env.task_list_str))
+        # find indices where task_to_analyze is the task
+        for task_num, task_to_analyze in enumerate(
+            trainer.datamodule.data_env.task_list_str
+        ):
+            task_inds = [
+                i for i, task in enumerate(task_names) if task == task_to_analyze
+            ]
+
+            # Get the inputs, ics, and phase_dict for the task
+            task_inputs = torch.Tensor(inputs[task_inds]).to(pl_module.device)
+            task_ics = torch.Tensor(ics[task_inds]).to(pl_module.device)
+            task_targets = torch.Tensor(targets[task_inds])
+            task_phase_dict = [
+                dict1 for i, dict1 in enumerate(phase_dict) if i in task_inds
+            ]
+
+            # Pass data through the model
+            tt_outputs, tt_latents, _ = pl_module.forward(task_ics, task_inputs)
+            tt_outputs = tt_outputs.detach().cpu()
+            task_targets = task_targets.detach().cpu()
+
+            perf = np.zeros(len(task_phase_dict))
+            for i in range(len(task_phase_dict)):
+                response_edges = task_phase_dict[i]["response"]
+                response_len = response_edges[1] - response_edges[0]
+                response_val = tt_outputs[
+                    i, response_edges[0] + response_len // 2 : response_edges[1], 1:
+                ]
+                mean_response = torch.mean(response_val, dim=0)
+                mean_angle = torch.atan2(mean_response[1], mean_response[0])
+                response_target = task_targets[
+                    i, response_edges[0] + response_len // 2 : response_edges[1], 1:
+                ]
+                mean_target = torch.mean(response_target, dim=0)
+                mean_target_angle = torch.atan2(mean_target[1], mean_target[0])
+                perf[i] = angle_diff(mean_angle, mean_target_angle)
+            percent_success = np.sum(perf < (np.pi / 10)) / len(perf)
+            # Log percent success to wandb
+            logger.log(
+                {
+                    f"success_rate/{task_to_analyze}": percent_success,
+                    "global_step": trainer.global_step,
+                }
+            )
 
 
 class TrajectoryPlotOverTimeCallback(pl.Callback):
