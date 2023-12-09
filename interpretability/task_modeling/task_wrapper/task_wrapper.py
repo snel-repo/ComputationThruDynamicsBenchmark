@@ -32,7 +32,9 @@ class TaskTrainedWrapper(pl.LightningModule):
 
     def set_environment(self, task_env: Env):
         self.task_env = task_env
-        self.input_size = task_env.observation_space.shape[0]
+        self.input_size = (
+            task_env.goal_space.shape[0] + task_env.observation_space.shape[0]
+        )
         self.output_size = task_env.action_space.shape[0]
 
     def set_model(self, model: nn.Module):
@@ -57,6 +59,10 @@ class TaskTrainedWrapper(pl.LightningModule):
             env_states, info = self.task_env.reset(
                 batch_size=batch_size, ic_state=ics, target_state=targets[:, 0, :]
             )
+            env_state_list = []
+        else:
+            env_states = None
+            env_state_list = None
 
         # Set the model's initial hidden state
         if hasattr(self.model, "init_hidden"):
@@ -72,16 +78,13 @@ class TaskTrainedWrapper(pl.LightningModule):
         count = 0
         terminated = False
         while not terminated and len(controlled) < self.task_env.n_timesteps:
-
             # Get the appropriate model input for coupled and decoupled envs
             if self.task_env.coupled_env:
                 model_input = torch.hstack((env_states, inputs[:, count, :]))
             else:
                 model_input = inputs[:, count, :]
-
             # Run the model on the input
             action, hidden = self.model(model_input, hidden)
-
             # If we are in a coupled environment, step the environment
             if self.task_env.coupled_env:
                 self.task_env.set_goal(targets[:, count, :])
@@ -90,31 +93,40 @@ class TaskTrainedWrapper(pl.LightningModule):
                 )
                 controlled.append(info["states"][self.state_label])
                 actions.append(action)
-
+                env_state_list.append(env_states)
             # If we are in a decoupled environment, just record the action
             else:
                 controlled.append(action)
                 actions.append(action)
-
             latents.append(hidden)
             count += 1
-
         controlled = torch.stack(controlled, dim=1)
         latents = torch.stack(latents, dim=1)
         actions = torch.stack(actions, dim=1)
-        return controlled, latents, actions
+        if self.task_env.coupled_env:
+            states = torch.stack(env_state_list, dim=1)
+        else:
+            states = None
+
+        output_dict = {
+            "controlled": controlled,
+            "latents": latents,
+            "actions": actions,
+            "states": states,
+        }
+        return output_dict
 
     def training_step(self, batch, batch_ix):
         ics = batch[0]
         inputs = batch[1]
         targets = batch[2]
         # Pass data through the model
-        controlled, latents, actions = self.forward(ics, inputs, targets)
+        output_dict = self.forward(ics, inputs, targets)
         # Compute the weighted loss
         loss_dict = {
-            "controlled": controlled,
+            "controlled": output_dict["controlled"],
+            "actions": output_dict["actions"],
             "targets": targets,
-            "actions": actions,
             "inputs": inputs,
         }
         loss_all = self.loss_func(loss_dict)
@@ -126,11 +138,12 @@ class TaskTrainedWrapper(pl.LightningModule):
         inputs = batch[1]
         targets = batch[2]
         # Pass data through the model
-        controlled, latents, actions = self.forward(ics, inputs, targets)
+        output_dict = self.forward(ics, inputs, targets)
+        # Compute the weighted loss
         loss_dict = {
-            "controlled": controlled,
+            "controlled": output_dict["controlled"],
+            "actions": output_dict["actions"],
             "targets": targets,
-            "actions": actions,
             "inputs": inputs,
         }
         loss_all = self.loss_func(loss_dict)

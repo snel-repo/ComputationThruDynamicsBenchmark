@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "RandomTargetDelay_NODE20D_v2"  # For WandB and run dir
+RUN_DESC = "RTDelay_2SecTrials_GoCue_v3"  # For WandB and run dir
 NUM_SAMPLES = 1  # For HP search
 TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
 MODEL = "NODE"  # Model to train (see configs/model for options)

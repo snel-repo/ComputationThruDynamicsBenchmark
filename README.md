@@ -37,6 +37,15 @@ To see what tasks can specifically be implemented, look in the config files for 
 5. task_env: Task logic and data generation pipelines for each task.
 6. task_wrapper: The class that collects all of the required components above, performs training and validation loops, configures optimizers etc.
 
+### Simulation:
+TODO
+
+### Data-Training:
+TODO
+
+### Comparisons:
+MOST TODO, but as I am envisioning it, it will be a Comparator object which will load in TT and DT models, then perform comparisons like DSA, FP analysis, etc. within it, rather than relying on external scripts.
+
 
 ## Contributing
 Talk to me!

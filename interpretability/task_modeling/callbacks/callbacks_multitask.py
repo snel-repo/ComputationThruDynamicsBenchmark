@@ -101,8 +101,11 @@ class StateTransitionCallback(pl.Callback):
         targets = torch.cat([batch[2] for batch in dataloader]).to(pl_module.device)
 
         logger = trainer.loggers[2].experiment
+
         # Pass the data through the model
-        controlled, lats, _ = pl_module.forward(ics, inputs)
+        output_dict = pl_module.forward(ics, inputs)
+        controlled = output_dict["controlled"]
+
         # Create plots for different cases
         fig, axes = plt.subplots(
             nrows=3,
@@ -203,7 +206,9 @@ class MultiTaskPerformanceCallback(pl.Callback):
             ]
 
             # Pass data through the model
-            tt_outputs, tt_latents, _ = pl_module.forward(task_ics, task_inputs)
+            output_dict = pl_module.forward(task_ics, task_inputs)
+            tt_outputs = output_dict["controlled"]
+
             tt_outputs = tt_outputs.detach().cpu()
             task_targets = task_targets.detach().cpu()
 
@@ -247,7 +252,9 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         dataloader = trainer.datamodule.val_dataloader()
         ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
-        trajs_out, _, _ = pl_module.forward(ics, inputs)
+        output_dict = pl_module.forward(ics, inputs)
+        trajs_out = output_dict["controlled"]
+
         # Plot the true and predicted trajectories
         trial_vec = torch.tensor(
             np.random.randint(0, trajs_out.shape[0], self.num_trials_to_plot)
@@ -294,8 +301,9 @@ class LatentTrajectoryPlot(pl.Callback):
         inputs_train = torch.cat([batch[1] for batch in train_dataloader]).to(
             pl_module.device
         )
-        _, lats_train, _ = pl_module.forward(ics_train, inputs_train)
+        output_dict = pl_module.forward(ics_train, inputs_train)
 
+        lats_train = output_dict["latents"]
         lats_train = lats_train.detach().cpu().numpy()
         n_trials, n_times, n_lat_dim = lats_train.shape
         if n_lat_dim > 3:

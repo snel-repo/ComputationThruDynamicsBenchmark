@@ -64,9 +64,9 @@ class LatentTrajectoryPlot(pl.Callback):
             pl_module.device
         )
 
-        controlled, lats_train, actions = pl_module.forward(
-            ics_train, inputs_train, targets_train
-        )
+        output_dict = pl_module.forward(ics_train, inputs_train, targets_train)
+
+        lats_train = output_dict["latents"]
 
         lats_train = lats_train.detach().cpu().numpy()
         n_trials, n_times, n_lat_dim = lats_train.shape
@@ -94,7 +94,7 @@ class LatentTrajectoryPlot(pl.Callback):
 
 
 class MotorNetVideoGeneration(pl.Callback):
-    def __init__(self, log_every_n_epochs=100, num_trials_to_plot=5):
+    def __init__(self, log_every_n_epochs=100, num_trials_to_plot=10):
 
         self.log_every_n_epochs = log_every_n_epochs
         self.num_trials_to_plot = num_trials_to_plot
@@ -111,7 +111,9 @@ class MotorNetVideoGeneration(pl.Callback):
         inputs = batch[1].to(pl_module.device)
         targets = batch[2].to(pl_module.device)
 
-        controlled, latents, actions = pl_module.forward(ics, inputs, targets)
+        output_dict = pl_module.forward(ics, inputs, targets)
+
+        controlled = output_dict["controlled"]
 
         B, T, N = controlled.shape
 
@@ -124,14 +126,29 @@ class MotorNetVideoGeneration(pl.Callback):
                 # Create a figure
                 fig, ax = plt.subplots(figsize=(3, 3))
 
-                # Plot target position as a red square
-                target = patches.Rectangle(
-                    (targets[i, t, 0].item() - 0.05, targets[i, t, 1].item() - 0.05),
-                    0.1,
-                    0.1,
-                    color="red",
-                )
-                ax.add_patch(target)
+                input_temp = inputs[i, t, :].detach().cpu().numpy()
+                # if input_temp is all zeros
+                if input_temp.sum() != 0:
+                    # Plot as a green square
+                    input_patch = patches.Rectangle(
+                        (inputs[i, t, 0].item() - 0.05, inputs[i, t, 1].item() - 0.05),
+                        0.1,
+                        0.1,
+                        color="red",
+                    )
+                    ax.add_patch(input_patch)
+
+                    # Plot target position as a red square
+                    target = patches.Rectangle(
+                        (
+                            targets[i, t, 0].item() - 0.05,
+                            targets[i, t, 1].item() - 0.05,
+                        ),
+                        0.1,
+                        0.1,
+                        color="green",
+                    )
+                    ax.add_patch(target)
 
                 # Plot hand position as a yellow dot
                 ax.scatter(

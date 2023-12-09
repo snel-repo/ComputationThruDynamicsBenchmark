@@ -45,8 +45,9 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.dataset_name = f"{n}BFF"
         self.action_space = spaces.Box(low=-0.5, high=1.5, shape=(n,), dtype=np.float32)
         self.observation_space = spaces.Box(
-            low=-0.5, high=1.5, shape=(n,), dtype=np.float32
+            low=-1.5, high=1.5, shape=(n,), dtype=np.float32
         )
+        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
         self.n = n
         self.state = np.zeros(n)
         self.input_labels = [f"Input {i}" for i in range(n)]
@@ -134,6 +135,7 @@ class SimonSays(DecoupledEnvironment):
         self.observation_space = spaces.Box(
             low=-2, high=2, shape=(5,), dtype=np.float32
         )
+        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
         self.input_labels = ["targX", "targY", "delay", "go", "isFIFO"]
         self.output_labels = ["Reach0", "Reach1"]
         self.noise = noise
@@ -264,6 +266,7 @@ class ReadySetGoTask(DecoupledEnvironment):
         self.observation_space = spaces.Box(
             low=-0.5, high=1.5, shape=(4,), dtype=np.float32
         )
+        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
         self.input_labels = ["ShortPrior", "EyeTrial", "ReachDir", "PulseLine"]
         self.output_labels = ["Reach0", "Reach1"]
         self.noise = noise
@@ -377,6 +380,7 @@ class RandomTargetReach(Environment):
         self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
         self.output_labels = ["M1", "M2", "M3", "M4"]
         self.coupled_env = True
+        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
 
     def generate_dataset(self, n_samples):
         initial_state = []
@@ -592,6 +596,7 @@ class RandomTargetDelay(Environment):
         self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
         self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
         self.output_labels = ["M1", "M2", "M3", "M4"]
+        self.goal_space = spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float32)
         self.coupled_env = True
 
     def generate_dataset(self, n_samples):
@@ -599,7 +604,9 @@ class RandomTargetDelay(Environment):
         inputs = np.zeros((n_samples, self.n_timesteps, 2))
         goal_list = []
         for i in range(n_samples):
-            target_on = np.random.randint(10, self.n_timesteps / 3)
+            target_on = np.random.randint(10, 30)
+            go_cue = np.random.randint(target_on, self.n_timesteps)
+
             obs, info = self.reset()
             initial_state.append(torch.squeeze(info["states"]["joint"]))
 
@@ -607,9 +614,9 @@ class RandomTargetDelay(Environment):
                 torch.squeeze(info["states"]["joint"])
             ).chunk(2, dim=-1)[0]
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
-            goal_matrix[:target_on, :2] = initial_state_xy
-            goal_matrix[target_on:, :2] = torch.squeeze(info["goal"])
-            inputs[i, :, 0] = torch.squeeze(info["goal"])[:, 0]
+            goal_matrix[:go_cue, :2] = initial_state_xy
+            goal_matrix[go_cue:, :2] = torch.squeeze(info["goal"])
+            inputs[i, target_on:, :] = info["goal"]
             goal_list.append(goal_matrix)
 
         initial_state = torch.stack(initial_state, axis=0)

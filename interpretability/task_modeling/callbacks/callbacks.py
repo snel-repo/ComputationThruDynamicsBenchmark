@@ -81,7 +81,9 @@ class StateTransitionCallback(pl.Callback):
 
         logger = trainer.loggers[2].experiment
         # Pass the data through the model
-        controlled, lats, _ = pl_module.forward(ics, inputs)
+        output_dict = pl_module.forward(ics, inputs)
+        controlled = output_dict["controlled"]
+
         # Create plots for different cases
         fig, axes = plt.subplots(
             nrows=3,
@@ -143,7 +145,9 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         dataloader = trainer.datamodule.val_dataloader()
         ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
-        trajs_out, _, _ = pl_module.forward(ics, inputs)
+        output_dict = pl_module.forward(ics, inputs)
+        trajs_out = output_dict["controlled"]
+
         # Plot the true and predicted trajectories
         trial_vec = torch.tensor(
             np.random.randint(0, trajs_out.shape[0], self.num_trials_to_plot)
@@ -190,7 +194,8 @@ class LatentTrajectoryPlot(pl.Callback):
         inputs_train = torch.cat([batch[1] for batch in train_dataloader]).to(
             pl_module.device
         )
-        _, lats_train, _ = pl_module.forward(ics_train, inputs_train)
+        output_dict = pl_module.forward(ics_train, inputs_train)
+        lats_train = output_dict["latents"]
 
         lats_train = lats_train.detach().cpu().numpy()
         n_trials, n_times, n_lat_dim = lats_train.shape
@@ -251,18 +256,23 @@ class SimonSaysCondAvgLats(pl.Callback):
 
         # Get trajectories and model predictions
 
-        _, lats_queue_fwd = pl_module.forward(
+        output_dict_qf = pl_module.forward(
             torch.Tensor(queue_input_fwd).to(pl_module.device)
         )
-        _, lats_stack_fwd = pl_module.forward(
+        output_dict_sf = pl_module.forward(
             torch.Tensor(stack_input_fwd).to(pl_module.device)
         )
-        _, lats_queue_rev = pl_module.forward(
+        output_dict_qb = pl_module.forward(
             torch.Tensor(queue_input_rev).to(pl_module.device)
         )
-        _, lats_stack_rev = pl_module.forward(
+        output_dict_sb = pl_module.forward(
             torch.Tensor(stack_input_rev).to(pl_module.device)
         )
+
+        lats_queue_fwd = output_dict_qf["latents"]
+        lats_stack_fwd = output_dict_sf["latents"]
+        lats_queue_rev = output_dict_qb["latents"]
+        lats_stack_rev = output_dict_sb["latents"]
 
         delay_inp = 2
         go_inp = 3

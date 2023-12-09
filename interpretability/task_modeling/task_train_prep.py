@@ -76,7 +76,7 @@ def train(
         config_all["model"], _convert_="all"
     )
     n_outputs = task_env.action_space.shape[0]
-    n_inputs = task_env.observation_space.shape[0]
+    n_inputs = task_env.observation_space.shape[0] + task_env.goal_space.shape[0]
     model.init_model(n_inputs, n_outputs)
 
     # -----------------------------Instantiate task-wrapper----------------------------
