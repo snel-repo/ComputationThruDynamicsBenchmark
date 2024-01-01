@@ -79,7 +79,7 @@ class StateTransitionCallback(pl.Callback):
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
         targets = torch.cat([batch[2] for batch in dataloader]).to(pl_module.device)
 
-        logger = trainer.loggers[2].experiment
+        logger = get_wandb_logger(trainer.loggers)
         # Pass the data through the model
         output_dict = pl_module.forward(ics, inputs)
         controlled = output_dict["controlled"]
@@ -147,6 +147,7 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
         output_dict = pl_module.forward(ics, inputs)
         trajs_out = output_dict["controlled"]
+        logger = get_wandb_logger(trainer.loggers)
 
         # Plot the true and predicted trajectories
         trial_vec = torch.tensor(
@@ -167,7 +168,7 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         ax.legend()
         # Log the plot to tensorboard
         im = fig_to_rgb_array(fig)
-        trainer.logger.experiment[0].add_image(
+        logger.add_image(
             "trajectory_plot_over_time", im, trainer.global_step, dataformats="HWC"
         )
 
@@ -184,7 +185,7 @@ class LatentTrajectoryPlot(pl.Callback):
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
 
-        logger = trainer.loggers[2].experiment
+        logger = get_wandb_logger(trainer.loggers)
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()

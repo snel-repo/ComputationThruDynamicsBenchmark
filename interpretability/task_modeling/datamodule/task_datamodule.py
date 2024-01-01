@@ -11,10 +11,10 @@ from gymnasium import Env
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 
-from interpretability.task_modeling.datamodule.samplers import (
-    RandomSampler,
-    SequentialSampler,
-)
+# from interpretability.task_modeling.datamodule.samplers import (
+#     RandomSampler,
+#     SequentialSampler,
+# )
 
 
 def save_dict_to_pickle(dic, filename):
@@ -75,12 +75,12 @@ class TaskDataModule(pl.LightningDataModule):
         self.output_labels = self.data_env.output_labels
         if hasattr(self.data_env, "extra"):
             self.extra = self.data_env.extra
-        if hasattr(self.data_env, "sampler"):
-            self.sampler_func = data_env.sampler
-            self.val_sampler_func = SequentialSampler
-        else:
-            self.sampler_func = RandomSampler
-            self.val_sampler_func = SequentialSampler
+        # if hasattr(self.data_env, "sampler"):
+        #     self.sampler_func = data_env.sampler
+        #     self.val_sampler_func = SequentialSampler
+        # else:
+        #     self.sampler_func = RandomSampler
+        #     self.val_sampler_func = SequentialSampler
 
     def prepare_data(self):
         hps = self.hparams
@@ -155,18 +155,19 @@ class TaskDataModule(pl.LightningDataModule):
         self.valid_ds = TensorDataset(
             valid_ics, valid_inputs, valid_targets, valid_inds
         )
-        self.train_sampler = self.sampler_func(
-            data_source=self.train_ds, num_samples=self.hparams.batch_size
-        )
-        self.valid_sampler = self.val_sampler_func(
-            data_source=self.valid_ds, num_samples=self.hparams.batch_size
-        )
+        # self.train_sampler = self.sampler_func(
+        #     data_source=self.train_ds, num_samples=self.hparams.batch_size
+        # )
+        # self.valid_sampler = self.val_sampler_func(
+        #     data_source=self.valid_ds, num_samples=self.hparams.batch_size
+        # )
         # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 
     def train_dataloader(self, shuffle=True):
         train_dl = DataLoader(
             self.train_ds,
-            batch_sampler=self.train_sampler,
+            # batch_sampler=self.train_sampler,
+            batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             # shuffle=shuffle,
         )
@@ -175,7 +176,8 @@ class TaskDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         valid_dl = DataLoader(
             self.valid_ds,
-            batch_sampler=self.valid_sampler,
+            # batch_sampler=self.valid_sampler,
+            batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
         )
         return valid_dl

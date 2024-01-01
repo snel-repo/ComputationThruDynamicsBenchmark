@@ -8,7 +8,7 @@ import torch
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 
-from interpretability.comparison.comparisons import Comparisons
+from interpretability.comparison.analysis import Comparisons
 
 # plt.ion()
 
@@ -33,6 +33,7 @@ plot_path = (
 # )
 # comp = comp_GRU2GRU
 
+# TODO: Personify the objects
 comp_NODE2GRU = Comparisons(suffix="NODE2GRU")
 comp_NODE2GRU.load_task_train_wrapper(
     filepath=(

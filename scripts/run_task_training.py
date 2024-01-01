@@ -11,6 +11,7 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
+from interpretability.task_modeling.task_train_prep import train
 from utils import make_data_tag, trial_function
 
 # Load data directory and run directory as environment variables.
@@ -22,12 +23,12 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "RTDelay_2SecTrials_GoCue_v3"  # For WandB and run dir
+RUN_DESC = "NBFF_GRU_Refactor_test2"  # For WandB and run dir
 NUM_SAMPLES = 1  # For HP search
-TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
-MODEL = "NODE"  # Model to train (see configs/model for options)
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
@@ -39,7 +40,7 @@ RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([20]),
+        latent_size=tune.grid_search([10]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
@@ -52,7 +53,7 @@ SEARCH_SPACE = dict(
     # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.grid_search([500]),
+        max_epochs=tune.grid_search([120]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
@@ -78,8 +79,7 @@ def main(
     run_tag_in: str,
     path_dict: dict,
 ):
-    from interpretability.task_modeling.task_train_prep import train
-
+    # train(run_tag=run_tag_in, path_dict=path_dict)
     if LOCAL_MODE:
         ray.init(local_mode=True)
     if RUN_DIR.exists() and OVERWRITE:
@@ -96,7 +96,7 @@ def main(
         metric="loss",
         mode="min",
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=8, gpu=0.9),
+        resources_per_trial=dict(cpu=8, gpu=0.4),
         num_samples=NUM_SAMPLES,
         storage_path=str(RUN_DIR),
         search_alg=BasicVariantGenerator(),

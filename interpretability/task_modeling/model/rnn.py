@@ -18,11 +18,8 @@ class GRU_RNN(nn.Module):
         self.cell = GRUCell(input_size, self.latent_size)
         self.readout = nn.Linear(self.latent_size, output_size)
 
-    def forward(self, inputs, hidden=None):
+    def forward(self, inputs, hidden):
         n_samples, n_inputs = inputs.shape
-        dev = inputs.device
-        if hidden is None:
-            hidden = torch.zeros((n_samples, 1, self.latent_size), device=dev)
         hidden = self.cell(inputs, hidden)
         output = self.readout(hidden)
         return output, hidden

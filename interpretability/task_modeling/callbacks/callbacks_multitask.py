@@ -100,7 +100,8 @@ class StateTransitionCallback(pl.Callback):
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
         targets = torch.cat([batch[2] for batch in dataloader]).to(pl_module.device)
 
-        logger = trainer.loggers[2].experiment
+        loggers_all = trainer.loggers
+        logger = get_wandb_logger(loggers_all)
 
         # Pass the data through the model
         output_dict = pl_module.forward(ics, inputs)
@@ -116,7 +117,6 @@ class StateTransitionCallback(pl.Callback):
 
         input_labels = trainer.datamodule.input_labels
         output_labels = trainer.datamodule.output_labels
-        task_list_str = trainer.datamodule.data_env.task_list_str
         mask = (inputs.sum(dim=2, keepdim=True) != 0).float()
         trial_lens = mask.sum(dim=1).squeeze().cpu().numpy().astype(int)
         for trial_num in range(self.plot_n_trials):
@@ -126,7 +126,7 @@ class StateTransitionCallback(pl.Callback):
             targets = targets.cpu()
             inputs = inputs.cpu()
             task_input = inputs[trial_num, 0, 5:]
-            task_input_str = task_list_str[task_input.argmax()]
+            task_input_str = input_labels[task_input.argmax()]
             pred_outputs = controlled.cpu()
             n_samples, n_timesteps, n_outputs = targets.shape
 
@@ -187,7 +187,7 @@ class MultiTaskPerformanceCallback(pl.Callback):
         targets = data_dict["targets"]
         inputs = data_dict["inputs"]
 
-        logger = trainer.loggers[2].experiment
+        logger = get_wandb_logger(trainer.loggers)
         percent_success = np.zeros(len(trainer.datamodule.data_env.task_list_str))
         # find indices where task_to_analyze is the task
         for task_num, task_to_analyze in enumerate(
@@ -254,6 +254,7 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
         output_dict = pl_module.forward(ics, inputs)
         trajs_out = output_dict["controlled"]
+        logger = get_wandb_logger(trainer.loggers)
 
         # Plot the true and predicted trajectories
         trial_vec = torch.tensor(
@@ -274,7 +275,7 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         ax.legend()
         # Log the plot to tensorboard
         im = fig_to_rgb_array(fig)
-        trainer.logger.experiment[0].add_image(
+        logger.add_image(
             "trajectory_plot_over_time", im, trainer.global_step, dataformats="HWC"
         )
 
@@ -291,7 +292,7 @@ class LatentTrajectoryPlot(pl.Callback):
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
 
-        logger = trainer.loggers[2].experiment
+        logger = get_wandb_logger(trainer.loggers)
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()

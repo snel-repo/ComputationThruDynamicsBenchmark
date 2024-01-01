@@ -37,6 +37,24 @@ class MLPCell(nn.Module):
         return hidden + vf_out
 
 
+def jacobian_loss(cell, inputs, latents):
+    """Compute the jacobian loss for a given cell and inputs"""
+    B, T, N = latents.shape
+    # Compute the jacobian
+    jac = torch.zeros((B, T, N, N), device=latents.device)
+    for t in range(T):
+        latent = latents[:, t, :]
+        latent.requires_grad_(True)
+        input1 = inputs[:, t, :]
+        latent_input = torch.cat([latent, input1], dim=1)
+        jac[:, t, :, :] = torch.autograd.functional.jacobian(
+            cell.vf_net, latent_input, create_graph=True
+        )
+    # Compute the loss
+    jac_loss = torch.mean(torch.abs(jac - torch.zeros_like(jac)))
+    return jac_loss
+
+
 class NODELatentSAE(pl.LightningModule):
     def __init__(
         self,
@@ -137,10 +155,11 @@ class NODELatentSAE(pl.LightningModule):
             ic_drop = self.readout(ic_drop, reverse=True)
         # Evaluate the NeuralODE
         latents, _ = self.decoder(inputs, ic_drop)
+        jac_loss = jacobian_loss(self.decoder.cell, inputs, latents)
         B, T, N = latents.shape
         # Map decoder state to data dimension
         rates = self.readout(latents)
-        return rates, latents
+        return rates, latents, jac_loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(

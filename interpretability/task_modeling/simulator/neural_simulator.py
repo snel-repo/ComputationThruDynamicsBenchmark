@@ -70,7 +70,9 @@ class NeuralDataSimulator:
         inputs = torch.cat([train_data[1], val_data[1]])
         targets = torch.cat([train_data[2], val_data[2]])
 
-        controlled, latents, actions = task_trained_model(ics, inputs, targets)
+        output_dict = task_trained_model(ics, inputs, targets)
+
+        latents = output_dict["latents"]
 
         if self.n_neurons > latents.shape[-1]:
             self.n_neurons = latents.shape[-1]

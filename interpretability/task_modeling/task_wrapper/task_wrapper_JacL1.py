@@ -84,7 +84,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             else:
                 model_input = inputs[:, count, :]
             # Run the model on the input
-            action, hidden = self.model(model_input, hidden)
+            action, hidden, jacL1 = self.model(model_input, hidden)
             # If we are in a coupled environment, step the environment
             if self.task_env.coupled_env:
                 self.task_env.set_goal(targets[:, count, :])
@@ -113,6 +113,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             "latents": latents,
             "actions": actions,
             "states": states,
+            "jacL1": jacL1,
         }
         return output_dict
 
@@ -124,15 +125,16 @@ class TaskTrainedWrapper(pl.LightningModule):
         output_dict = self.forward(ics, inputs, targets)
         # Compute the weighted loss
         loss_dict = {
+            "logger": self.loggers[2],
+            "phase": "train",
             "controlled": output_dict["controlled"],
             "actions": output_dict["actions"],
+            "jacL1": output_dict["jacL1"],
             "targets": targets,
             "inputs": inputs,
         }
         loss_all = self.loss_func(loss_dict)
         self.log("train/loss", loss_all)
-        # tune report
-        # tune.report(loss=loss_all)
         return loss_all
 
     def validation_step(self, batch, batch_ix):
@@ -143,8 +145,11 @@ class TaskTrainedWrapper(pl.LightningModule):
         output_dict = self.forward(ics, inputs, targets)
         # Compute the weighted loss
         loss_dict = {
+            "logger": self.loggers[2],
+            "phase": "valid",
             "controlled": output_dict["controlled"],
             "actions": output_dict["actions"],
+            "jacL1": output_dict["jacL1"],
             "targets": targets,
             "inputs": inputs,
             # TODO: Pass in logger to log seperate losses
@@ -152,7 +157,4 @@ class TaskTrainedWrapper(pl.LightningModule):
         }
         loss_all = self.loss_func(loss_dict)
         self.log("valid/loss", loss_all)
-        # tune report
-        # tune.report({"loss": loss_all})
-
         return loss_all

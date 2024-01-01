@@ -1,0 +1,4 @@
+_target_: interpretability.task_modeling.model.node_jacobian_L1.NODE
+latent_size: 3
+layer_hidden_size: 128
+num_layers: 3

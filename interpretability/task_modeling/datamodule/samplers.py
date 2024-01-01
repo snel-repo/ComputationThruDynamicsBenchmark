@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from torch.utils.data import Sampler
+from torch.utils.data import BatchSampler
 
 
-class GroupedSampler(Sampler):
+class GroupedSampler(BatchSampler):
     def __init__(self, data_source, num_samples):
         self.dataset = data_source
         self.batch_size = num_samples
@@ -36,7 +36,7 @@ class GroupedSampler(Sampler):
         return (self.num_samples + self.batch_size - 1) // self.batch_size
 
 
-class RandomSampler(Sampler):
+class RandomSampler(BatchSampler):
     def __init__(self, data_source, num_samples):
         self.dataset = data_source
         self.batch_size = num_samples
@@ -54,7 +54,7 @@ class RandomSampler(Sampler):
         return (self.num_samples + self.batch_size - 1) // self.batch_size
 
 
-class SequentialSampler(Sampler):
+class SequentialSampler(BatchSampler):
     def __init__(self, data_source, num_samples):
         self.dataset = data_source
         self.batch_size = num_samples

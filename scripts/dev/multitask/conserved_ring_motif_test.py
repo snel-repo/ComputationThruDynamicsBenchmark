@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 
-from interpretability.comparison.comparisons import Comparisons
+from interpretability.comparison.analysis import Comparisons
 
 # plt.ion()
 

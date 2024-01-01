@@ -600,6 +600,7 @@ class RandomTargetDelay(Environment):
         self.coupled_env = True
 
     def generate_dataset(self, n_samples):
+        # Make target circular, change loss function to be pinned at zero
         initial_state = []
         inputs = np.zeros((n_samples, self.n_timesteps, 2))
         goal_list = []
@@ -610,12 +611,14 @@ class RandomTargetDelay(Environment):
             obs, info = self.reset()
             initial_state.append(torch.squeeze(info["states"]["joint"]))
 
+            # TODO: States["fingertip"]
             initial_state_xy = self.joint2cartesian(
                 torch.squeeze(info["states"]["joint"])
             ).chunk(2, dim=-1)[0]
+
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
-            goal_matrix[:go_cue, :2] = initial_state_xy
-            goal_matrix[go_cue:, :2] = torch.squeeze(info["goal"])
+            goal_matrix[:go_cue, :] = initial_state_xy
+            goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
             inputs[i, target_on:, :] = info["goal"]
             goal_list.append(goal_matrix)
 

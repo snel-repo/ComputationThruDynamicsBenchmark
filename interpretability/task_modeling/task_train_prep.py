@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 from pathlib import Path
 from typing import List
@@ -138,11 +139,11 @@ def train(
         accelerator="auto",
         _convert_="all",
     )
-
+    print(len(os.sched_getaffinity(0)))
     # -----------------------------Train model---------------------------
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
-    # simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)
+    simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)
 
     # Save the model, datamodule, and simulator to the directory
     log.info("Saving model, datamodule, and simulator")

@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from gymnasium import spaces
 
-from interpretability.task_modeling.datamodule.samplers import (
-    GroupedSampler,
-    RandomSampler,
-)
+# from interpretability.task_modeling.datamodule.samplers import (
+#     GroupedSampler,
+#     RandomSampler,
+# )
 
 
 class DecoupledEnvironment(gym.Env, ABC):
@@ -63,6 +63,7 @@ class MultiTaskWrapper:
         self.observation_space = spaces.Box(
             low=-1.5, high=1.5, shape=(20,), dtype=np.float32
         )
+        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
         self.input_labels = [
             "Fixation",
             "StimMod1Cos",
@@ -94,10 +95,10 @@ class MultiTaskWrapper:
         self.noise = noise
         self.coupled_env = False
         self.extra = "phase_dict"
-        if grouped_sampler:
-            self.sampler = GroupedSampler
-        else:
-            self.sampler = RandomSampler
+        # if grouped_sampler:
+        #     self.sampler = GroupedSampler
+        # else:
+        #     self.sampler = RandomSampler
 
     def generate_dataset(self, n_samples):
         # TODO: Maybe batch this?

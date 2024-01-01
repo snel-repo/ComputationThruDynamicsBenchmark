@@ -50,7 +50,7 @@ class LatentTrajectoryPlot(pl.Callback):
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
 
-        logger = trainer.loggers[2].experiment
+        logger = get_wandb_logger(trainer.loggers)
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()

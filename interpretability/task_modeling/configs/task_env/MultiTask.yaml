@@ -7,18 +7,6 @@ task_list:
   - MemoryAnti
   - ReactPro
   - ReactAnti
-  - IntMod1
-  - IntMod2
-  - ContextIntMod1
-  - ContextIntMod1
-  - ContextIntMod1
-  - ContextIntMod1
-  - ContextIntMod1
-  - ContextIntMod2
-  - ContextIntMod2
-  - ContextIntMod2
-  - ContextIntMod2
-  - ContextIntMod2
   - ContextIntMultimodal
   - Match2Sample
   - NonMatch2Sample
@@ -26,7 +14,7 @@ task_list:
   - MatchCatAnti
 
 n_timesteps: 640
-noise: 0.316227766
+noise: 0.15
 num_targets: 32
 bin_size: 20
 grouped_sampler: False

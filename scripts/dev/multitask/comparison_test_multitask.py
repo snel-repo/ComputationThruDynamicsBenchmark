@@ -1,7 +1,7 @@
 # %%
 import os
 
-from interpretability.comparison.comparisons import Comparisons
+from interpretability.comparison.analysis import Comparisons
 
 # plt.ion()
 

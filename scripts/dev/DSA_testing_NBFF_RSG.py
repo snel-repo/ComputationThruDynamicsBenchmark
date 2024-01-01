@@ -2,7 +2,7 @@
 
 import plotly.graph_objects as go
 
-from interpretability.comparison.comparisons import MultiComparator
+from interpretability.comparison.analysis import MultiComparator
 
 # plt.ion()
 # %%

@@ -19,7 +19,7 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = False
+LOCAL_MODE = True
 OVERWRITE = True
 RUN_DESC = "3BFF_NODE_ExtInputs_decay"
 NUM_SAMPLES = 1
@@ -35,7 +35,7 @@ SEARCH_SPACE = dict(
         decay_decoder=tune.grid_search([3e-5]),
     ),
     datamodule=dict(
-        gen_model=tune.grid_search(["GRU_RNN"]),
+        gen_model=tune.grid_search(["NODE"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
