@@ -3,7 +3,6 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-import dotenv
 import ray
 from omegaconf import OmegaConf
 from ray import tune
@@ -13,10 +12,6 @@ from ray.tune.search.basic_variant import BasicVariantGenerator
 
 from interpretability.task_modeling.task_train_prep import train
 from utils import make_data_tag, trial_function
-
-# Load data directory and run directory as environment variables.
-# These variables are used when the config is resolved.
-dotenv.load_dotenv(override=True)
 
 # Add custom resolver to create the data_tag so it can be used for run dir
 OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
@@ -33,8 +28,15 @@ MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUNS_HOME = Path("/snel/share/runs/dysts-learning/")
-RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
+RUNS_HOME = Path(
+    "/snel/share/runs/dysts-learning/"
+)  # Where to save progress plots, etc.
+
+SAVE_PATH = (
+    "/home/csverst/Github/InterpretabilityBenchmark/" "trained_models/task-trained/"
+)  # Where to save trained models
+
+RUN_DIR = RUNS_HOME / "task-trained" / RUN_TAG
 
 # -----------------Parameter Selection / Sweeps -----------------------------------
 SEARCH_SPACE = dict(
@@ -82,9 +84,9 @@ path_dict = dict(
 # -------------------Main Function----------------------------------
 def main(
     run_tag_in: str,
+    save_path_in: str,
     path_dict: dict,
 ):
-    # train(run_tag=run_tag_in, path_dict=path_dict)
     if LOCAL_MODE:
         ray.init(local_mode=True)
     if RUN_DIR.exists() and OVERWRITE:
@@ -96,6 +98,7 @@ def main(
         tune.with_parameters(
             train,
             run_tag=run_tag_in,
+            save_path=save_path_in,
             path_dict=path_dict,
         ),
         metric="loss",
@@ -118,5 +121,6 @@ def main(
 if __name__ == "__main__":
     main(
         run_tag_in=RUN_TAG,
+        save_path_in=SAVE_PATH,
         path_dict=path_dict,
     )

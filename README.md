@@ -9,16 +9,19 @@ This git repo contains code that will allow users to perform four basic steps:
 
 ## Installation
 We recommend using Conda to run this code.
-To install dependencies, you can use the interpretabilityEnv.yaml file
+To install dependencies, you can use the environment.yaml file
 
 conda env create -f environment.yaml
 conda activate CtDEnv
 
 You may need to pip install DSA and MotorNet manually: see those repos for detailed instructions.
+DSA: https://github.com/mitchellostrow/DSA
+MotorNet: https://www.motornet.org/index.html
 
 ## Usage
-At a high level, the only folder that a user will need to understand is the scripts folder.
-The two primary run scripts are "run_task_training.py" and "run_data_training.py", which do what the label says.
+The only folder needed to get a basic idea of how the package works is the scripts folder.
+The two primary run scripts are "run_task_training.py" and "run_data_training.py", which train a model to perform a task, and train a model on simulated neural data from a task, respectively.
+
 Each uses ray, hydra, and PyTorch Lightning to handle hyperparameter sweeps and logging. WandB is used by default, but TensorBoard logging is also available.
 
 There are three primary tasks implemented, ranging from simple to complex:
@@ -28,9 +31,18 @@ There are three primary tasks implemented, ranging from simple to complex:
 
 ## Quick-Start:
 To get an overview of the major components of the code-base, you should only need to run three scripts:
-1. scripts/run_task_training
-2. scripts/run_data_training
-3. scripts/compare_datasets
+1. examples/run_task_training.py
+2. examples/run_data_training.py
+3. examples/compare_tt_dt_models.py
+
+Before running these scripts, you will need to modify the RUNS_HOME and SAVE_PATH variables in run_task_training.py to a location where you'd like to save your training logs/plots and the fully trained final models, respectively. In addition to the simulated spiking activity, the task-training module will save a copy of the trained model, the datamodule used to train, and the simulator that generated the spiking activity.
+
+Once the task-trained model has been run, it should save an h5 file of spiking activity in the data-trained folder. Running the data-trained model should be straightforward as well!
+
+Once both have been run and the trained models saved to pickle files, the "compare_tt_dt_models.py" file performs basic visualizations and latent activity comparisons.
+
+
+
 
 ### Task-Training:
 To see what tasks can specifically be implemented, look in the config files for the task trained networks. Each task is a "task_env" object, which specifies the default parameters for that task. These parameters can be modified by changing the "SEARCH_SPACE" variable in run_task_training.

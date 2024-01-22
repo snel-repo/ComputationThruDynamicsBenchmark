@@ -14,16 +14,15 @@ from interpretability.task_modeling.simulator.neural_simulator import (
 from utils import flatten
 
 log = logging.getLogger(__name__)
-SAVE_PATH = (
-    "/home/csverst/Github/InterpretabilityBenchmark/trained_models/task-trained/"
-)
 
 
 def train(
     overrides: dict = {},
     path_dict: dict = {},
     run_tag: str = "",
+    save_path: str = "",
 ):
+    SAVE_PATH = save_path
     compose_list = path_dict.keys()
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()
