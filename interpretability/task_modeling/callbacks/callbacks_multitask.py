@@ -95,44 +95,62 @@ class StateTransitionCallback(pl.Callback):
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
         # Get trajectories and model predictions
-        dataloader = trainer.datamodule.val_dataloader()
-        ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
-        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
-        targets = torch.cat([batch[2] for batch in dataloader]).to(pl_module.device)
+        data_dict = trainer.datamodule.all_data
+        ics = data_dict["ics"]
+        phase_dict = data_dict["phase_dict"]
+        task_names = data_dict["task_names"]
+        targets = data_dict["targets"]
+        inputs = data_dict["inputs"]
+
+        # Get the first indices for each task
+        included_tasks = trainer.datamodule.data_env.task_list_str
+
+        plot_dict = {}
+        for task1 in included_tasks:
+            task1_inds = [i for i, task in enumerate(task_names) if task == task1]
+            plot_dict[task1] = task1_inds[0]
 
         loggers_all = trainer.loggers
         logger = get_wandb_logger(loggers_all)
 
         # Pass the data through the model
-        output_dict = pl_module.forward(ics, inputs)
-        controlled = output_dict["controlled"]
 
         # Create plots for different cases
         fig, axes = plt.subplots(
             nrows=3,
-            ncols=self.plot_n_trials,
-            figsize=(6 * self.plot_n_trials, 6),
+            ncols=len(included_tasks),
+            figsize=(6 * len(included_tasks), 6),
             sharex=False,
         )
 
         input_labels = trainer.datamodule.input_labels
         output_labels = trainer.datamodule.output_labels
-        mask = (inputs.sum(dim=2, keepdim=True) != 0).float()
-        trial_lens = mask.sum(dim=1).squeeze().cpu().numpy().astype(int)
-        for trial_num in range(self.plot_n_trials):
-            ax1 = axes[0][trial_num]
-            ax2 = axes[1][trial_num]
-            ax3 = axes[2][trial_num]
-            targets = targets.cpu()
-            inputs = inputs.cpu()
-            task_input = inputs[trial_num, 0, 5:]
-            task_input_str = input_labels[task_input.argmax()]
+        for trial_count, trial_type in enumerate(plot_dict.keys()):
+
+            trial_num = plot_dict[trial_type]
+
+            trial_len = phase_dict[trial_num]["response"][1]
+            ax1 = axes[0][trial_count]
+            ax2 = axes[1][trial_count]
+            ax3 = axes[2][trial_count]
+            ics_trial = ics[trial_num]
+            inputs_trial = inputs[trial_num]
+            # Add a batch dimension
+            ics_trial = torch.Tensor(ics_trial).unsqueeze(0).to(pl_module.device)
+            inputs_trial = torch.Tensor(inputs_trial).unsqueeze(0).to(pl_module.device)
+
+            output_dict = pl_module.forward(ics_trial, inputs_trial)
+
+            inputs_trial = inputs_trial.detach().cpu()
+            controlled = output_dict["controlled"]
+
+            task_input_str = trial_type
             pred_outputs = controlled.cpu()
             n_samples, n_timesteps, n_outputs = targets.shape
 
             for i in range(n_outputs):
                 ax1.plot(
-                    targets[trial_num, : trial_lens[trial_num], i],
+                    targets[trial_num, :trial_len, i],
                     label=output_labels[i],
                 )
 
@@ -147,15 +165,13 @@ class StateTransitionCallback(pl.Callback):
 
             for i in range(n_outputs):
                 ax2.plot(
-                    pred_outputs[trial_num, : trial_lens[trial_num], i],
+                    pred_outputs[0, :trial_len, i],
                     label=output_labels[i],
                 )
 
             _, _, n_inputs = inputs.shape
             for i in range(n_inputs):
-                ax3.plot(
-                    inputs[trial_num, : trial_lens[trial_num], i], label=input_labels[i]
-                )
+                ax3.plot(inputs_trial[0, :trial_len, i], label=input_labels[i])
             ax1.set_title(f"Trial {trial_num}, {task_input_str}")
             ax3.set_xlabel("Time")
             plt.tight_layout()
@@ -165,6 +181,140 @@ class StateTransitionCallback(pl.Callback):
             "state_plot", im, trainer.global_step, dataformats="HWC"
         )
         logger.log({"state_plot": wandb.Image(fig), "global_step": trainer.global_step})
+
+
+class StateTransitionScatterCallback(pl.Callback):
+    def __init__(self, log_every_n_epochs=100, plot_n_trials=20):
+
+        self.log_every_n_epochs = log_every_n_epochs
+        self.plot_n_trials = plot_n_trials
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+        # Get trajectories and model predictions
+        data_dict = trainer.datamodule.all_data
+        ics = data_dict["ics"]
+        phase_dict = data_dict["phase_dict"]
+        task_names = data_dict["task_names"]
+        targets = data_dict["targets"]
+        inputs = data_dict["inputs"]
+
+        # Get the first indices for each task
+        included_tasks = trainer.datamodule.data_env.task_list_str
+
+        plot_dict = {}
+        for task1 in included_tasks:
+            task1_inds = [i for i, task in enumerate(task_names) if task == task1]
+            plot_dict[task1] = task1_inds[0]
+
+        loggers_all = trainer.loggers
+        logger = get_wandb_logger(loggers_all)
+
+        # Pass the data through the model
+
+        # Create plots for different cases
+        fig, axes = plt.subplots(
+            nrows=len(included_tasks),
+            ncols=4,
+            figsize=(6, 2 * len(included_tasks)),
+            sharex=False,
+        )
+        color_dict = {
+            "context": "k",
+            "stim1": "r",
+            "mem1": "orange",
+            "stim2": "b",
+            "mem2": "purple",
+            "response": "g",
+        }
+        for trial_count, trial_type in enumerate(plot_dict.keys()):
+            trial_num = plot_dict[trial_type]
+            phase_trial = phase_dict[trial_num]
+            ax_inputs = axes[trial_count][0]
+            ax_inputs2 = axes[trial_count][1]
+            ax_outputs = axes[trial_count][2]
+            ax_outputs_true = axes[trial_count][3]
+            ics_trial = ics[trial_num]
+            inputs_trial = inputs[trial_num]
+
+            # Add a batch dimension
+            ics_trial = torch.Tensor(ics_trial).unsqueeze(0).to(pl_module.device)
+            inputs_trial = torch.Tensor(inputs_trial).unsqueeze(0).to(pl_module.device)
+            targets_trial = targets[trial_num]
+
+            output_dict = pl_module.forward(ics_trial, inputs_trial)
+            inputs_trial = inputs_trial.detach().cpu()
+
+            controlled = output_dict["controlled"]
+            controlled = controlled.detach().cpu().numpy()
+            for phase_count, phase in enumerate(phase_trial.keys()):
+                start_ind = phase_trial[phase][0]
+                end_ind = phase_trial[phase][1]
+                ax_inputs.plot(
+                    inputs_trial[0, start_ind:end_ind, 1],
+                    inputs_trial[0, start_ind:end_ind, 2],
+                    c=color_dict[phase],
+                    label=phase,
+                )
+                ax_inputs2.plot(
+                    inputs_trial[0, start_ind:end_ind, 3],
+                    inputs_trial[0, start_ind:end_ind, 4],
+                    c=color_dict[phase],
+                    label=phase,
+                )
+                ax_outputs.plot(
+                    controlled[0, start_ind:end_ind, 1],
+                    controlled[0, start_ind:end_ind, 2],
+                    c=color_dict[phase],
+                    label=phase,
+                )
+                ax_outputs_true.scatter(
+                    targets_trial[start_ind:end_ind, 1],
+                    targets_trial[start_ind:end_ind, 2],
+                    c=color_dict[phase],
+                    label=phase,
+                )
+
+            if trial_count == 0:
+                ax_inputs.set_title("Inputs 1")
+                ax_inputs2.set_title("Inputs 2")
+                ax_outputs.set_title("Outputs")
+                ax_outputs_true.set_title("Outputs True")
+            ax_inputs.set_ylabel(trial_type)
+            ax_inputs.set_xticklabels([])
+            ax_inputs.set_yticklabels([])
+            ax_inputs2.set_xticklabels([])
+            ax_inputs2.set_yticklabels([])
+            ax_outputs.set_xticklabels([])
+            ax_outputs.set_yticklabels([])
+            ax_outputs_true.set_xticklabels([])
+            ax_outputs_true.set_yticklabels([])
+
+            ax_inputs.set_xlim(-2, 2)
+            ax_inputs.set_ylim(-2, 2)
+            ax_inputs2.set_xlim(-2, 2)
+            ax_inputs2.set_ylim(-2, 2)
+            ax_outputs.set_xlim(-2, 2)
+            ax_outputs.set_ylim(-2, 2)
+            ax_outputs_true.set_xlim(-2, 2)
+            ax_outputs_true.set_ylim(-2, 2)
+
+            ax_inputs.set_aspect("equal", adjustable="box")
+            ax_inputs2.set_aspect("equal", adjustable="box")
+            ax_outputs.set_aspect("equal", adjustable="box")
+            ax_outputs_true.set_aspect("equal", adjustable="box")
+
+            plt.tight_layout()
+        # Log the plot to tensorboard
+        im = fig_to_rgb_array(fig)
+        trainer.loggers[0].experiment.add_image(
+            "state_plot_scatter", im, trainer.global_step, dataformats="HWC"
+        )
+        logger.log(
+            {"state_plot_scatter": wandb.Image(fig), "global_step": trainer.global_step}
+        )
 
 
 class MultiTaskPerformanceCallback(pl.Callback):
@@ -213,11 +363,14 @@ class MultiTaskPerformanceCallback(pl.Callback):
             task_targets = task_targets.detach().cpu()
 
             perf = np.zeros(len(task_phase_dict))
+            perf_dist = np.ones(len(task_phase_dict))
             for i in range(len(task_phase_dict)):
                 response_edges = task_phase_dict[i]["response"]
                 response_len = response_edges[1] - response_edges[0]
                 response_val = tt_outputs[
-                    i, response_edges[0] + response_len // 2 : response_edges[1], 1:
+                    i,
+                    response_edges[0] + (3 * response_len // 4) : response_edges[1],
+                    1:,
                 ]
                 mean_response = torch.mean(response_val, dim=0)
                 mean_angle = torch.atan2(mean_response[1], mean_response[0])
@@ -227,7 +380,14 @@ class MultiTaskPerformanceCallback(pl.Callback):
                 mean_target = torch.mean(response_target, dim=0)
                 mean_target_angle = torch.atan2(mean_target[1], mean_target[0])
                 perf[i] = angle_diff(mean_angle, mean_target_angle)
-            percent_success = np.sum(perf < (np.pi / 10)) / len(perf)
+                # if target is zero, check if response is zero
+                if torch.sum(np.abs(mean_target)) == 0:
+                    perf_dist[i] = torch.sum(mean_response)
+            flag_success_angle = perf < (np.pi / 10)
+            flag_success_noreport = perf_dist < 0.1
+            flag_success = np.logical_or(flag_success_angle, flag_success_noreport)
+            percent_success = np.sum(flag_success) / len(flag_success)
+
             # Log percent success to wandb
             logger.log(
                 {
@@ -329,380 +489,4 @@ class LatentTrajectoryPlot(pl.Callback):
         )
         logger.log(
             {"latent_traj": wandb.Image(fig), "global_step": trainer.global_step}
-        )
-
-
-class SimonSaysCondAvgLats(pl.Callback):
-    def __init__(
-        self,
-        log_every_n_epochs=10,
-    ):
-        self.log_every_n_epochs = log_every_n_epochs
-
-    def on_validation_epoch_end(self, trainer, pl_module):
-
-        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
-            return
-        logger = trainer.loggers[2].experiment
-        task_env = pl_module.task_env
-
-        targets_fwd = np.array([0, 1, 2])
-        queue_input_fwd, queue_output_fwd = task_env.generate_dataset(
-            n_samples=100, targets=targets_fwd, isFIFO=1
-        )
-        stack_input_fwd, stack_output_fwd = task_env.generate_dataset(
-            n_samples=100, targets=targets_fwd, isFIFO=-1
-        )
-
-        targets_rev = np.array([2, 1, 0])
-        queue_input_rev, queue_output_rev = task_env.generate_dataset(
-            n_samples=100, targets=targets_rev, isFIFO=1
-        )
-        stack_input_rev, stack_output_rev = task_env.generate_dataset(
-            n_samples=100, targets=targets_rev, isFIFO=-1
-        )
-
-        # Get trajectories and model predictions
-
-        _, lats_queue_fwd = pl_module.forward(
-            torch.Tensor(queue_input_fwd).to(pl_module.device)
-        )
-        _, lats_stack_fwd = pl_module.forward(
-            torch.Tensor(stack_input_fwd).to(pl_module.device)
-        )
-        _, lats_queue_rev = pl_module.forward(
-            torch.Tensor(queue_input_rev).to(pl_module.device)
-        )
-        _, lats_stack_rev = pl_module.forward(
-            torch.Tensor(stack_input_rev).to(pl_module.device)
-        )
-
-        delay_inp = 2
-        go_inp = 3
-
-        lats_queue_fwd = lats_queue_fwd.detach().cpu().numpy()
-        lats_stack_fwd = lats_stack_fwd.detach().cpu().numpy()
-        lats_queue_rev = lats_queue_rev.detach().cpu().numpy()
-        lats_stack_rev = lats_stack_rev.detach().cpu().numpy()
-
-        # Align the lats to when the delay turns on.
-        # The first index per trial where input[:,:,delay_inp] > 0.5
-        delay_lats_queue_fwd = np.zeros(
-            (lats_queue_fwd.shape[0], 20, lats_queue_fwd.shape[2])
-        )
-        delay_lats_stack_fwd = np.zeros(
-            (lats_stack_fwd.shape[0], 20, lats_stack_fwd.shape[2])
-        )
-        delay_lats_queue_rev = np.zeros(
-            (lats_queue_rev.shape[0], 20, lats_queue_rev.shape[2])
-        )
-        delay_lats_stack_rev = np.zeros(
-            (lats_stack_rev.shape[0], 20, lats_stack_rev.shape[2])
-        )
-
-        for i in range(lats_queue_fwd.shape[0]):
-            delay_ind = np.where(queue_input_fwd[i, :, delay_inp] > 0.5)[0][0]
-            delay_lats_queue_fwd[i, :, :] = lats_queue_fwd[
-                i, delay_ind - 10 : delay_ind + 10, :
-            ]
-            delay_ind = np.where(stack_input_fwd[i, :, delay_inp] > 0.5)[0][0]
-            delay_lats_stack_fwd[i, :, :] = lats_stack_fwd[
-                i, delay_ind - 10 : delay_ind + 10, :
-            ]
-            delay_ind = np.where(queue_input_rev[i, :, delay_inp] > 0.5)[0][0]
-            delay_lats_queue_rev[i, :, :] = lats_queue_rev[
-                i, delay_ind - 10 : delay_ind + 10, :
-            ]
-            delay_ind = np.where(stack_input_rev[i, :, delay_inp] > 0.5)[0][0]
-            delay_lats_stack_rev[i, :, :] = lats_stack_rev[
-                i, delay_ind - 10 : delay_ind + 10, :
-            ]
-
-        # Align to when the go signal turns on (input[:,:,go_inp] > 0.5)
-        go_lats_queue_fwd = np.zeros(
-            (lats_queue_fwd.shape[0], 20, lats_queue_fwd.shape[2])
-        )
-        go_lats_stack_fwd = np.zeros(
-            (lats_stack_fwd.shape[0], 20, lats_stack_fwd.shape[2])
-        )
-        go_lats_queue_rev = np.zeros(
-            (lats_queue_rev.shape[0], 20, lats_queue_rev.shape[2])
-        )
-        go_lats_stack_rev = np.zeros(
-            (lats_stack_rev.shape[0], 20, lats_stack_rev.shape[2])
-        )
-
-        for i in range(lats_queue_fwd.shape[0]):
-            go_ind = np.where(queue_input_fwd[i, :, go_inp] > 0.5)[0][0]
-            go_lats_queue_fwd[i, :, :] = lats_queue_fwd[i, go_ind - 10 : go_ind + 10, :]
-            go_ind = np.where(stack_input_fwd[i, :, go_inp] > 0.5)[0][0]
-            go_lats_stack_fwd[i, :, :] = lats_stack_fwd[i, go_ind - 10 : go_ind + 10, :]
-            go_ind = np.where(queue_input_rev[i, :, go_inp] > 0.5)[0][0]
-            go_lats_queue_rev[i, :, :] = lats_queue_rev[i, go_ind - 10 : go_ind + 10, :]
-            go_ind = np.where(stack_input_rev[i, :, go_inp] > 0.5)[0][0]
-            go_lats_stack_rev[i, :, :] = lats_stack_rev[i, go_ind - 10 : go_ind + 10, :]
-
-        # Average across trials
-        delay_lats_queue_fwd_mean = np.mean(delay_lats_queue_fwd, axis=0)
-        delay_lats_stack_fwd_mean = np.mean(delay_lats_stack_fwd, axis=0)
-        delay_lats_queue_rev_mean = np.mean(delay_lats_queue_rev, axis=0)
-        delay_lats_stack_rev_mean = np.mean(delay_lats_stack_rev, axis=0)
-
-        go_lats_queue_fwd_mean = np.mean(go_lats_queue_fwd, axis=0)
-        go_lats_stack_fwd_mean = np.mean(go_lats_stack_fwd, axis=0)
-        go_lats_queue_rev_mean = np.mean(go_lats_queue_rev, axis=0)
-        go_lats_stack_rev_mean = np.mean(go_lats_stack_rev, axis=0)
-
-        mean_delay_lats = np.stack(
-            (
-                delay_lats_queue_fwd_mean,
-                delay_lats_stack_fwd_mean,
-                delay_lats_queue_rev_mean,
-                delay_lats_stack_rev_mean,
-            )
-        )
-
-        mean_go_lats = np.stack(
-            (
-                go_lats_queue_fwd_mean,
-                go_lats_stack_fwd_mean,
-                go_lats_queue_rev_mean,
-                go_lats_stack_rev_mean,
-            )
-        )
-
-        labels = ["Queue Fwd", "Stack Fwd", "Queue Rev", "Stack Rev"]
-        # Combine the delay lats
-        delay_lats = np.vstack(
-            (
-                delay_lats_queue_fwd,
-                delay_lats_stack_fwd,
-                delay_lats_queue_rev,
-                delay_lats_stack_rev,
-            )
-        )
-
-        go_lats = np.vstack(
-            (go_lats_queue_fwd, go_lats_stack_fwd, go_lats_queue_rev, go_lats_stack_rev)
-        )
-
-        n_trials, n_times, n_lat_dim = delay_lats.shape
-        if n_lat_dim > 3:
-            pcaDelay = PCA(n_components=3)
-            delay_lats = pcaDelay.fit_transform(delay_lats.reshape(-1, n_lat_dim))
-            delay_lats = delay_lats.reshape(n_trials, n_times, 3)
-            mean_delay_lats = pcaDelay.transform(mean_delay_lats.reshape(-1, n_lat_dim))
-            mean_delay_lats = mean_delay_lats.reshape(4, n_times, 3)
-
-            exp_var_delay = np.sum(pcaDelay.explained_variance_ratio_)
-            pcaMove = PCA(n_components=3)
-            go_lats = pcaMove.fit_transform(go_lats.reshape(-1, n_lat_dim))
-            go_lats = go_lats.reshape(n_trials, n_times, 3)
-            mean_go_lats = pcaMove.transform(mean_go_lats.reshape(-1, n_lat_dim))
-            mean_go_lats = mean_go_lats.reshape(4, n_times, 3)
-
-            exp_var_go = np.sum(pcaMove.explained_variance_ratio_)
-
-        else:
-            exp_var_delay = 1.0
-            exp_var_go = 1.0
-
-        # Plot trajectories
-        fig = plt.figure(figsize=(20, 10))
-        ax = fig.add_subplot(211, projection="3d")
-        for traj in delay_lats:
-            ax.plot(*traj.T, alpha=0.2, linewidth=0.5)
-        for i, traj in enumerate(mean_delay_lats):
-            ax.plot(*traj.T, alpha=1, linewidth=2, label=labels[i])
-
-        ax.scatter(*delay_lats[:, 0, :].T, alpha=0.1, s=10, c="g")
-        ax.scatter(*delay_lats[:, -1, :].T, alpha=0.1, s=10, c="r")
-        ax.legend()
-        ax.set_title(f"Delay explained variance: {exp_var_delay:.2f}")
-        plt.tight_layout()
-        ax = fig.add_subplot(212, projection="3d")
-        for traj in go_lats:
-            ax.plot(*traj.T, alpha=0.2, linewidth=0.5)
-        for i, traj in enumerate(mean_go_lats):
-            ax.plot(*traj.T, alpha=1, linewidth=2, label=labels[i])
-        ax.scatter(*go_lats[:, 0, :].T, alpha=0.1, s=10, c="g")
-        ax.scatter(*go_lats[:, -1, :].T, alpha=0.1, s=10, c="r")
-        ax.set_title(f"Go explained variance: {exp_var_go:.2f}")
-        ax.legend()
-        plt.tight_layout()
-
-        trainer.loggers[0].experiment.add_figure(
-            "delay_go_latents", fig, global_step=trainer.global_step
-        )
-        logger.log(
-            {"delay_go_latents": wandb.Image(fig), "global_step": trainer.global_step}
-        )
-
-
-class SimonSaysLatICs(pl.Callback):
-    def __init__(
-        self,
-        log_every_n_epochs=10,
-    ):
-        self.log_every_n_epochs = log_every_n_epochs
-
-    def on_validation_epoch_end(self, trainer, pl_module):
-
-        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
-            return
-
-        logger = trainer.loggers[2].experiment
-        task_env = pl_module.task_env
-        target_lists = [
-            [0, 1, 2],
-            [0, 2, 1],
-            [1, 0, 2],
-            [1, 2, 0],
-            [2, 0, 1],
-            [2, 1, 0],
-        ]
-        target_labels = ["ABC", "ACB", "BAC", "BCA", "CAB", "CBA"]
-        n_samples = 100
-        n_lats = pl_module.model.latent_size
-
-        queue_input_vecs = np.zeros((len(target_lists), n_samples, 180, 5))
-        stack_input_vecs = np.zeros((len(target_lists), n_samples, 180, 5))
-        queue_lats = np.zeros((len(target_lists), n_samples, 180, n_lats))
-        stack_lats = np.zeros((len(target_lists), n_samples, 180, n_lats))
-
-        delay_inp = 2
-        go_inp = 3
-
-        for i, target_list in enumerate(target_lists):
-            queue_input_vecs[i, :, :, :], _ = task_env.generate_dataset(
-                n_samples=n_samples, targets=target_list, isFIFO=1
-            )
-            stack_input_vecs[i, :, :, :], _ = task_env.generate_dataset(
-                n_samples=n_samples, targets=target_list, isFIFO=-1
-            )
-            queue_lats[i, :, :, :] = (
-                pl_module.forward(
-                    torch.Tensor(queue_input_vecs[i, :, :]).to(pl_module.device)
-                )[1]
-                .detach()
-                .cpu()
-                .numpy()
-            )
-            stack_lats[i, :, :, :] = (
-                pl_module.forward(
-                    torch.Tensor(stack_input_vecs[i, :, :]).to(pl_module.device)
-                )[1]
-                .detach()
-                .cpu()
-                .numpy()
-            )
-
-        # Get trajectories and model predictions
-        n_lats = queue_lats.shape[-1]
-
-        queue_lats_delay = np.zeros((len(target_lists), n_samples, 20, n_lats))
-        stack_lats_delay = np.zeros((len(target_lists), n_samples, 20, n_lats))
-
-        for i in range(queue_lats.shape[0]):
-            for j in range(queue_input_vecs.shape[1]):
-                delay_ind = np.where(queue_input_vecs[i, j, :, delay_inp] > 0.5)[0][0]
-                queue_lats_delay[i, j, :, :] = queue_lats[
-                    i, j, delay_ind - 10 : delay_ind + 10, :
-                ]
-                delay_ind = np.where(stack_input_vecs[i, j, :, delay_inp] > 0.5)[0][0]
-                stack_lats_delay[i, j, :, :] = stack_lats[
-                    i, j, delay_ind - 10 : delay_ind + 10, :
-                ]
-
-        queue_lats_go = np.zeros((len(target_lists), n_samples, 20, n_lats))
-        stack_lats_go = np.zeros((len(target_lists), n_samples, 20, n_lats))
-
-        for i in range(queue_lats.shape[0]):
-            for j in range(queue_input_vecs.shape[1]):
-                go_ind = np.where(queue_input_vecs[i, j, :, go_inp] > 0.5)[0][0]
-                queue_lats_go[i, j, :, :] = queue_lats[
-                    i, j, go_ind - 10 : go_ind + 10, :
-                ]
-                go_ind = np.where(stack_input_vecs[i, j, :, go_inp] > 0.5)[0][0]
-                stack_lats_go[i, j, :, :] = stack_lats[
-                    i, j, go_ind - 10 : go_ind + 10, :
-                ]
-
-        # Get all delay ICs
-        delay_ics_stack = stack_lats_delay[:, :, 0, :]
-        delay_ics_queue = queue_lats_delay[:, :, 0, :]
-        delay_ics = np.vstack((delay_ics_queue, delay_ics_stack))
-        delay_ics_flat = delay_ics.reshape(-1, delay_ics.shape[-1])
-
-        # Get all go ICs
-        go_ics_stack = stack_lats_go[:, :, 0, :]
-        go_ics_queue = queue_lats_go[:, :, 0, :]
-        go_ics = np.vstack((go_ics_queue, go_ics_stack))
-        go_ics_flat = go_ics.reshape(-1, go_ics.shape[-1])
-
-        n_seq, n_trials, n_lat_dim = delay_ics.shape
-        if n_lat_dim > 3:
-            pcaDelay = PCA(n_components=3)
-            delay_ics = pcaDelay.fit_transform(delay_ics_flat)
-            exp_var_delay = np.sum(pcaDelay.explained_variance_ratio_)
-            delay_ics = delay_ics.reshape(n_seq, n_trials, 3)
-
-            pcaMove = PCA(n_components=3)
-            go_ics = pcaMove.fit_transform(go_ics_flat)
-            go_ics = go_ics.reshape(n_seq, n_trials, 3)
-            exp_var_go = np.sum(pcaMove.explained_variance_ratio_)
-
-        else:
-            exp_var_delay = 1.0
-            exp_var_go = 1.0
-
-        # Plot trajectories
-        fig = plt.figure(figsize=(20, 10))
-        ax = fig.add_subplot(211, projection="3d")
-        # Make colors using jet colormap
-        colors = plt.cm.jet(np.linspace(0, 1, n_seq // 2))
-        for i in range(n_seq):
-            if i < n_seq / 2:
-                color = colors[i]
-                alpha = 1
-                label = target_labels[i]
-            else:
-                color = colors[i - n_seq // 2]  # Use the same colors as the first half
-                alpha = 0.2
-                label = None
-            ax.scatter(
-                *delay_ics[i, :, :].T, alpha=alpha, s=10, color=color, label=label
-            )
-            # Plot the mean value larger
-            ax.scatter(*np.mean(delay_ics[i, :, :], axis=0), color=color, alpha=1, s=30)
-        ax.set_title(f"Delay explained variance: {exp_var_delay:.2f}")
-        ax.legend()
-        plt.tight_layout()
-
-        ax = fig.add_subplot(212, projection="3d")
-        for i in range(n_seq):
-            if i < n_seq / 2:
-                color = colors[i]
-                alpha = 1
-                label = target_labels[i]
-            else:
-                color = colors[i - n_seq // 2]  # Use the same colors as the first half
-                alpha = 0.2
-                label = None
-            ax.scatter(*go_ics[i, :, :].T, alpha=alpha, s=10, color=color, label=label)
-            # Plot the mean value larger
-            ax.scatter(*np.mean(go_ics[i, :, :], axis=0), alpha=1, s=30, color=color)
-        ax.set_title(f"Go explained variance: {exp_var_go:.2f}")
-        ax.legend()
-
-        plt.tight_layout()
-
-        trainer.loggers[0].experiment.add_figure(
-            "delay_go_latents_ICs", fig, global_step=trainer.global_step
-        )
-        logger.log(
-            {
-                "delay_go_latent_ICs": wandb.Image(fig),
-                "global_step": trainer.global_step,
-            }
         )

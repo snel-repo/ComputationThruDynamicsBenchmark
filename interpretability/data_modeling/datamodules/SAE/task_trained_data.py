@@ -25,6 +25,7 @@ def to_tensor(array):
 class TaskTrainedRNNDataModule(pl.LightningDataModule):
     def __init__(
         self,
+        prefix=None,
         system: str = "3BitFlipFlop",
         gen_model: str = "GRU",
         n_neurons: int = 50,
@@ -38,15 +39,23 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         super().__init__()
         self.save_hyperparameters()
         self.seed = seed
-
-        filename = (
-            f"{system}_"
-            f"model_{gen_model}_"
-            f"n_neurons_{n_neurons}_"
-            f"nonlin_embed_{nonlin_embed}_"
-            f"obs_noise_{obs_noise}_"
-            f"seed_{seed}.h5"
-        )
+        if prefix is None:
+            filename = (
+                f"{system}_"
+                f"model_{gen_model}_"
+                f"n_neurons_{n_neurons}_"
+                f"nonlin_embed_{nonlin_embed}_"
+                f"obs_noise_{obs_noise}_"
+                f"seed_{seed}.h5"
+            )
+        else:
+            filename = (
+                f"{prefix}_"
+                f"{system}_"
+                f"model_{gen_model}_"
+                f"n_neurons_{n_neurons}_"
+                f"seed_{seed}.h5"
+            )
         self.name = filename
         self.fpath = os.path.join(DATA_HOME, filename)
 

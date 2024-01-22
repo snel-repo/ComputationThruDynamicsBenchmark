@@ -25,9 +25,9 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "NBFF_GRU_Refactor_test2"  # For WandB and run dir
+RUN_DESC = "MultiTaskReachOnly_3000Samples"  # For WandB and run dir
 NUM_SAMPLES = 1  # For HP search
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+TASK = "MultiTaskMem"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # ------------------Data Management Variables --------------------------------
@@ -40,20 +40,25 @@ RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([10]),
+        latent_size=tune.grid_search([64]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.grid_search([5e-3]),
+        learning_rate=tune.grid_search([6e-4]),
         weight_decay=tune.grid_search([0]),
     ),
-    # task_env = dict(
-    # grouped_sampler = tune.grid_search([False]),
-    # noise = tune.grid_search([0.15]),
-    # ),
+    datamodule=dict(
+        # Data Parameters -----------------------------------
+        n_samples=tune.grid_search([3000]),
+        batch_size=tune.grid_search([128]),
+    ),
+    task_env=dict(
+        grouped_sampler=tune.grid_search([True]),
+        noise=tune.grid_search([0.31]),
+    ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.grid_search([120]),
+        max_epochs=tune.grid_search([100]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
@@ -96,7 +101,7 @@ def main(
         metric="loss",
         mode="min",
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=8, gpu=0.4),
+        resources_per_trial=dict(cpu=8, gpu=0.9),
         num_samples=NUM_SAMPLES,
         storage_path=str(RUN_DIR),
         search_alg=BasicVariantGenerator(),

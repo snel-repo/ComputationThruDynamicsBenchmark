@@ -98,6 +98,7 @@ class NBitFlipFlop(DecoupledEnvironment):
             "ics": ics_ds,
             "inputs": inputs_ds,
             "targets": outputs_ds,
+            "conds": None,
         }
         return dataset_dict
 
@@ -204,16 +205,19 @@ class SimonSays(DecoupledEnvironment):
         ics_ds = np.zeros(shape=(n_samples, n_outputs))
         outputs_ds = np.zeros(shape=(n_samples, n_timesteps, n_outputs))
         inputs_ds = np.zeros(shape=(n_samples, n_timesteps, n_inputs))
+        isFIFO_ds = np.zeros(shape=(n_samples, 1))
         for i in range(n_samples):
             inputs, outputs = self.generate_trial(targets, isFIFO)
             outputs_ds[i, :, :] = outputs
             inputs_ds[i, :, :] = inputs
+            isFIFO_ds[i] = isFIFO
         inputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=inputs_ds.shape)
         outputs_ds += np.random.normal(loc=0.0, scale=self.noise, size=outputs_ds.shape)
         dataset_dict = {
             "ics": ics_ds,
             "inputs": inputs_ds,
             "targets": outputs_ds,
+            "conds": isFIFO_ds,
         }
         return dataset_dict
 
@@ -249,7 +253,7 @@ class SimonSays(DecoupledEnvironment):
         else:  # Stack outputs in reverse
             outputs[targ_len + delay : 2 * targ_len + delay, 0] = target_vec[::-1, 0]
             outputs[targ_len + delay : 2 * targ_len + delay, 1] = target_vec[::-1, 1]
-        return inputs, outputs
+        return inputs, outputs, isFIFO
 
 
 class ReadySetGoTask(DecoupledEnvironment):
@@ -399,6 +403,7 @@ class RandomTargetReach(Environment):
             "ics": initial_state,
             "inputs": inputs,
             "targets": goal_list,
+            "conds": None,
         }
         return dataset_dict
 

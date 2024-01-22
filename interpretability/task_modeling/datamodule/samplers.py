@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 from torch.utils.data import BatchSampler
 
 
@@ -13,23 +12,22 @@ class GroupedSampler(BatchSampler):
     def _group_indices_by_trial_type(self):
         # Group indices by trial type.
         trial_type_indices = {}
-        trial_inputs = torch.round(self.dataset.tensors[1][:, 0, 5:])
-        trial_inputs = torch.nonzero(trial_inputs)[:, -1].numpy()
-        for i in range(len(self.dataset)):
-            trial_type = trial_inputs[i]
-            if trial_type not in trial_type_indices:
-                trial_type_indices[trial_type] = []
-            trial_type_indices[trial_type].append(i)
+        trial_type = self.dataset.tensors[4]
+        unique_trial_types = np.unique(trial_type)
+        for ind1, trial_type1 in enumerate(unique_trial_types):
+            trial_type_indices[ind1] = np.where(trial_type == trial_type1)[0]
         return trial_type_indices
 
     def __iter__(self):
         group_indices = list(self.grouped_indices.values())
+        indices_lens = np.array([len(x) for x in group_indices])
+        group_counter = np.zeros(len(group_indices)).astype(int)
         np.random.shuffle(group_indices)  # Shuffle the groups
-        for group in group_indices:
-            np.random.shuffle(group)  # Shuffle indices within each group
-            # Yield indices batch_size at a time
-            for i in range(0, len(group), self.batch_size):
-                yield group[i : i + self.batch_size]
+        while np.any(group_counter < indices_lens):
+            for i, group in enumerate(group_indices):
+                if group_counter[i] < len(group):
+                    yield group[group_counter[i] : group_counter[i] + self.batch_size]
+                    group_counter[i] += self.batch_size
 
     def __len__(self):
         # Calculate batches

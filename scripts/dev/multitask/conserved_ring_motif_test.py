@@ -4,116 +4,157 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 
-from interpretability.comparison.analysis import Comparisons
+from interpretability.comparison.analysis.tt.tasks.tt_MultiTask import (
+    Analysis_TT_MultiTask,
+)
 
-# plt.ion()
+# suffix = "MultiTaskGRU_LowLR"
+# filepath1 = (
+# "/home/csverst/Github/InterpretabilityBenchmark/"
+# "trained_models/task-trained/20240116_MultiTask_GRU_lowLR/"
+# )
 
-# %matplotlib notebook
-model_type = "NODE"
-phase = "mem1"
-task_to_analyze_1 = "MemoryPro"
-task_to_analyze_2 = "MemoryAnti"
-
-if model_type == "NODE":
-    suffix = "MultiTaskNODE_Batch"
-    filepath1 = (
-        "/home/csverst/Github/InterpretabilityBenchmark/"
-        "trained_models/task-trained/20231128_MT_NODE_5D_32Targets_FPFinding/"
-    )
-elif model_type == "GRU":
-    suffix = "MultiTaskGRU_Batch"
-    filepath1 = (
-        "/home/csverst/Github/InterpretabilityBenchmark/"
-        "trained_models/task-trained/20231128_MT_GRU_RNN_256D_32Targets_FPFinding/"
-    )
-
+suffix = "MultiTaskGRU_ReachOnly"
+filepath1 = (
+    "/home/csverst/Github/InterpretabilityBenchmark/"
+    "trained_models/task-trained/20240118_MultiTask_GRU_ReachOnly/"
+)
 plot_path = (
     "/home/csverst/Github/InterpretabilityBenchmark/"
     f"interpretability/comparison/plots/{suffix}/"
 )
 os.makedirs(plot_path, exist_ok=True)
 
-comp = Comparisons(suffix=suffix)
-comp.load_task_train_wrapper(filepath=filepath1)
-tt_fps_pro, readout_pro = comp.compute_TT_FPs_MultiTask(
-    task_to_analyze=task_to_analyze_1, phase=phase
+
+comp = Analysis_TT_MultiTask(run_name=suffix, filepath=filepath1)
+
+
+# Get the model outputs
+task1 = "MemoryPro"
+task2 = "MemoryAnti"
+
+ics, inputs, targets = comp.get_model_input()
+
+out_dict = comp.get_model_output()
+lats = out_dict["latents"]
+outputs = out_dict["controlled"]
+
+# Get the flag for the task (which trials are the correct task)
+flag_pro, phase_task_pro = comp.get_task_flag(task1)
+flag_anti, phase_task_anti = comp.get_task_flag(task2)
+
+len_pro = [phase["response"][1] for phase in phase_task_pro]
+len_anti = [phase["response"][1] for phase in phase_task_anti]
+
+lats_pro = lats[flag_pro].detach().numpy()
+lats_anti = lats[flag_anti].detach().numpy()
+outputs_pro = outputs[flag_pro].detach().numpy()
+outputs_anti = outputs[flag_anti].detach().numpy()
+
+lats_phase_pro = comp.get_data_from_phase(phase_task_pro, "stim1", lats_pro)
+lats_phase_pro_flat = np.concatenate(lats_phase_pro)
+
+lats_phase_anti = comp.get_data_from_phase(phase_task_anti, "stim1", lats_anti)
+lats_phase_anti_flat = np.concatenate(lats_phase_anti)
+
+# Get PCA for both tasks
+pca_pro = PCA()
+pca_pro.fit(lats_phase_pro_flat)
+pca_anti = PCA()
+pca_anti.fit(lats_phase_anti_flat)
+
+lats_pro_flat = lats_pro.reshape(
+    lats_pro.shape[0] * lats_pro.shape[1], lats_pro.shape[2]
+)
+lats_anti_flat = lats_anti.reshape(
+    lats_anti.shape[0] * lats_anti.shape[1], lats_anti.shape[2]
 )
 
-tt_fps_anti, readout_anti = comp.compute_TT_FPs_MultiTask(
-    task_to_analyze=task_to_analyze_2, phase=phase
-)
+lats_pro_in_pro = pca_pro.transform(lats_pro_flat)
+lats_anti_in_pro = pca_pro.transform(lats_anti_flat)
+lats_pro_in_anti = pca_anti.transform(lats_pro_flat)
+lats_anti_in_anti = pca_anti.transform(lats_anti_flat)
 
-x_pro = tt_fps_pro.xstar
-x_anti = tt_fps_anti.xstar
+lats_pro_in_pro = lats_pro_in_pro.reshape(lats_pro.shape)
+lats_anti_in_pro = lats_anti_in_pro.reshape(lats_anti.shape)
+lats_pro_in_anti = lats_pro_in_anti.reshape(lats_pro.shape)
+lats_anti_in_anti = lats_anti_in_anti.reshape(lats_anti.shape)
 
-x_both = np.concatenate((x_pro, x_anti), axis=0)
-readout_both = np.concatenate((readout_pro, readout_anti), axis=0)
+n_pro_trials = lats_pro.shape[0]
+n_anti_trials = lats_anti.shape[0]
 
-pca = PCA(n_components=2)
-pca.fit(x_both)
-x_pro_pca = pca.transform(x_pro)
-x_anti_pca = pca.transform(x_anti)
+fig = plt.figure(figsize=(10, 10))
+phases = phase_task_pro[0].keys()
+for i, phase in enumerate(phases):
 
-plt.figure()
-# add 3d subplot
-ax = plt.subplot(111, projection="3d")
-ax.scatter(x_pro_pca[:, 0], x_pro_pca[:, 1], readout_pro[:, 1], c="r", s=1, label="Pro")
-ax.scatter(
-    x_anti_pca[:, 0], x_anti_pca[:, 1], readout_anti[:, 1], c="b", s=1, label="Anti"
-)
+    ax1 = fig.add_subplot(4, 4, 4 * i + 1, projection="3d")
+    for j in range(n_pro_trials):
+        start_ind = phase_task_pro[j][phase][0]
+        end_ind = phase_task_pro[j][phase][1]
+        ax1.plot(
+            lats_pro_in_pro[j, start_ind:end_ind, 0],
+            lats_pro_in_pro[j, start_ind:end_ind, 1],
+            outputs_pro[j, start_ind:end_ind, 1],
+            color="blue",
+            alpha=0.3,
+        )
+    ax1.set_xlim([-3, 3])
+    ax1.set_ylim([-3, 3])
+    ax1.set_zlim([-3, 3])
+    ax1.set_ylabel(phase)
 
-ax.set_zlim(-1.1, 1.1)
-ax.set_xlabel("PC1")
-ax.set_ylabel("PC2")
-ax.set_zlabel("Readout")
-ax.legend()
-plt.title("PCA (pro+anti) of Fixed Points")
-plt.savefig(
-    plot_path
-    + f"PCA_FP_{task_to_analyze_1}_{task_to_analyze_2}_{model_type}_{phase}.png"
-)
+    ax2 = fig.add_subplot(4, 4, 4 * i + 2, projection="3d")
+    for j in range(n_anti_trials):
+        start_ind = phase_task_anti[j][phase][0]
+        end_ind = phase_task_anti[j][phase][1]
+        ax2.plot(
+            lats_anti_in_anti[j, start_ind:end_ind, 0],
+            lats_anti_in_anti[j, start_ind:end_ind, 1],
+            outputs_anti[j, start_ind:end_ind, 1],
+            color="blue",
+            alpha=0.3,
+        )
+    ax2.set_xlim([-3, 3])
+    ax2.set_ylim([-3, 3])
+    ax2.set_zlim([-3, 3])
 
-pca = PCA(n_components=2)
-pca.fit(x_pro)
-x_pro_pca = pca.transform(x_pro)
-x_anti_pca = pca.transform(x_anti)
-plt.figure()
-# add 3d subplot
-ax = plt.subplot(111, projection="3d")
-ax.scatter(x_pro_pca[:, 0], x_pro_pca[:, 1], readout_pro[:, 1], c="r", s=1, label="Pro")
-ax.scatter(
-    x_anti_pca[:, 0], x_anti_pca[:, 1], readout_anti[:, 1], c="b", s=1, label="Anti"
-)
-ax.legend()
+    start_ind = phase_task_pro[0][phase][0]
+    end_ind = phase_task_pro[0][phase][1]
+    ax3 = fig.add_subplot(4, 4, 4 * i + 3, projection="3d")
+    for j in range(n_pro_trials):
+        start_ind = phase_task_pro[j][phase][0]
+        end_ind = phase_task_pro[j][phase][1]
+        ax3.plot(
+            lats_pro_in_anti[j, start_ind:end_ind, 0],
+            lats_pro_in_anti[j, start_ind:end_ind, 1],
+            outputs_pro[j, start_ind:end_ind, 1],
+            color="blue",
+            alpha=0.3,
+        )
+    ax3.set_xlim([-3, 3])
+    ax3.set_ylim([-3, 3])
+    ax3.set_zlim([-3, 3])
 
-ax.set_zlim(-1.1, 1.1)
-ax.set_xlabel("PC1")
-ax.set_ylabel("PC2")
-ax.set_zlabel("Readout")
-plt.title("PCA (pro) of Fixed Points")
-plt.savefig(
-    plot_path
-    + f"PCAPro_FP_{task_to_analyze_1}_{task_to_analyze_2}_{model_type}_{phase}.png"
-)
+    ax4 = fig.add_subplot(4, 4, 4 * i + 4, projection="3d")
+    for j in range(n_anti_trials):
+        start_ind = phase_task_anti[j][phase][0]
+        end_ind = phase_task_anti[j][phase][1]
+        ax4.plot(
+            lats_anti_in_pro[j, start_ind:end_ind, 0],
+            lats_anti_in_pro[j, start_ind:end_ind, 1],
+            outputs_anti[j, start_ind:end_ind, 1],
+            color="blue",
+            alpha=0.3,
+        )
+    ax4.set_xlim([-3, 3])
+    ax4.set_ylim([-3, 3])
+    ax4.set_zlim([-3, 3])
 
-pca = PCA(n_components=2)
-pca.fit(x_anti)
-x_pro_pca = pca.transform(x_pro)
-x_anti_pca = pca.transform(x_anti)
-plt.figure()
-# add 3d subplot
-ax = plt.subplot(111, projection="3d")
-ax.scatter(x_pro_pca[:, 0], x_pro_pca[:, 1], readout_pro[:, 1], c="r", s=1, label="Pro")
-ax.scatter(
-    x_anti_pca[:, 0], x_anti_pca[:, 1], readout_anti[:, 1], c="b", s=1, label="Anti"
-)
-ax.legend()
-ax.set_zlim(-1.1, 1.1)
-ax.set_xlabel("PC1")
-ax.set_ylabel("PC2")
-ax.set_zlabel("Readout")
-plt.title("PCA (anti) of Fixed Points")
-plt.savefig(
-    plot_path
-    + f"PCAAnti_FP_{task_to_analyze_1}_{task_to_analyze_2}_{model_type}_{phase}.png"
-)
+    if i == 0:
+        ax1.set_title("Pro")
+        ax2.set_title("Anti")
+        ax3.set_title("Pro in Anti")
+        ax4.set_title("Anti in Pro")
+
+plt.savefig(os.path.join(plot_path, f"PCA_plots{task1}_{task2}.png"))
+plt.close(fig)

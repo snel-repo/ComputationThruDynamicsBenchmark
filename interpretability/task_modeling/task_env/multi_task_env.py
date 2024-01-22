@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from gymnasium import spaces
 
-# from interpretability.task_modeling.datamodule.samplers import (
-#     GroupedSampler,
-#     RandomSampler,
-# )
+from interpretability.task_modeling.datamodule.samplers import (
+    GroupedSampler,
+    RandomSampler,
+)
 
 
 class DecoupledEnvironment(gym.Env, ABC):
@@ -47,10 +47,11 @@ class MultiTaskWrapper:
         num_targets: int,
         noise: float,
         grouped_sampler: bool = False,
+        dataset_name="MultiTask",
     ):
         # TODO: Seed environment
         self.n_timesteps = n_timesteps
-        self.dataset_name = "MultiTask"
+        self.dataset_name = dataset_name
         self.bin_size = bin_size
         self.task_list = [
             MultiTask(
@@ -95,10 +96,10 @@ class MultiTaskWrapper:
         self.noise = noise
         self.coupled_env = False
         self.extra = "phase_dict"
-        # if grouped_sampler:
-        #     self.sampler = GroupedSampler
-        # else:
-        #     self.sampler = RandomSampler
+        if grouped_sampler:
+            self.sampler = GroupedSampler
+        else:
+            self.sampler = RandomSampler
 
     def generate_dataset(self, n_samples):
         # TODO: Maybe batch this?
@@ -109,6 +110,7 @@ class MultiTaskWrapper:
         true_inputs_ds = []
         phase_list = []
         task_names = []
+        conds_ds = []
         for task_num, task in enumerate(self.task_list):
             inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
             true_inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
@@ -127,12 +129,16 @@ class MultiTaskWrapper:
                 true_inputs_task[i, :trial_len, :] = inputs
                 phase_list.append(phase_dict)
                 task_names.append(task_name)
+            conds_ds.append(task_num * np.ones(shape=(n_samples, 1)))
             inputs_ds.append(inputs_task)
             outputs_ds.append(outputs_task)
             true_inputs_ds.append(true_inputs_task)
+
         inputs_ds = np.concatenate(inputs_ds, axis=0)
         true_inputs_ds = np.concatenate(true_inputs_ds, axis=0)
         outputs_ds = np.concatenate(outputs_ds, axis=0)
+        conds_ds = np.concatenate(conds_ds, axis=0)
+
         dataset_dict = {
             "inputs": inputs_ds,
             "targets": outputs_ds,
@@ -140,6 +146,7 @@ class MultiTaskWrapper:
             "phase_dict": phase_list,
             "task_names": task_names,
             "true_inputs": true_inputs_ds,
+            "conds": conds_ds,
         }
         return dataset_dict
 
@@ -266,14 +273,17 @@ class MultiTask:
 
         inputs = np.zeros((total_len, 20))
         outputs = np.zeros((total_len, 3))
+        targ_ang_list = np.linspace(-np.pi, np.pi, self.num_targets, endpoint=False)
+
         match self.task_type:
             case "Delay":
                 # Fixation
                 inputs[:response_ind, 0] = 1
 
                 # Target
+
                 targ_num_1 = np.random.randint(0, self.num_targets)
-                targ_ang_1 = 2 * targ_num_1 * np.pi / self.num_targets
+                targ_ang_1 = targ_ang_list[targ_num_1]
 
                 inputs[stim1_ind:, 1] = np.cos(targ_ang_1)
                 inputs[stim1_ind:, 2] = np.sin(targ_ang_1)
@@ -300,7 +310,7 @@ class MultiTask:
 
                 # Target
                 targ_num_1 = np.random.randint(0, self.num_targets)
-                targ_ang_1 = 2 * targ_num_1 * np.pi / self.num_targets
+                targ_ang_1 = targ_ang_list[targ_num_1]
 
                 inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
                 inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
@@ -327,7 +337,7 @@ class MultiTask:
 
                 # Target
                 targ_num_1 = np.random.randint(0, self.num_targets)
-                targ_ang_1 = 2 * targ_num_1 * np.pi / self.num_targets
+                targ_ang_1 = targ_ang_list[targ_num_1]
 
                 inputs[response_ind:, 1] = np.cos(targ_ang_1)
                 inputs[response_ind:, 2] = np.sin(targ_ang_1)
@@ -353,19 +363,19 @@ class MultiTask:
 
                 # Target
                 targ_num_1 = np.random.randint(0, self.num_targets)
-                targ_ang_1 = 2 * targ_num_1 * np.pi / self.num_targets
+                targ_ang_1 = targ_ang_list[targ_num_1]
 
                 targ_num_2 = np.random.randint(0, self.num_targets)
-                targ_ang_2 = 2 * targ_num_2 * np.pi / self.num_targets
+                targ_ang_2 = targ_ang_list[targ_num_2]
 
                 targ_mag_1 = np.random.uniform(0.5, 1.5)
                 targ_mag_2 = np.random.uniform(0.5, 1.5)
 
                 targ_num_1B = np.random.randint(0, self.num_targets)
-                targ_ang_1B = 2 * targ_num_1B * np.pi / self.num_targets
+                targ_ang_1B = targ_ang_list[targ_num_1B]
 
                 targ_num_2B = np.random.randint(0, self.num_targets)
-                targ_ang_2B = 2 * targ_num_2B * np.pi / self.num_targets
+                targ_ang_2B = targ_ang_list[targ_num_2B]
 
                 targ_mag_1B = np.random.uniform(0.5, 1.5)
                 targ_mag_2B = np.random.uniform(0.5, 1.5)
@@ -441,10 +451,10 @@ class MultiTask:
 
                 # Target
                 targ_num_1 = np.random.randint(0, self.num_targets)
-                targ_ang_1 = 2 * targ_num_1 * np.pi / self.num_targets
+                targ_ang_1 = targ_ang_list[targ_num_1]
 
                 targ_num_2 = np.random.randint(0, self.num_targets)
-                targ_ang_2 = 2 * targ_num_2 * np.pi / self.num_targets
+                targ_ang_2 = targ_ang_list[targ_num_2]
 
                 if targ_num_1 == targ_num_2:
                     isMatched = True
@@ -459,19 +469,22 @@ class MultiTask:
                 inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
                 inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
 
-                inputs[response_ind:, 1] = np.cos(targ_ang_2)
-                inputs[response_ind:, 2] = np.sin(targ_ang_2)
+                inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
+                inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
+
                 outputs[:response_ind, 0] = 1
                 if self.task_name == "Match2Sample":
                     inputs[:, 16] = 1
                     if isMatched:
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
+
                 elif self.task_name == "NonMatch2Sample":
                     inputs[:, 17] = 1
                     if isOpposite:
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
+
                 elif self.task_name == "MatchCatPro":
                     inputs[:, 18] = 1
                     if (targ_ang_1 < np.pi and targ_ang_2 < np.pi) or (
@@ -487,6 +500,7 @@ class MultiTask:
                     ):
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
+
                 phase_dict = {
                     "context": [0, stim1_ind],
                     "stim1": [stim1_ind, mem1_ind],
@@ -578,71 +592,68 @@ class MultiTask:
 
         plt.suptitle(f"Trial: {self.task_name}")
         plt.savefig(f"{plot_path}/{self.task_name}_state_diag.png")
+
         fig = plt.figure()
         # Plot stim1, stim2 and response as a scatter plot
-        ax1 = fig.add_subplot(3, 2, 1)
-        ax2 = fig.add_subplot(3, 2, 2)
-
-        if "stim1" in phase_dict.keys():
-            ax1.plot(
-                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 1],
-                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 2],
-                c="r",
-            )
-            ax2.plot(
-                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 3],
-                inputs[phase_dict["stim1"][0] - 2 : phase_dict["stim1"][1], 4],
-                c="b",
-            )
-
-            ax1.set_xlim([-1.5, 1.5])
-            ax1.set_ylim([-1.5, 1.5])
-
-            ax2.set_xlim([-1.5, 1.5])
-            ax2.set_ylim([-1.5, 1.5])
-
-            ax1.set_ylabel("Stim1")
-            ax1.set_title("Modality 1")
-            ax2.set_title("Modality 2")
-
-        ax1.set_aspect("equal", adjustable="box")
-        ax2.set_aspect("equal", adjustable="box")
-
-        ax1 = fig.add_subplot(3, 2, 3)
-        ax2 = fig.add_subplot(3, 2, 4)
-
-        if "stim2" in phase_dict.keys():
-            ax1.plot(
-                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 1],
-                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 2],
-                c="r",
-            )
-            ax2.plot(
-                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 3],
-                inputs[phase_dict["stim2"][0] - 2 : phase_dict["stim2"][1], 4],
-                c="b",
+        ax_input1 = fig.add_subplot(1, 4, 1)
+        ax_input2 = fig.add_subplot(1, 4, 2)
+        ax_output = fig.add_subplot(1, 4, 3)
+        ax_labels = fig.add_subplot(1, 4, 4)
+        color_dict = {
+            "context": "k",
+            "stim1": "r",
+            "mem1": "orange",
+            "stim2": "b",
+            "mem2": "purple",
+            "response": "g",
+        }
+        for phase1 in phase_dict.keys():
+            ax_input1.plot(
+                inputs[phase_dict[phase1][0] : phase_dict[phase1][1], 1],
+                inputs[phase_dict[phase1][0] : phase_dict[phase1][1], 2],
+                c=color_dict[phase1],
             )
 
-            ax1.set_ylabel("Stim2")
-            ax1.set_xlim([-1.5, 1.5])
-            ax1.set_ylim([-1.5, 1.5])
-
-            ax2.set_xlim([-1.5, 1.5])
-            ax2.set_ylim([-1.5, 1.5])
-        ax1.set_aspect("equal", adjustable="box")
-        ax2.set_aspect("equal", adjustable="box")
-
-        ax1 = fig.add_subplot(3, 2, 5)
-        if "response" in phase_dict.keys():
-            ax1.plot(
-                outputs[phase_dict["response"][0] - 2 : phase_dict["response"][1], 1],
-                outputs[phase_dict["response"][0] - 2 : phase_dict["response"][1], 2],
-                c="r",
+            ax_input2.plot(
+                inputs[phase_dict[phase1][0] : phase_dict[phase1][1], 3],
+                inputs[phase_dict[phase1][0] : phase_dict[phase1][1], 4],
+                c=color_dict[phase1],
             )
-            ax1.set_xlim([-1.5, 1.5])
-            ax1.set_ylim([-1.5, 1.5])
-            ax1.set_ylabel("Response")
-        ax1.set_aspect("equal", adjustable="box")
+
+            ax_output.scatter(
+                outputs[phase_dict[phase1][0] : phase_dict[phase1][1], 1],
+                outputs[phase_dict[phase1][0] : phase_dict[phase1][1], 2],
+                c=color_dict[phase1],
+            )
+            ax_labels.scatter([0, 0], [0, 0], c=color_dict[phase1], label=phase1)
+        ax_labels.legend()
+
+        ax_input1.set_title("Input 1")
+        ax_input2.set_title("Input 2")
+        ax_output.set_title("Output")
+
+        ax_input1.set_xlim([-1.5, 1.5])
+        ax_input1.set_ylim([-1.5, 1.5])
+
+        ax_input2.set_xlim([-1.5, 1.5])
+        ax_input2.set_ylim([-1.5, 1.5])
+
+        ax_output.set_xlim([-1.5, 1.5])
+        ax_output.set_ylim([-1.5, 1.5])
+
+        ax_input1.set_xticklabels([])
+        ax_input1.set_yticklabels([])
+        ax_input2.set_xticklabels([])
+        ax_input2.set_yticklabels([])
+        ax_output.set_xticklabels([])
+        ax_output.set_yticklabels([])
+        ax_labels.set_xticklabels([])
+        ax_labels.set_yticklabels([])
+
+        ax_input1.set_aspect("equal", adjustable="box")
+        ax_input2.set_aspect("equal", adjustable="box")
+        ax_output.set_aspect("equal", adjustable="box")
+        ax_labels.set_aspect("equal", adjustable="box")
 
         plt.suptitle(f"Trial: {self.task_name}")
         plt.savefig(f"{plot_path}/{self.task_name}_radial.png")

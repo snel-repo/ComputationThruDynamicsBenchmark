@@ -1,6 +1,6 @@
 import os
 
-from interpretability.comparison.analysis import Comparisons
+from interpretability.comparison.analysis.analysis_tt import Comparisons
 
 # plt.ion()
 

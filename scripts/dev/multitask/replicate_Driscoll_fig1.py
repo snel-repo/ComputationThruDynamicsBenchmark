@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
-from interpretability.comparison.analysis import Comparisons
+from interpretability.comparison.analysis.analysis_tt import Comparisons
 
 # plt.ion()
 

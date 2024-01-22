@@ -55,7 +55,7 @@ class NeuralDataSimulator:
         self.use_neurons = True
 
     def simulate_neural_data(
-        self, task_trained_model, datamodule, coupled=False, seed=0
+        self, task_trained_model, datamodule, run_tag, coupled=False, seed=0
     ):
 
         # Make a filename based on the system being modeled, the number of neurons,
@@ -78,11 +78,10 @@ class NeuralDataSimulator:
             self.n_neurons = latents.shape[-1]
 
         filename = (
+            f"{run_tag}_"
             f"{datamodule.data_env.dataset_name}_"
             f"model_{type(task_trained_model.model).__name__}_"
             f"n_neurons_{self.n_neurons}_"
-            f"nonlin_embed_{self.nonlin_embed}_"
-            f"obs_noise_{self.obs_noise}_"
             f"seed_{seed}.h5"
         )
 

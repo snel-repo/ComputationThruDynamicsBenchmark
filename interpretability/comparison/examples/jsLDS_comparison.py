@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression
 
 jsLDS_path = (
     "/home/csverst/Github/InterpretabilityBenchmark/"
-    "interpretability/comparison/latents/jslds_outputs_3bff.h5"
+    "interpretability/comparison/latents/3bff_jslds_with_inputs.h5"
 )
 with h5py.File(jsLDS_path, "r") as h5file:
     # Check the fields
@@ -26,7 +26,6 @@ with h5py.File(true_path, "r") as h5file:
     valid_rates = h5file["valid_activity"][()]
 
 # Compute R2 between rates and latents
-x = 1
 true_lats = np.concatenate((train_lats, valid_lats), axis=0)
 true_rates = np.concatenate((train_rates, valid_rates), axis=0)
 
@@ -53,19 +52,34 @@ true_rates_flat = true_rates.reshape(B * T, D)
 B1, T1, D1 = rates.shape
 rates_flat = rates.reshape(B1 * T1, D1)
 pred_true = np.zeros((B * T, top_n))
+pred_lats = np.zeros((B * T, top_n))
 
+inf_2_true_r2 = np.zeros(top_n)
+true_2_inf_r2 = np.zeros(top_n)
 for i in range(top_n):
     reg = LinearRegression().fit(lats_flat, true_lats_comp[:, i])
     pred_true[:, i] = reg.predict(lats_flat)
     print(f"PC{i+1} R2: {reg.score(lats_flat, true_lats_comp[:,i])}")
+    inf_2_true_r2[i] = reg.score(lats_flat, true_lats_comp[:, i])
+
+for i in range(top_n):
+    reg = LinearRegression().fit(true_lats_comp, pcLats_jsLDS[:, i])
+    pred_lats[:, i] = reg.predict(true_lats_comp)
+    print(f"State {i+1} R2: {reg.score(true_lats_comp, pcLats_jsLDS[:, i])}")
+    true_2_inf_r2[i] = reg.score(true_lats_comp, pcLats_jsLDS[:, i])
 
 for i in range(D):
     reg = LinearRegression().fit(rates_flat, true_rates_flat[:, i])
     print(f"Rate {i+1} R2: {reg.score(rates_flat, true_rates_flat[:,i])}")
 
+mean_inf2True = np.mean(inf_2_true_r2)
+mean_true2Inf = np.mean(true_2_inf_r2)
+print(f"Mean inf2True R2: {mean_inf2True}")
+print(f"Mean true2Inf R2: {mean_true2Inf}")
+
 # Plot the latents
-fig = plt.figure(figsize=(15, 5))
-ax = fig.add_subplot(1, 3, 1, projection="3d")
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(2, 2, 1, projection="3d")
 ax.scatter(
     true_lats_comp[1::100, 0],
     true_lats_comp[1::100, 1],
@@ -74,26 +88,65 @@ ax.scatter(
     color="cyan",
     label="true",
 )
+ax.set_xlim([-2, 2])
+ax.set_ylim([-2, 2])
+ax.set_zlim([-2, 2])
+ax.set_xticks([-1, 0, 1])
+ax.set_yticks([-1, 0, 1])
+ax.set_zticks([-1, 0, 1])
+
 ax.set_xlabel("PC1")
 ax.set_ylabel("PC2")
 ax.set_zlabel("PC3")
 ax.legend()
 
-ax = fig.add_subplot(1, 3, 2, projection="3d")
+ax = fig.add_subplot(2, 2, 2, projection="3d")
 ax.scatter(
     pred_true[1::100, 0],
     pred_true[1::100, 1],
     pred_true[1::100, 2],
     s=1,
     color="g",
-    label="pred",
+    label="inferred -> true",
 )
+ax.set_title(f"R2: {inf_2_true_r2.mean():.2f}")
+ax.set_xlim([-2, 2])
+ax.set_ylim([-2, 2])
+ax.set_zlim([-2, 2])
+
+ax.set_xticks([-1, 0, 1])
+ax.set_yticks([-1, 0, 1])
+ax.set_zticks([-1, 0, 1])
+
 ax.set_xlabel("PC1")
 ax.set_ylabel("PC2")
 ax.set_zlabel("PC3")
 ax.legend()
 
-ax = fig.add_subplot(1, 3, 3, projection="3d")
+ax = fig.add_subplot(2, 2, 3, projection="3d")
+ax.scatter(
+    pred_lats[1::100, 0],
+    pred_lats[1::100, 1],
+    pred_lats[1::100, 2],
+    s=1,
+    color="b",
+    label="true -> inferred",
+)
+ax.set_title(f"R2: {true_2_inf_r2.mean():.2f}")
+ax.set_xlim([-2, 2])
+ax.set_ylim([-2, 2])
+ax.set_zlim([-2, 2])
+
+ax.set_xticks([-1, 0, 1])
+ax.set_yticks([-1, 0, 1])
+ax.set_zticks([-1, 0, 1])
+
+ax.set_xlabel("PC1")
+ax.set_ylabel("PC2")
+ax.set_zlabel("PC3")
+ax.legend()
+
+ax = fig.add_subplot(2, 2, 4, projection="3d")
 ax.scatter(
     pcLats_jsLDS[1::100, 0],
     pcLats_jsLDS[1::100, 1],
@@ -102,13 +155,24 @@ ax.scatter(
     color="r",
     label="jsLDS",
 )
+ax.set_xlim([-2, 2])
+ax.set_ylim([-2, 2])
+ax.set_zlim([-2, 2])
+
+ax.set_xticks([-1, 0, 1])
+ax.set_yticks([-1, 0, 1])
+ax.set_zticks([-1, 0, 1])
+
 ax.set_xlabel("PC1")
 ax.set_ylabel("PC2")
 ax.set_zlabel("PC3")
 ax.legend()
 
-plt.savefig("jsLDS_latents.png")
+plt.suptitle("jsLDS vs. true latents on Three-Bit Flip-Flop")
 
+plt.savefig("jsLDS_latents.png")
+plt.savefig("jsLDS_latents.pdf")
+# =============================================================================
 rate_pca = PCA()
 rates_dimRed = rate_pca.fit_transform(true_rates_flat)
 jsLDS_rate_pca = PCA()
@@ -146,3 +210,4 @@ ax.set_zlabel("Rate PC3")
 ax.legend()
 
 plt.savefig("jsLDS_rates.png")
+plt.savefig("jsLDS_rates.pdf")

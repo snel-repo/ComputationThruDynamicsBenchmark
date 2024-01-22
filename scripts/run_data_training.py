@@ -19,23 +19,22 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = True
+LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "3BFF_NODE_ExtInputs_decay"
+RUN_DESC = "NBFF_GRU_CompareTest"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
-MODEL = "NODE"
+MODEL = "GRU_RNN"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
     model=dict(
-        latent_size=tune.grid_search([5]),
-        decay_decoder=tune.grid_search([3e-5]),
+        latent_size=tune.grid_search([128]),
     ),
     datamodule=dict(
-        gen_model=tune.grid_search(["NODE"]),
+        gen_model=tune.grid_search(["GRU_RNN"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),

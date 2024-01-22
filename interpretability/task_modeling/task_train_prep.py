@@ -143,7 +143,6 @@ def train(
     # -----------------------------Train model---------------------------
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
-    simulator.simulate_neural_data(task_wrapper, datamodule, seed=0)
 
     # Save the model, datamodule, and simulator to the directory
     log.info("Saving model, datamodule, and simulator")
@@ -157,6 +156,7 @@ def train(
     with open(path2, "wb") as f:
         pickle.dump(datamodule, f)
 
+    simulator.simulate_neural_data(task_wrapper, datamodule, run_tag, seed=0)
     path3 = SAVE_PATH + run_tag + "/simulator.pkl"
     with open(path3, "wb") as f:
         pickle.dump(simulator, f)

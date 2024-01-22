@@ -8,7 +8,7 @@ import torch
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 
-from interpretability.comparison.analysis import Comparisons
+from interpretability.comparison.analysis.analysis_tt import Comparisons
 
 # plt.ion()
 

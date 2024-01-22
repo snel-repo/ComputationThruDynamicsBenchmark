@@ -11,10 +11,10 @@ from gymnasium import Env
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 
-# from interpretability.task_modeling.datamodule.samplers import (
-#     RandomSampler,
-#     SequentialSampler,
-# )
+from interpretability.task_modeling.datamodule.samplers import (
+    RandomSampler,
+    SequentialSampler,
+)
 
 
 def save_dict_to_pickle(dic, filename):
@@ -75,12 +75,12 @@ class TaskDataModule(pl.LightningDataModule):
         self.output_labels = self.data_env.output_labels
         if hasattr(self.data_env, "extra"):
             self.extra = self.data_env.extra
-        # if hasattr(self.data_env, "sampler"):
-        #     self.sampler_func = data_env.sampler
-        #     self.val_sampler_func = SequentialSampler
-        # else:
-        #     self.sampler_func = RandomSampler
-        #     self.val_sampler_func = SequentialSampler
+        if hasattr(self.data_env, "sampler"):
+            self.sampler_func = data_env.sampler
+            self.val_sampler_func = SequentialSampler
+        else:
+            self.sampler_func = RandomSampler
+            self.val_sampler_func = SequentialSampler
 
     def prepare_data(self):
         hps = self.hparams
@@ -99,11 +99,13 @@ class TaskDataModule(pl.LightningDataModule):
         inputs_ds = dataset_dict["inputs"]
         targets_ds = dataset_dict["targets"]
         ics_ds = dataset_dict["ics"]
+        conds_ds = dataset_dict["conds"]
 
         keys = list(dataset_dict.keys())
         keys.remove("inputs")
         keys.remove("targets")
         keys.remove("ics")
+        keys.remove("conds")
         # Standardize and record original mean and standard deviations
         # Perform data splits
         num_trials = ics_ds.shape[0]
@@ -122,6 +124,9 @@ class TaskDataModule(pl.LightningDataModule):
 
             h5file.create_dataset("train_targets", data=targets_ds[train_inds])
             h5file.create_dataset("valid_targets", data=targets_ds[valid_inds])
+
+            h5file.create_dataset("train_conds", data=conds_ds[train_inds])
+            h5file.create_dataset("valid_conds", data=conds_ds[valid_inds])
 
             h5file.create_dataset("train_inds", data=train_inds)
             h5file.create_dataset("valid_inds", data=valid_inds)
@@ -142,6 +147,9 @@ class TaskDataModule(pl.LightningDataModule):
             train_targets = to_tensor(h5file["train_targets"][()])
             valid_targets = to_tensor(h5file["valid_targets"][()])
 
+            train_conds = to_tensor(h5file["train_conds"][()])
+            valid_conds = to_tensor(h5file["valid_conds"][()])
+
             # Load the indices
             train_inds = to_tensor(h5file["train_inds"][()])
             valid_inds = to_tensor(h5file["valid_inds"][()])
@@ -150,24 +158,24 @@ class TaskDataModule(pl.LightningDataModule):
         self.all_data = load_dict_from_pickle(data_path_pkl)
         # Store datasets
         self.train_ds = TensorDataset(
-            train_ics, train_inputs, train_targets, train_inds
+            train_ics, train_inputs, train_targets, train_inds, train_conds
         )
         self.valid_ds = TensorDataset(
-            valid_ics, valid_inputs, valid_targets, valid_inds
+            valid_ics, valid_inputs, valid_targets, valid_inds, valid_conds
         )
-        # self.train_sampler = self.sampler_func(
-        #     data_source=self.train_ds, num_samples=self.hparams.batch_size
-        # )
-        # self.valid_sampler = self.val_sampler_func(
-        #     data_source=self.valid_ds, num_samples=self.hparams.batch_size
-        # )
+        self.train_sampler = self.sampler_func(
+            data_source=self.train_ds, num_samples=self.hparams.batch_size
+        )
+        self.valid_sampler = self.val_sampler_func(
+            data_source=self.valid_ds, num_samples=self.hparams.batch_size
+        )
         # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 
     def train_dataloader(self, shuffle=True):
         train_dl = DataLoader(
             self.train_ds,
-            # batch_sampler=self.train_sampler,
-            batch_size=self.hparams.batch_size,
+            batch_sampler=self.train_sampler,
+            # batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             # shuffle=shuffle,
         )
@@ -176,8 +184,8 @@ class TaskDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         valid_dl = DataLoader(
             self.valid_ds,
-            # batch_sampler=self.valid_sampler,
-            batch_size=self.hparams.batch_size,
+            batch_sampler=self.valid_sampler,
+            # batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
         )
         return valid_dl

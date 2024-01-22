@@ -1,4 +1,4 @@
-from interpretability.comparison.analysis import Analysis_DT
+from interpretability.comparison.analysis.analysis_tt import Analysis_DT
 
 top_dir = "/home/csverst/Github/InterpretabilityBenchmark/trained_models/task-trained/"
 filepaths = [

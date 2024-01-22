@@ -94,15 +94,8 @@ class NODELatentSAE(pl.LightningModule):
         )
         self.dropout = nn.Dropout(p=dropout)
         # Construct graph based on readout: Linear, INN, or Flow readout
-        self.readout_type = readout_type
-        # if self.readout_type == "Invert":
-        #     self.readout = InvertibleNetNeural(
-        #         node_dim=latent_size,
-        #         heldin_dim=heldin_size,
-        #         heldout_dim=heldout_size,
-        #         inn_num_layers=readout_num_layers,
-        #     )
 
+        self.readout_type = readout_type
         if self.readout_type == "Linear":
             self.readout = nn.Linear(in_features=latent_size, out_features=heldout_size)
         elif self.readout_type == "Flow":
@@ -130,10 +123,11 @@ class NODELatentSAE(pl.LightningModule):
             raise Exception("Linear cant be inverted", "Try another readout")
         if not increment_trial and (points_per_group > 0 or epochs_per_group > 0):
             raise Exception("No incrementing points without a license!", "Try again")
+
         self.save_hyperparameters()
+
         act_func = torch.nn.ReLU
         latent_size = self.hparams.latent_size
-
         vector_field = []
         vector_field.append(nn.Linear(latent_size + input_size, vf_hidden_size))
         vector_field.append(act_func())

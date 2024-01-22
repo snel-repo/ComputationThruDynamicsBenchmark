@@ -23,6 +23,7 @@ def find_fixed_points(
 
     model = model.to(device)
     state_trajs = state_trajs.to(device)
+    inputs = inputs.to(device)
 
     # Prevent gradient computation for the neural ODE
     for parameter in model.parameters():
@@ -41,14 +42,17 @@ def find_fixed_points(
 
     # Select the initial states
     states = state_pts[idx]
-    inputs = inputs[idx]
+    if len(inputs.shape) > 1:
+        inputs = inputs[idx]
+    else:
+        inputs = inputs.unsqueeze(0).repeat(n_inits, 1)
 
     # Add Gaussian noise to the sampled points
     states = states + noise_scale * torch.randn_like(states, device=device)
 
     # Require gradients for the states
     states = states.detach()
-    initial_states = states.detach().numpy()
+    initial_states = states.detach().cpu().numpy()
     states.requires_grad = True
 
     # Create the optimizer
@@ -57,8 +61,12 @@ def find_fixed_points(
     # Run the optimization
     iter_count = 1
     q_prev = torch.full((n_inits,), float("nan"), device=device)
+    x_store = np.zeros((n_inits, max_iters, state_dim))
+    q_store = np.zeros((n_inits, max_iters))
     while True:
         # Compute q and dq for the current states
+        x_store[:, iter_count - 1, :] = states.cpu().detach().numpy()
+        q_store[:, iter_count - 1] = q_prev.cpu().detach().numpy()
         _, F = model.model(inputs, states)
         q = 0.5 * torch.sum((F.squeeze() - states.squeeze()) ** 2, dim=1)
         dq = torch.abs(q - q_prev)
@@ -85,6 +93,7 @@ def find_fixed_points(
             print("Maximum iteration count reached. Terminating.")
             break
         q_prev = q
+        q_store[:, iter_count - 1] = q_prev.cpu().detach().numpy()
         iter_count += 1
     # Collect fixed points
 
@@ -124,4 +133,4 @@ def find_fixed_points(
         else:
             return []
     else:
-        return all_fps
+        return all_fps, x_store, q_store
