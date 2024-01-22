@@ -21,17 +21,17 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "NBFF_GRU_CompareTest"
+RUN_DESC = "NBFF_NODE_CompareTest"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
-MODEL = "GRU_RNN"
+MODEL = "NODE"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
     model=dict(
-        latent_size=tune.grid_search([128]),
+        latent_size=tune.grid_search([10]),
     ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),

@@ -71,3 +71,12 @@ class Analysis_TT(Analysis):
             compute_jacobians=False,
         )
         return fps
+
+    def simulate_neural_data(self):
+        self.simulator.simulate_neural_data(
+            self.wrapper,
+            self.datamodule,
+            self.run_name,
+            coupled=False,
+            seed=0,
+        )

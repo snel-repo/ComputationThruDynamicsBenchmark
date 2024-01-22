@@ -63,12 +63,11 @@ class NeuralDataSimulator:
         # and the seed
 
         # Get trajectories and model predictions
-        train_data = datamodule.train_dataloader().dataset.tensors
-        val_data = datamodule.val_dataloader().dataset.tensors
+        all_data = datamodule.all_data
 
-        ics = torch.cat([train_data[0], val_data[0]])
-        inputs = torch.cat([train_data[1], val_data[1]])
-        targets = torch.cat([train_data[2], val_data[2]])
+        ics = torch.Tensor(all_data["ics"])
+        inputs = torch.Tensor(all_data["inputs"])
+        targets = torch.Tensor(all_data["targets"])
 
         output_dict = task_trained_model(ics, inputs, targets)
 

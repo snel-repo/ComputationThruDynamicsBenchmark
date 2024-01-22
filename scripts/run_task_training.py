@@ -25,9 +25,9 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "MultiTaskReachOnly_3000Samples"  # For WandB and run dir
+RUN_DESC = "NBFF_EnvTest"  # For WandB and run dir
 NUM_SAMPLES = 1  # For HP search
-TASK = "MultiTaskMem"  # Task to train on (see configs/task_env for options)
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # ------------------Data Management Variables --------------------------------
@@ -49,16 +49,16 @@ SEARCH_SPACE = dict(
     ),
     datamodule=dict(
         # Data Parameters -----------------------------------
-        n_samples=tune.grid_search([3000]),
-        batch_size=tune.grid_search([128]),
+        n_samples=tune.grid_search([1000]),
+        batch_size=tune.grid_search([256]),
     ),
-    task_env=dict(
-        grouped_sampler=tune.grid_search([True]),
-        noise=tune.grid_search([0.31]),
-    ),
+    # task_env=dict(
+    #     grouped_sampler=tune.grid_search([True]),
+    #     noise=tune.grid_search([0.31]),
+    # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.grid_search([100]),
+        max_epochs=tune.grid_search([500]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

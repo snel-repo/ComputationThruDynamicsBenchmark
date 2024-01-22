@@ -98,7 +98,7 @@ class NBitFlipFlop(DecoupledEnvironment):
             "ics": ics_ds,
             "inputs": inputs_ds,
             "targets": outputs_ds,
-            "conds": None,
+            "conds": np.zeros(shape=(n_samples, 1)),
         }
         return dataset_dict
 
@@ -403,115 +403,7 @@ class RandomTargetReach(Environment):
             "ics": initial_state,
             "inputs": inputs,
             "targets": goal_list,
-            "conds": None,
-        }
-        return dataset_dict
-
-    def set_goal(
-        self,
-        goal: torch.Tensor,
-    ):
-        """
-        Sets the goal of the task. This is the target position of the effector.
-        """
-        self.goal = goal
-
-    def reset(
-        self,
-        batch_size: int = 1,
-        ic_state: Any | None = None,
-        target_state: Any | None = None,
-        deterministic: bool = False,
-        seed: int | None = None,
-    ) -> tuple[Any, dict[str, Any]]:
-
-        """
-        Uses the :meth:`Environment.reset()` method of the parent class
-        :class:`Environment` that can be overwritten to change the returned data.
-        Here the goals (`i.e.`, the targets) are drawn from a random uniform
-        distribution across the full joint space.
-        """
-
-        self._set_generator(seed=seed)
-
-        if ic_state is not None:
-            ic_state_shape = np.shape(self.detach(ic_state))
-            if ic_state_shape[0] > 1:
-                batch_size = ic_state_shape[0]
-        else:
-            ic_state = self.q_init
-
-        self.effector.reset(batch_size, ic_state)
-        if target_state is None:
-            self.goal = self.joint2cartesian(
-                self.effector.draw_random_uniform_states(batch_size)
-            ).chunk(2, dim=-1)[0]
-        else:
-            self.goal = target_state
-        self.elapsed = 0.0
-
-        action = torch.zeros((batch_size, self.action_space.shape[0])).to(self.device)
-
-        self.obs_buffer["proprioception"] = [self.get_proprioception()] * len(
-            self.obs_buffer["proprioception"]
-        )
-        self.obs_buffer["vision"] = [self.get_vision()] * len(self.obs_buffer["vision"])
-        self.obs_buffer["action"] = [action] * self.action_frame_stacking
-
-        action = action if self.differentiable else self.detach(action)
-
-        obs = self.get_obs(deterministic=deterministic)
-        info = {
-            "states": self._maybe_detach_states(),
-            "action": action,
-            "noisy action": action,
-            "goal": self.goal if self.differentiable else self.detach(self.goal),
-        }
-        return obs, info
-
-
-class RandomTargetReachRigidMuscle(Environment):
-    """A reach to a random target from a random starting position.
-
-    Args:
-        network: :class:`motornet.nets.layers.Network` object class or subclass.
-        This is the network that will perform the task.
-
-        name: `String`, the name of the task object instance.
-        deriv_weight: `Float`, the weight of the muscle activation's derivative
-        contribution to the default muscle L2 loss.
-
-        **kwargs: This is passed as-is to the parent :class:`Task` class.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.obs_noise[: self.skeleton.space_dim] = [
-            0.0
-        ] * self.skeleton.space_dim  # target info is noiseless
-        self.dataset_name = "RandomTargetReachRigidMuscle"
-        self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
-        self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
-        self.output_labels = ["M1", "M2", "M3", "M4"]
-        self.coupled_env = True
-
-    def generate_dataset(self, n_samples):
-        initial_state = []
-        inputs = np.zeros((n_samples, self.n_timesteps, 0))
-        goal_list = []
-        for i in range(n_samples):
-            obs, info = self.reset()
-            initial_state.append(torch.squeeze(info["states"]["joint"]))
-            goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
-            goal_matrix[:, :2] = torch.squeeze(info["goal"])
-            goal_list.append(goal_matrix)
-
-        initial_state = torch.stack(initial_state, axis=0)
-        goal_list = torch.stack(goal_list, axis=0)
-        dataset_dict = {
-            "ics": initial_state,
-            "inputs": inputs,
-            "targets": goal_list,
+            "conds": torch.zeros((n_samples, 1)),
         }
         return dataset_dict
 
@@ -633,6 +525,7 @@ class RandomTargetDelay(Environment):
             "ics": initial_state,
             "inputs": inputs,
             "targets": goal_list,
+            "conds": torch.zeros((n_samples, 1)),
         }
         return dataset_dict
 

@@ -1,12 +1,12 @@
 _target_: interpretability.task_modeling.task_env.multi_task_env.MultiTaskWrapper
-dataset_name: MultiTaskMem
+dataset_name: MultiTaskReach
 task_list:
-  # - DelayPro
-  # - DelayAnti
+  - DelayPro
+  - DelayAnti
   - MemoryPro
   - MemoryAnti
-  # - ReactPro
-  # - ReactAnti
+  - ReactPro
+  - ReactAnti
   # - IntMod1
   # - IntMod2
   # - ContextIntMod1
