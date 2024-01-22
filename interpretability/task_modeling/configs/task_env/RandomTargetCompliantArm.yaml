@@ -1,4 +1,0 @@
-_target_: interpretability.task_modeling.task_env.task_env.RandomTargetReach
-effector:
-  _target_: motornet.effector.CompliantTendonArm26
-max_ep_duration: 1.0
