@@ -8,11 +8,16 @@ This git repo contains code that will allow users to perform four basic steps:
 4. Compare the dynamics of the task-trained and data-trained networks with a variety of quantifications of dynamical accuracy
 
 ## Installation
-We recommend using Conda to run this code.
-To install dependencies, you can use the environment.yaml file
-
-conda env create -f environment.yaml
+We recommend using Conda to run this code. Unfortunately, Ray support for Windows is spotty, so I recommend Linux.
+To create an environment and install the dependencies of the project, run the following commands:
+```
+git clone https://github.com/snel-repo/ComputationThruDynamicsBenchmark.git
+conda create --name CtDEnv python=3.10
 conda activate CtDEnv
+cd ComputationThruDynamicsBenchmark
+pip install -e .
+```
+
 
 You may need to pip install DSA and MotorNet manually: see those repos for detailed instructions.
 DSA: https://github.com/mitchellostrow/DSA
@@ -40,8 +45,6 @@ Before running these scripts, you will need to modify the RUNS_HOME and SAVE_PAT
 Once the task-trained model has been run, it should save an h5 file of spiking activity in the data-trained folder. Running the data-trained model should be straightforward as well!
 
 Once both have been run and the trained models saved to pickle files, the "compare_tt_dt_models.py" file performs basic visualizations and latent activity comparisons.
-
-
 
 
 ### Task-Training:

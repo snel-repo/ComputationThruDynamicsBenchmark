@@ -18,11 +18,10 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = False  # Set to True to run locally (for debugging)
+LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "NBFF_EnvTest"  # For WandB and run dir
-NUM_SAMPLES = 1  # For HP search
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "RandomTarg_EnvTest"  # For WandB and run dir
+TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # ------------------Data Management Variables --------------------------------
@@ -38,21 +37,21 @@ SAVE_PATH = (
 
 RUN_DIR = RUNS_HOME / "task-trained" / RUN_TAG
 
-# -----------------Parameter Selection / Sweeps -----------------------------------
+# -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([64]),
+        latent_size=tune.choice([64]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.grid_search([6e-4]),
-        weight_decay=tune.grid_search([0]),
+        learning_rate=tune.choice([6e-4]),
+        weight_decay=tune.choice([0]),
     ),
     datamodule=dict(
         # Data Parameters -----------------------------------
-        n_samples=tune.grid_search([1000]),
-        batch_size=tune.grid_search([256]),
+        n_samples=tune.choice([1000]),
+        batch_size=tune.choice([256]),
     ),
     # task_env=dict(
     #     grouped_sampler=tune.grid_search([True]),
@@ -60,11 +59,11 @@ SEARCH_SPACE = dict(
     # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.grid_search([500]),
+        max_epochs=tune.choice([500]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
-        seed=tune.grid_search([0]),
+        seed=tune.choice([0]),
     ),
 )
 
@@ -105,7 +104,7 @@ def main(
         mode="min",
         config=SEARCH_SPACE,
         resources_per_trial=dict(cpu=8, gpu=0.9),
-        num_samples=NUM_SAMPLES,
+        num_samples=1,
         storage_path=str(RUN_DIR),
         search_alg=BasicVariantGenerator(),
         scheduler=FIFOScheduler(),

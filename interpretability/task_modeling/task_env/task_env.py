@@ -486,9 +486,11 @@ class RandomTargetDelay(Environment):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.obs_noise[: self.skeleton.space_dim] = [
             0.0
         ] * self.skeleton.space_dim  # target info is noiseless
+
         self.dataset_name = "RandomTargetDelay"
         self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
         self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
@@ -541,9 +543,9 @@ class RandomTargetDelay(Environment):
     def reset(
         self,
         batch_size: int = 1,
+        options: dict[str, Any] | None = None,
         ic_state: Any | None = None,
         target_state: Any | None = None,
-        deterministic: bool = False,
         seed: int | None = None,
     ) -> tuple[Any, dict[str, Any]]:
 
@@ -553,23 +555,33 @@ class RandomTargetDelay(Environment):
         Here the goals (`i.e.`, the targets) are drawn from a random uniform
         distribution across the full joint space.
         """
-
+        # Make self.obs_noise a list
         self._set_generator(seed=seed)
-
-        if ic_state is not None:
-            ic_state_shape = np.shape(self.detach(ic_state))
+        # if ic_state is in options, use that
+        if options is not None and "deterministic" in options.keys():
+            deterministic = options["deterministic"]
+        else:
+            deterministic = False
+        if options is not None and "ic_state" in options.keys():
+            ic_state_shape = np.shape(self.detach(options["ic_state"]))
             if ic_state_shape[0] > 1:
                 batch_size = ic_state_shape[0]
         else:
             ic_state = self.q_init
 
-        self.effector.reset(batch_size, ic_state)
-        if target_state is None:
+        if options is not None and "target_state" in options.keys():
+            self.goal = target_state
+        else:
             self.goal = self.joint2cartesian(
                 self.effector.draw_random_uniform_states(batch_size)
             ).chunk(2, dim=-1)[0]
-        else:
-            self.goal = target_state
+
+        options_dict = {
+            "batch_size": batch_size,
+            "joint_state": ic_state,
+        }
+        self.effector.reset(options=options_dict)
+
         self.elapsed = 0.0
 
         action = torch.zeros((batch_size, self.action_space.shape[0])).to(self.device)
