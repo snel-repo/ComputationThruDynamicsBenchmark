@@ -74,7 +74,11 @@ class NeuralDataSimulator:
         latents = output_dict["latents"]
 
         if self.n_neurons > latents.shape[-1]:
-            self.n_neurons = latents.shape[-1]
+            # If the number of neurons is greater than the number of latents,
+            # replicate the latents to match the number of neurons
+            n_latents = latents.shape[-1]
+            n_reps = int(np.ceil(self.n_neurons / n_latents))
+            latents = torch.cat([latents] * n_reps, dim=-1)
 
         filename = (
             f"{run_tag}_"

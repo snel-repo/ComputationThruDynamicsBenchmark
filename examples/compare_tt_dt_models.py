@@ -6,11 +6,11 @@ from interpretability.comparison.comparison import Comparison
 # Load the analysis
 tt_path = (
     "/home/csverst/Github/InterpretabilityBenchmark/"
-    "trained_models/task-trained/20240122_NBFF_Comparison/"
+    "trained_models/task-trained/20240123_NBFF_GRU_Comparison/"
 )
 dt_path_1 = (
     "/home/csverst/Github/InterpretabilityBenchmark/"
-    "trained_models/data-trained/20240122_NBFF_GRU_CompareTest/"
+    "trained_models/data-trained/20240123_NBFF_GRU_Comparison/"
 )
 
 tt_analysis = Analysis_TT(run_name="NBFF_TT_GRU", filepath=tt_path)

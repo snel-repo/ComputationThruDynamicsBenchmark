@@ -18,30 +18,17 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "RandomTarg_EnvTest"  # For WandB and run dir
-TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
-MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
-
-# ------------------Data Management Variables --------------------------------
-DATE_STR = datetime.now().strftime("%Y%m%d")
-RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUNS_HOME = Path(
-    "/snel/share/runs/dysts-learning/"
-)  # Where to save progress plots, etc.
-
-SAVE_PATH = (
-    "/home/csverst/Github/InterpretabilityBenchmark/" "trained_models/task-trained/"
-)  # Where to save trained models
-
-RUN_DIR = RUNS_HOME / "task-trained" / RUN_TAG
+RUN_DESC = "NBFF_NODE_Comparison"  # For WandB and run dir
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+MODEL = "NODE"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.choice([64]),
+        latent_size=tune.choice([3]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
@@ -67,6 +54,19 @@ SEARCH_SPACE = dict(
     ),
 )
 
+
+# ------------------Data Management Variables --------------------------------
+DATE_STR = datetime.now().strftime("%Y%m%d")
+RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
+RUNS_HOME = Path(
+    "/snel/share/runs/dysts-learning/"
+)  # Where to save progress plots, etc.
+
+SAVE_PATH = (
+    "/home/csverst/Github/InterpretabilityBenchmark/" "trained_models/task-trained/"
+)  # Where to save trained models
+
+RUN_DIR = RUNS_HOME / "task-trained" / RUN_TAG
 # -----------------Default Parameter Sets -----------------------------------
 path_dict = dict(
     task_wrapper=Path(f"configs/task_wrapper/{TASK}.yaml"),

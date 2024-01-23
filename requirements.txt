@@ -11,3 +11,5 @@ scikit-learn
 matplotlib
 python-dotenv
 imageio[ffmpeg]
+motornet
+ipykernel

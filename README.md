@@ -19,7 +19,8 @@ pip install -e .
 ```
 
 
-You may need to pip install DSA and MotorNet manually: see those repos for detailed instructions.
+You will need to pip install DSA: MotorNet should be installed automatically.
+See those repos for detailed instructions.
 DSA: https://github.com/mitchellostrow/DSA
 MotorNet: https://www.motornet.org/index.html
 
