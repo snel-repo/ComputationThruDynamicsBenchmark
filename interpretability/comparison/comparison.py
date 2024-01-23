@@ -37,6 +37,11 @@ class Comparison:
         ij_ax.set_yticks(np.arange(self.num_analyses))
         ij_ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
         ij_ax.set_yticklabels([analysis.run_name for analysis in self.analyses])
+        # Rotate the tick labels and set their alignment.
+        plt.setp(
+            ij_ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
+        )
+
         # Colorbar
         ij_figure.colorbar(plt.imshow(vaf), ax=ij_ax)
         return vaf

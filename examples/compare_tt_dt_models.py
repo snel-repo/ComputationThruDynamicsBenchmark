@@ -44,12 +44,13 @@ dt_analysis_GRU2NODE = Analysis_DT(run_name="NBFF_DT_GRU2NODE", filepath=dt_GRU2
 # %%
 comp = Comparison()
 comp.load_analysis(tt_analysis_NODE)
-comp.load_analysis(tt_analysis_GRU)
-
 comp.load_analysis(dt_analysis_NODE2NODE)
-comp.load_analysis(dt_analysis_NODE2GRU)
+
+comp.load_analysis(tt_analysis_GRU)
 comp.load_analysis(dt_analysis_GRU2GRU)
+
 comp.load_analysis(dt_analysis_GRU2NODE)
+comp.load_analysis(dt_analysis_NODE2GRU)
 
 # comp.load_analysis(jslds_analysis)
 
