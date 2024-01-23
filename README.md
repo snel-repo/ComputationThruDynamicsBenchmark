@@ -47,7 +47,7 @@ Once the task-trained model has been run, it should save an h5 file of spiking a
 
 Once both have been run and the trained models saved to pickle files, the "compare_tt_dt_models.py" file performs basic visualizations and latent activity comparisons.
 
-
+## Overview of major components:
 ### Task-Training:
 To see what tasks can specifically be implemented, look in the config files for the task trained networks. Each task is a "task_env" object, which specifies the default parameters for that task. These parameters can be modified by changing the "SEARCH_SPACE" variable in run_task_training.
 
@@ -66,8 +66,8 @@ TODO
 TODO
 
 ### Comparisons:
-MOST TODO, but as I am envisioning it, it will be a Comparator object which will load in TT and DT models, then perform comparisons like DSA, FP analysis, etc. within it, rather than relying on external scripts.
-
+Comparator object takes in Analysis objects with specific return structures.
+Comparator is agnostic to the origin of the dataset, can operate equivalently on task-trained and data-trained models.
 
 ## Contributing
 Talk to me!
