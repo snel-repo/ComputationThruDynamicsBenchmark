@@ -20,15 +20,15 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "NBFF_NODE_Comparison"  # For WandB and run dir
+RUN_DESC = "NBFF_GRU_Comparison"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
-MODEL = "NODE"  # Model to train (see configs/model for options)
+MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.choice([3]),
+        latent_size=tune.choice([64]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
