@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
-from interpretability.comparison.analysis.task_trained.analysis_tt import Analysis_TT
+from interpretability.comparison.analysis.tt.tt import Analysis_TT
 from interpretability.comparison.fixedpoints import find_fixed_points
 
 

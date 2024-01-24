@@ -5,7 +5,7 @@ import torch
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 
-from interpretability.comparison.analysis.analysis_tt import Analysis_TT
+from interpretability.comparison.analysis.tt.tt import Analysis_TT
 from interpretability.comparison.visualizations.general import (
     animate_latent_trajectories,
 )

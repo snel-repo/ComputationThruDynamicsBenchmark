@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +16,9 @@ from interpretability.data_modeling.extensions.SAE.utils import make_data_tag
 from interpretability.data_modeling.train_neural import train
 
 dotenv.load_dotenv(override=True)
+RUNS_HOME = os.environ.get("RUNS_HOME")
+TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
+
 OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
@@ -72,7 +76,7 @@ path_dict = dict(
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUNS_HOME = Path("/snel/share/runs/dysts-learning/")
+RUNS_HOME = Path(RUNS_HOME)
 RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
 
 
@@ -84,6 +88,7 @@ def trial_function(trial):
 def main(
     run_tag_in: str,
     path_dict: dict,
+    trained_path: str,
 ):
     if LOCAL_MODE:
         ray.init(local_mode=True)
@@ -118,4 +123,5 @@ if __name__ == "__main__":
     main(
         run_tag_in=RUN_TAG,
         path_dict=path_dict,
+        trained_path=TRAINED_MODEL_PATH,
     )

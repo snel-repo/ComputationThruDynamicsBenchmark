@@ -1,18 +1,24 @@
 # %%
+import os
+
+import dotenv
+
 from interpretability.comparison.analysis.dt.dt import Analysis_DT
 from interpretability.comparison.analysis.tt.tt import Analysis_TT
 from interpretability.comparison.comparison import Comparison
 
-DATA_PATH = "/home/csverst/Github/InterpretabilityBenchmark/" "trained_models/"
+dotenv.load_dotenv(override=True)
+TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
+# %%
 # Load the analysis
-tt_path_NODE = DATA_PATH + ("task-trained/20240123_NBFF_NODE_Comparison/")
+tt_path_NODE = TRAINED_MODEL_PATH + ("task-trained/20240123_NBFF_NODE_Comparison/")
 
-tt_path_GRU = DATA_PATH + ("task-trained/20240123_NBFF_GRU_Comparison/")
+tt_path_GRU = TRAINED_MODEL_PATH + ("task-trained/20240123_NBFF_GRU_Comparison/")
 
-dt_NODE2NODE = DATA_PATH + ("data-trained/20240123_NBFF_NODE2NODE_Comparison/")
-dt_NODE2GRU = DATA_PATH + ("data-trained/20240123_NBFF_NODE2GRU_Comparison/")
-dt_GRU2GRU = DATA_PATH + ("data-trained/20240123_NBFF_GRU2GRU_Comparison/")
-dt_GRU2NODE = DATA_PATH + ("data-trained/20240123_NBFF_GRU2NODE_Comparison/")
+dt_NODE2NODE = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_NODE2NODE_Comparison/")
+dt_NODE2GRU = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_NODE2GRU_Comparison/")
+dt_GRU2GRU = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_GRU2GRU_Comparison/")
+dt_GRU2NODE = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_GRU2NODE_Comparison/")
 
 
 tt_analysis_NODE = Analysis_TT(run_name="NBFF_TT_NODE", filepath=tt_path_NODE)
@@ -34,8 +40,6 @@ comp.load_analysis(dt_analysis_GRU2GRU)
 
 comp.load_analysis(dt_analysis_GRU2NODE)
 comp.load_analysis(dt_analysis_NODE2GRU)
-
-# comp.load_analysis(jslds_analysis)
 
 # %%
 comp.compare_latents_vaf()

@@ -10,7 +10,7 @@ def find_fixed_points(
     state_trajs: np.array,
     inputs: np.array,
     n_inits=1024,
-    noise_scale=0.01,
+    noise_scale=0.0,
     learning_rate=1e-2,
     max_iters=10000,
     device="cpu",
@@ -33,7 +33,8 @@ def find_fixed_points(
     if len(state_trajs.shape) > 2:
         n_samples, n_steps, state_dim = state_trajs.shape
         state_pts = state_trajs.reshape(-1, state_dim)
-        inputs = inputs.reshape(-1, inputs.shape[-1])
+        if len(inputs.shape) > 1:
+            inputs = inputs.reshape(-1, inputs.shape[-1])
         idx = torch.randint(n_samples * n_steps, size=(n_inits,), device=device)
     else:
         n_samples_steps, state_dim = state_trajs.shape
@@ -109,20 +110,27 @@ def find_fixed_points(
     print(f"Found {len(all_fps.xstar)} unique fixed points.")
     if compute_jacobians:
         # Compute the Jacobian for each fixed point
-        def J_func(x):
-            inputs = 0  # FIXME: this is a hack
-            _, F = model.model(inputs, x)
-            F = F.squeeze()
-            return F
+        def J_func(model, inputs_, x):
+            # This function takes both the additional inputs and the state.
+            _, F = model(inputs_, x)
+            return F.squeeze()
 
-        all_J = []
-        x = torch.tensor(all_fps.xstar, device=device)
-        for i in range(all_fps.n):
-            single_x = x[i, :]
-            single_x = single_x.unsqueeze(0)
-            J = torch.autograd.functional.jacobian(J_func, single_x)
-            J = J.squeeze()
-            all_J.append(J)
+        def compute_jacobians_func(model, inputs, x_data):
+            all_J = []
+            x = torch.tensor(x_data, device=device)
+
+            for i in range(x.size(0)):
+                inputs_1 = inputs[i, :].unsqueeze(0)
+                single_x = x[i, :].unsqueeze(0)
+
+                J = torch.autograd.functional.jacobian(
+                    lambda x: J_func(model, inputs_1, x), single_x
+                )
+                all_J.append(J.squeeze())
+
+            return all_J
+
+        all_J = compute_jacobians_func(model.model, inputs, all_fps.xstar)
         # Recombine and decompose Jacobians for the whole batch
         if all_J:
             dFdx = torch.stack(all_J).cpu().detach().numpy()
@@ -133,4 +141,4 @@ def find_fixed_points(
         else:
             return []
     else:
-        return all_fps, x_store, q_store
+        return all_fps

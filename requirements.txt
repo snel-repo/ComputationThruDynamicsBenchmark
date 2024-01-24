@@ -13,3 +13,4 @@ python-dotenv
 imageio[ffmpeg]
 motornet
 ipykernel
+ipywidgets

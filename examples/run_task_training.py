@@ -1,8 +1,10 @@
 import logging
+import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
+import dotenv
 import ray
 from omegaconf import OmegaConf
 from ray import tune
@@ -13,6 +15,9 @@ from ray.tune.search.basic_variant import BasicVariantGenerator
 from interpretability.task_modeling.task_train_prep import train
 from utils import make_data_tag, trial_function
 
+dotenv.load_dotenv()
+RUNS_HOME = os.environ.get("RUNS_HOME")
+TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
 # Add custom resolver to create the data_tag so it can be used for run dir
 OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
@@ -40,10 +45,6 @@ SEARCH_SPACE = dict(
         n_samples=tune.choice([1000]),
         batch_size=tune.choice([256]),
     ),
-    # task_env=dict(
-    #     grouped_sampler=tune.grid_search([True]),
-    #     noise=tune.grid_search([0.31]),
-    # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
         max_epochs=tune.choice([500]),
@@ -58,14 +59,8 @@ SEARCH_SPACE = dict(
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUNS_HOME = Path(
-    "/snel/share/runs/dysts-learning/"
-)  # Where to save progress plots, etc.
-
-SAVE_PATH = (
-    "/home/csverst/Github/InterpretabilityBenchmark/" "trained_models/task-trained/"
-)  # Where to save trained models
-
+RUNS_HOME = Path(RUNS_HOME)
+SAVE_PATH = TRAINED_MODEL_PATH + "task-trained/"
 RUN_DIR = RUNS_HOME / "task-trained" / RUN_TAG
 # -----------------Default Parameter Sets -----------------------------------
 path_dict = dict(

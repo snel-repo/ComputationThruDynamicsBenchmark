@@ -9,14 +9,12 @@ import pytorch_lightning as pl
 from interpretability.data_modeling.extensions.SAE.utils import flatten
 
 log = logging.getLogger(__name__)
-SAVE_PATH = (
-    "/home/csverst/Github/InterpretabilityBenchmark/trained_models/data-trained/"
-)
 
 
 def train(
     overrides: dict = {},
     path_dict: dict = {},
+    trained_path: str = "",
     run_tag: str = "",
 ):
     compose_list = path_dict.keys()
@@ -118,6 +116,7 @@ def train(
 
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
+    SAVE_PATH = trained_path
     dir_path = SAVE_PATH + run_tag
     Path(dir_path).mkdir(parents=True, exist_ok=True)
     path1 = SAVE_PATH + run_tag + "/model.pkl"
