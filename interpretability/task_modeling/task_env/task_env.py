@@ -99,7 +99,7 @@ class NBitFlipFlop(DecoupledEnvironment):
             "inputs": inputs_ds,
             "targets": outputs_ds,
             "conds": np.zeros(shape=(n_samples, 1)),
-            "extras": np.zeros(shape=(n_samples, 1)),
+            "extra": np.zeros(shape=(n_samples, 1)),
         }
         return dataset_dict
 
@@ -405,7 +405,7 @@ class RandomTargetReach(Environment):
             "inputs": inputs,
             "targets": goal_list,
             "conds": torch.zeros((n_samples, 1)),
-            "extras": torch.zeros((n_samples, 1)),
+            "extra": torch.zeros((n_samples, 1)),
         }
         return dataset_dict
 
@@ -530,7 +530,7 @@ class RandomTargetDelay(Environment):
             "inputs": inputs,
             "targets": goal_list,
             "conds": torch.zeros((n_samples, 1)),
-            "extras": torch.zeros((n_samples, 1)),
+            "extra": torch.zeros((n_samples, 1)),
         }
         return dataset_dict
 
