@@ -56,8 +56,9 @@ class TaskTrainedWrapper(pl.LightningModule):
 
         # If we are in a coupled environment, set the environment state
         if self.task_env.coupled_env:
+            options = {"ic_state": ics, "target_state": targets[:, 0, :]}
             env_states, info = self.task_env.reset(
-                batch_size=batch_size, ic_state=ics, target_state=targets[:, 0, :]
+                batch_size=batch_size, options=options
             )
             env_state_list = []
         else:

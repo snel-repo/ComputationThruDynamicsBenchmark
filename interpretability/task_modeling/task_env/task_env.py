@@ -547,8 +547,6 @@ class RandomTargetDelay(Environment):
         self,
         batch_size: int = 1,
         options: dict[str, Any] | None = None,
-        ic_state: Any | None = None,
-        target_state: Any | None = None,
         seed: int | None = None,
     ) -> tuple[Any, dict[str, Any]]:
 
@@ -569,21 +567,22 @@ class RandomTargetDelay(Environment):
             ic_state_shape = np.shape(self.detach(options["ic_state"]))
             if ic_state_shape[0] > 1:
                 batch_size = ic_state_shape[0]
+            ic_state = options["ic_state"]
         else:
             ic_state = self.q_init
 
         if options is not None and "target_state" in options.keys():
-            self.goal = target_state
+            self.goal = options["target_state"]
         else:
             self.goal = self.joint2cartesian(
                 self.effector.draw_random_uniform_states(batch_size)
             ).chunk(2, dim=-1)[0]
 
-        options_dict = {
+        options = {
             "batch_size": batch_size,
             "joint_state": ic_state,
         }
-        self.effector.reset(options=options_dict)
+        self.effector.reset(options=options)
 
         self.elapsed = 0.0
 

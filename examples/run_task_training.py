@@ -23,17 +23,17 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = False  # Set to True to run locally (for debugging)
+LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "NBFF_GRU"  # For WandB and run dir
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "RandomTargetDelay_GRU"  # For WandB and run dir
+TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.choice([64]),
+        latent_size=tune.choice([128]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
@@ -42,7 +42,7 @@ SEARCH_SPACE = dict(
     ),
     datamodule=dict(
         # Data Parameters -----------------------------------
-        n_samples=tune.choice([1000]),
+        n_samples=tune.choice([1001]),
         batch_size=tune.choice([256]),
     ),
     trainer=dict(

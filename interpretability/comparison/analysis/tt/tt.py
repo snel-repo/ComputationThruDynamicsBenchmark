@@ -86,9 +86,30 @@ class Analysis_TT(Analysis):
         )
         return fps
 
-    def plot_fps(self, inputs=None, num_traj=10):
+    def plot_fps(
+        self,
+        inputs=None,
+        num_traj=10,
+        n_inits=1024,
+        noise_scale=0.0,
+        learning_rate=1e-3,
+        max_iters=10000,
+        device="cpu",
+        seed=0,
+        compute_jacobians=True,
+    ):
+
         latents = self.get_latents().detach().numpy()
-        fps = self.compute_FPs(inputs=inputs)
+        fps = self.compute_FPs(
+            inputs=inputs,
+            n_inits=n_inits,
+            noise_scale=noise_scale,
+            learning_rate=learning_rate,
+            max_iters=max_iters,
+            device=device,
+            seed=seed,
+            compute_jacobians=compute_jacobians,
+        )
         xstar = fps.xstar
         is_stable = fps.is_stable
         pca = PCA(n_components=3)
