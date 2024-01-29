@@ -4,6 +4,8 @@ from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import explained_variance_score
 
+from DSA import DSA
+
 
 class Comparison:
     def __init__(self):
@@ -141,10 +143,6 @@ class Comparison:
         # Function to compare the fixed points
         pass
 
-    def compare_dynamics_DSA(self):
-        # Function to compare the dynamics using DSA
-        pass
-
     def plot_trials(self, num_trials, num_pcs=3):
         # Function to plot one trial from each analysis
         fig = plt.figure()
@@ -165,3 +163,75 @@ class Comparison:
                     axes[i, j].set_title(f"Trial {j}")
 
             axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
+
+    def compare_dynamics_DSA(
+        self, n_delays=20, rank=50, delay_interval=1, device="cpu"
+    ):
+        latent_list = []
+        for analysis in self.analyses:
+            latents = analysis.get_latents().detach().numpy()
+            latent_list.append(latents.reshape(-1, latents.shape[-1]))
+
+        dsa = DSA(
+            latent_list,
+            n_delays=n_delays,
+            rank=rank,
+            delay_interval=delay_interval,
+            verbose=True,
+            device=device,
+            iters=1500,
+            lr=0.005,
+        )
+        similarities = dsa.fit_score()
+        # for i in range(self.num_analyses):
+        #     for j in range(i, self.num_analyses):
+        #         print(f"comparison {i}, {j} of {self.num_analyses**2}")
+        #         similarities = self.compare_dynamics_DSA_pair(
+        #             self.analyses[i], self.analyses[j],
+        #             n_delays=n_delays, rank=rank,
+        #             delay_interval=delay_interval, device=device
+        #         )
+        #         fit_mat[i, j] = similarities[0,1]
+
+        fit_mat = similarities
+        ij_figure = plt.figure()
+        ij_ax = ij_figure.add_subplot(111)
+        # Plot it as an image
+        ij_ax.imshow(fit_mat)
+        ij_ax.set_title("R2 from i to j")
+        ij_ax.set_xticks(np.arange(self.num_analyses))
+        ij_ax.set_yticks(np.arange(self.num_analyses))
+        ij_ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
+        ij_ax.set_yticklabels([analysis.run_name for analysis in self.analyses])
+        # Rotate the tick labels and set their alignment.
+        plt.setp(
+            ij_ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
+        )
+
+        # Colorbar
+        ij_figure.colorbar(plt.imshow(fit_mat), ax=ij_ax)
+        return similarities
+
+    def compare_dynamics_DSA_pair(
+        self, analysis1, analysis2, n_delays=10, rank=3, delay_interval=1, device="cpu"
+    ):
+        # Function to compare the dynamics using DSA
+        lats_list = []
+        lats1 = analysis1.get_latents().detach().numpy()
+        lats2 = analysis2.get_latents().detach().numpy()
+
+        lats_list.append(lats1.reshape(-1, lats1.shape[-1]))
+        lats_list.append(lats2.reshape(-1, lats2.shape[-1]))
+
+        dsa = DSA(
+            lats_list,
+            n_delays=n_delays,
+            rank=rank,
+            delay_interval=delay_interval,
+            verbose=True,
+            device=device,
+            iters=1000,
+            lr=1e-2,
+        )
+        similarities = dsa.fit_score()
+        return similarities

@@ -121,6 +121,8 @@ class TaskTrainedWrapper(pl.LightningModule):
         inputs = batch[1]
         targets = batch[2]
         conds = batch[4]
+        extras = batch[5]
+
         # Pass data through the model
         output_dict = self.forward(ics, inputs, targets)
         # Compute the weighted loss
@@ -130,6 +132,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             "targets": targets,
             "inputs": inputs,
             "conds": conds,
+            "extra": extras,
         }
         loss_all = self.loss_func(loss_dict)
         self.log("train/loss", loss_all)
@@ -140,6 +143,8 @@ class TaskTrainedWrapper(pl.LightningModule):
         inputs = batch[1]
         targets = batch[2]
         conds = batch[4]
+        extras = batch[5]
+
         # Pass data through the model
         output_dict = self.forward(ics, inputs, targets)
         # Compute the weighted loss
@@ -148,7 +153,8 @@ class TaskTrainedWrapper(pl.LightningModule):
             "actions": output_dict["actions"],
             "targets": targets,
             "inputs": inputs,
-            "conds": conds
+            "conds": conds,
+            "extra": extras,
             # TODO: Pass in logger to log seperate losses
             # or make loss_func return seperate losses as a dict?
         }

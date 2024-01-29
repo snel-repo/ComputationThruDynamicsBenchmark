@@ -25,25 +25,25 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "NBFF_GRU_Comparison"  # For WandB and run dir
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "MultiTaskFinal2"  # For WandB and run dir
+TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.choice([64]),
+        latent_size=tune.choice([128]),
     ),
     task_wrapper=dict(
         # Task Wrapper Parameters -----------------------------------
-        learning_rate=tune.choice([6e-4]),
+        learning_rate=tune.choice([1e-3]),
         weight_decay=tune.choice([0]),
     ),
     datamodule=dict(
         # Data Parameters -----------------------------------
-        n_samples=tune.choice([1000]),
-        batch_size=tune.choice([256]),
+        n_samples=tune.choice([2000]),
+        batch_size=tune.choice([2000]),
     ),
     trainer=dict(
         # Trainer Parameters -----------------------------------

@@ -93,7 +93,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
         lats_phase = torch.cat(lats_phase)
         inputs_phase = torch.cat(inputs_phase)
 
-        fps, x_trajs, q_traj = find_fixed_points(
+        fps = find_fixed_points(
             model=self.wrapper,
             state_trajs=lats_phase,
             inputs=inputs_phase,
@@ -105,7 +105,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
             seed=0,
         )
 
-        return fps, x_trajs, q_traj
+        return fps
 
     def compute_fp_phase_interpolation(
         self,
@@ -162,7 +162,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
                 max_iters1 = max_iters_init
             else:
                 max_iters1 = max_iters
-            fps, x_trajs, q_traj = find_fixed_points(
+            fps = find_fixed_points(
                 model=self.wrapper,
                 state_trajs=lats_phase,
                 inputs=inputs1,
@@ -270,7 +270,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
             else:
                 max_iters1 = max_iters
 
-            fps, _, _ = find_fixed_points(
+            fps = find_fixed_points(
                 model=self.wrapper,
                 state_trajs=lats_phase,
                 inputs=inputs1,
@@ -323,14 +323,12 @@ class Analysis_TT_MultiTask(Analysis_TT):
             fps = {}
             xstar_pca = []
             fps_out = []
-            x_traj_pca = []
-            x_traj_out = []
             q_star = []
             # For each phase, compute the fixed points
             for phase_name in phase_names:
                 print(f"Computing fixed points for {phase_name}")
                 # Returns fps and x_trajs in the original space
-                fps[phase_name], x_traj = self.compute_fp_phase(
+                fps[phase_name] = self.compute_fp_phase(
                     phase=phase_name, task_to_analyze=task_to_analyze
                 )
 
@@ -338,19 +336,6 @@ class Analysis_TT_MultiTask(Analysis_TT):
                 xstar = fps[phase_name].xstar
                 xstar_pca.append(pca.transform(xstar))
 
-                n_inits, n_iters, state_dim = x_traj.shape
-                x_traj_flat = x_traj.reshape(-1, state_dim)
-                x_traj_out.append(
-                    np.reshape(
-                        readout(torch.Tensor(x_traj_flat)), (n_inits, n_iters, -1)
-                    )
-                )
-                x_traj_pca.append(
-                    np.reshape(
-                        pca.transform(x_traj.reshape(-1, state_dim)),
-                        (n_inits, n_iters, -1),
-                    )
-                )
                 fps_out.append(readout(torch.Tensor(xstar)))
                 q_star.append(fps[phase_name].qstar)
             xstar_pca = np.stack(xstar_pca, axis=0)
@@ -407,35 +392,3 @@ class Analysis_TT_MultiTask(Analysis_TT):
         plt.savefig(
             self.plot_path + f"LatentTraj_{task_to_analyze}_{phase}.png", dpi=300
         )
-        if debug_fp_traj:
-            fig = plt.figure(figsize=(10 * num_phases, 10))
-            for i, phase in enumerate(phase_names):
-                ax = fig.add_subplot(1, num_phases, i + 1, projection="3d")
-                ax.scatter(
-                    x_traj_pca[i][:, 0, 0],
-                    x_traj_pca[i][:, 0, 1],
-                    x_traj_out[i][:, 0, 1],
-                    s=20,
-                    c="g",
-                )
-                for j, traj in enumerate(x_traj):
-                    ax.plot(
-                        x_traj_pca[i][j, :, 0],
-                        x_traj_pca[i][j, :, 1],
-                        x_traj_out[i][j, :, 1],
-                        c="k",
-                    )
-                ax.scatter(
-                    fps_mat[i, :, 0], fps_mat[i, :, 1], fps_mat[i, :, 2], s=10, c="r"
-                )
-                ax.set_xlabel("PC1")
-                ax.set_ylabel("PC2")
-                ax.set_zlabel("PC3")
-                ax.set_title(f"Latent Trajectory for {task_to_analyze} {phase}")
-                ax.set_xlim([-2, 2])
-                ax.set_ylim([-2, 2])
-                ax.set_zlim([-2, 2])
-            plt.savefig(
-                self.plot_path + f"LatentTraj_{task_to_analyze}_{phase}_fps_traj.png",
-                dpi=300,
-            )

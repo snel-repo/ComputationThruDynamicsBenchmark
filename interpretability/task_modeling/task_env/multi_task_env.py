@@ -111,10 +111,12 @@ class MultiTaskWrapper:
         phase_list = []
         task_names = []
         conds_ds = []
+        extra_ds = []
         for task_num, task in enumerate(self.task_list):
             inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
             true_inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
             outputs_task = np.zeros(shape=(n_samples, n_timesteps, 3))
+            extra_task = np.zeros(shape=(n_samples, 2))
             for i in range(n_samples):
                 (
                     inputs_noise,
@@ -129,20 +131,24 @@ class MultiTaskWrapper:
                 true_inputs_task[i, :trial_len, :] = inputs
                 phase_list.append(phase_dict)
                 task_names.append(task_name)
+                extra_task[i, :] = phase_dict["response"]
             conds_ds.append(task_num * np.ones(shape=(n_samples, 1)))
             inputs_ds.append(inputs_task)
             outputs_ds.append(outputs_task)
             true_inputs_ds.append(true_inputs_task)
+            extra_ds.append(extra_task)
 
         inputs_ds = np.concatenate(inputs_ds, axis=0)
         true_inputs_ds = np.concatenate(true_inputs_ds, axis=0)
         outputs_ds = np.concatenate(outputs_ds, axis=0)
         conds_ds = np.concatenate(conds_ds, axis=0)
+        extra_ds = np.concatenate(extra_ds, axis=0)
 
         dataset_dict = {
             "inputs": inputs_ds,
             "targets": outputs_ds,
             "ics": ics_ds,
+            "extra": extra_ds,
             "phase_dict": phase_list,
             "task_names": task_names,
             "true_inputs": true_inputs_ds,

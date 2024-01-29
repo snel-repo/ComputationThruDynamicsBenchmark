@@ -14,10 +14,10 @@ from interpretability.comparison.analysis.tt.tasks.tt_MultiTask import (
 # "trained_models/task-trained/20240116_MultiTask_GRU_lowLR/"
 # )
 
-suffix = "MultiTaskGRU_ReachOnly"
+suffix = "MultiTaskGRU_NewLossv2"
 filepath1 = (
     "/home/csverst/Github/InterpretabilityBenchmark/"
-    "trained_models/task-trained/20240118_MultiTask_GRU_ReachOnly/"
+    "trained_models/task-trained/20240126_MultiTaskFinal2/"
 )
 plot_path = (
     "/home/csverst/Github/InterpretabilityBenchmark/"

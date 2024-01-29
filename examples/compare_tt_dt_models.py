@@ -42,6 +42,10 @@ comp.load_analysis(dt_analysis_GRU2NODE)
 comp.load_analysis(dt_analysis_NODE2GRU)
 
 # %%
+
+comp.compare_dynamics_DSA(n_delays=20, rank=50)
+
+# %%
 comp.compare_latents_vaf()
 comp.plot_trials(num_trials=2)
 

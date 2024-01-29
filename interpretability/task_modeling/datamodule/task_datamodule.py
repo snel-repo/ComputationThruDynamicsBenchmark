@@ -100,6 +100,7 @@ class TaskDataModule(pl.LightningDataModule):
         targets_ds = dataset_dict["targets"]
         ics_ds = dataset_dict["ics"]
         conds_ds = dataset_dict["conds"]
+        extra_ds = dataset_dict["extra"]
 
         keys = list(dataset_dict.keys())
         keys.remove("inputs")
@@ -131,6 +132,9 @@ class TaskDataModule(pl.LightningDataModule):
             h5file.create_dataset("train_inds", data=train_inds)
             h5file.create_dataset("valid_inds", data=valid_inds)
 
+            h5file.create_dataset("train_extra", data=extra_ds[train_inds])
+            h5file.create_dataset("valid_extra", data=extra_ds[valid_inds])
+
         save_dict_to_pickle(dataset_dict, fpath_pkl)
 
     def setup(self, stage=None):
@@ -155,13 +159,21 @@ class TaskDataModule(pl.LightningDataModule):
             valid_inds = to_tensor(h5file["valid_inds"][()])
             # test_inds = to_tensor(h5file["test_inds"][()])
 
+            train_extra = to_tensor(h5file["train_extra"][()])
+            valid_extra = to_tensor(h5file["valid_extra"][()])
+
         self.all_data = load_dict_from_pickle(data_path_pkl)
         # Store datasets
         self.train_ds = TensorDataset(
-            train_ics, train_inputs, train_targets, train_inds, train_conds
+            train_ics,
+            train_inputs,
+            train_targets,
+            train_inds,
+            train_conds,
+            train_extra,
         )
         self.valid_ds = TensorDataset(
-            valid_ics, valid_inputs, valid_targets, valid_inds, valid_conds
+            valid_ics, valid_inputs, valid_targets, valid_inds, valid_conds, valid_extra
         )
         self.train_sampler = self.sampler_func(
             data_source=self.train_ds, num_samples=self.hparams.batch_size
