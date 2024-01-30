@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "RandomTargetDelay_NewSim2"  # For WandB and run dir
+RUN_DESC = "RandomTargetDelay_Final"  # For WandB and run dir
 TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
@@ -47,7 +47,7 @@ SEARCH_SPACE = dict(
     ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1000]),
+        max_epochs=tune.choice([1]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

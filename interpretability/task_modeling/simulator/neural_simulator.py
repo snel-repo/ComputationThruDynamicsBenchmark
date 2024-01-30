@@ -72,7 +72,7 @@ class NeuralDataSimulator:
 
         if coupled:
             states = output_dict["states"]
-            inputs = torch.concatenate((states, inputs), dim=-1)
+            inputs = torch.concatenate((states, inputs), dim=-1).detach().numpy()
 
         if self.n_neurons > latents.shape[-1]:
             # If the number of neurons is greater than the number of latents,
