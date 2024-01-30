@@ -54,14 +54,12 @@ class NeuralDataSimulator:
         self.orig_std = None
         self.use_neurons = True
 
-    def simulate_neural_data(
-        self, task_trained_model, datamodule, run_tag, coupled=False, seed=0
-    ):
+    def simulate_neural_data(self, task_trained_model, datamodule, run_tag, seed=0):
 
         # Make a filename based on the system being modeled, the number of neurons,
         # the nonlinearity, the observation noise, the epoch number, the model type,
         # and the seed
-
+        coupled = task_trained_model.task_env.coupled_env
         # Get trajectories and model predictions
         all_data = datamodule.all_data
 
@@ -72,6 +70,10 @@ class NeuralDataSimulator:
         output_dict = task_trained_model(ics, inputs, targets)
 
         latents = output_dict["latents"]
+
+        if coupled:
+            states = output_dict["states"]
+            inputs = torch.concatenate((states, inputs), dim=-1)
 
         if self.n_neurons > latents.shape[-1]:
             # If the number of neurons is greater than the number of latents,

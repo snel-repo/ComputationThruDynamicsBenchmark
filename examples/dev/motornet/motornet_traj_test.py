@@ -1,6 +1,8 @@
 import os
 
-from interpretability.comparison.analysis.analysis_tt import Comparisons
+from interpretability.comparison.analysis.tt.tasks.tt_RandomTargetDelay import (
+    TT_RandomTargetDelay,
+)
 
 # plt.ion()
 
@@ -25,9 +27,7 @@ plot_path = (
 )
 os.makedirs(plot_path, exist_ok=True)
 
-comp = Comparisons(suffix=suffix)
-comp.load_task_train_wrapper(filepath=filepath1)
+comp = TT_RandomTargetDelay(run_name=suffix, filepath=filepath1)
 # comp.plotHandKinematics()
 # comp.plotPrepActivity()
 # comp.plotPrepActivityLowPrep(prep_thresh = 10)
-comp.generateVidPlanningSubspace()

@@ -73,9 +73,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         outputs = np.zeros((self.n_timesteps, self.n))
         for i in range(self.n_timesteps):
             self.step(inputs[i, :])
-            outputs[i, :] = self.state + np.random.normal(
-                loc=0.0, scale=self.noise, size=(outputs[i, :].shape)
-            )
+            outputs[i, :] = self.state
         inputs = inputs + np.random.normal(loc=0.0, scale=self.noise, size=inputs.shape)
         return inputs, outputs
 
