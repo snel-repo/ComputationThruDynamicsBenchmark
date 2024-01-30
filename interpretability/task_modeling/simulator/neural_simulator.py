@@ -1,15 +1,14 @@
 import os
 
+import dotenv
 import h5py
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
 # plt.switch_backend("Agg")
-DATA_HOME = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
-    "interpretability/data_modeling/datasets"
-)
+dotenv.load_dotenv()
+SIMULATED_HOME = os.environ.get("SIMULATED_HOME")
 
 
 def sigmoidActivation(module, input):
@@ -90,7 +89,7 @@ class NeuralDataSimulator:
             f"seed_{seed}.h5"
         )
 
-        fpath = os.path.join(DATA_HOME, filename)
+        fpath = os.path.join(SIMULATED_HOME, filename)
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
         if self.use_neurons:
