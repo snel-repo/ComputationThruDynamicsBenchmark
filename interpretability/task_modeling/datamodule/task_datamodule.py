@@ -45,6 +45,8 @@ def to_tensor(array):
 
 
 class TaskDataModule(pl.LightningDataModule):
+    """Data module for task training"""
+
     def __init__(
         self,
         data_env: Env = None,
@@ -53,6 +55,15 @@ class TaskDataModule(pl.LightningDataModule):
         batch_size: int = 64,
         num_workers: int = 4,
     ):
+        """Initialize the data module
+        Args:
+            data_env (Env): The environment to simulate
+            n_samples (int): The number of samples (trials) to simulate
+            seed (int): The random seed to use
+            batch_size (int): The batch size
+            num_workers (int): The number of workers to use for data loading
+
+        """
         super().__init__()
         self.save_hyperparameters()
         # Generate the dataset tag
@@ -62,6 +73,7 @@ class TaskDataModule(pl.LightningDataModule):
         self.output_labels = None
 
     def set_environment(self, data_env):
+        """Set the environment for the data module"""
         self.data_env = data_env
         self.name = (
             f"{data_env.dataset_name}_{self.hparams.n_samples}S_{data_env.n_timesteps}T"
@@ -71,30 +83,54 @@ class TaskDataModule(pl.LightningDataModule):
         if hasattr(data_env, "noise"):
             self.name += f"_{data_env.noise}"
 
+        # Set input/output labels according to the data environment
         self.input_labels = self.data_env.input_labels
         self.output_labels = self.data_env.output_labels
+
+        # Set extra data if it exists
         if hasattr(self.data_env, "extra"):
             self.extra = self.data_env.extra
+
+        # If the environment has a specific sampling function, use it
         if hasattr(self.data_env, "sampler"):
             self.sampler_func = data_env.sampler
             self.val_sampler_func = SequentialSampler
-        else:
+        else:  # otherwise use the default samplers
             self.sampler_func = RandomSampler
             self.val_sampler_func = SequentialSampler
 
     def prepare_data(self):
+        """Prepare the data for task-training
+
+        All task-environments must have a generate_dataset method,
+        called by prepare_data. This method returns a dictionary
+        with the following mandatory keys:
+            inputs: The inputs to the model
+            targets: The targets for the model
+                (e.g., the outputs of the environment or MotorNet goal)
+            ics: The initial conditions for the environment
+                (e.g., the start state for MotorNet)
+            conds: The conditions for the task
+                (e.g., which task in MultiTask)
+            extra: Any extra data that is needed for training
+                (e.g., trial length for MultiTask)
+        """
         hps = self.hparams
 
         filename_h5 = f"{self.name}.h5"
         filename_pkl = f"{self.name}.pkl"
         fpath = os.path.join(DATA_HOME, filename_h5)
         fpath_pkl = os.path.join(DATA_HOME, filename_pkl)
+
+        # Check if the dataset already exists, and if so, load it
         if os.path.isfile(fpath) and os.path.isfile(fpath_pkl):
             logger.info(f"Loading dataset {self.name}")
             return
         logger.info(f"Generating dataset {self.name}")
+
         # Simulate the task
         dataset_dict = self.data_env.generate_dataset(self.hparams.n_samples)
+
         # Extract the inputs, outputs, and initial conditions
         inputs_ds = dataset_dict["inputs"]
         targets_ds = dataset_dict["targets"]
@@ -107,7 +143,7 @@ class TaskDataModule(pl.LightningDataModule):
         keys.remove("targets")
         keys.remove("ics")
         keys.remove("conds")
-        # Standardize and record original mean and standard deviations
+
         # Perform data splits
         num_trials = ics_ds.shape[0]
         inds = np.arange(num_trials)
@@ -135,6 +171,7 @@ class TaskDataModule(pl.LightningDataModule):
             h5file.create_dataset("train_extra", data=extra_ds[train_inds])
             h5file.create_dataset("valid_extra", data=extra_ds[valid_inds])
 
+        # Save the dataset dictionary as a pickle file for debugging, etc.
         save_dict_to_pickle(dataset_dict, fpath_pkl)
 
     def setup(self, stage=None):
@@ -163,6 +200,7 @@ class TaskDataModule(pl.LightningDataModule):
             valid_extra = to_tensor(h5file["valid_extra"][()])
 
         self.all_data = load_dict_from_pickle(data_path_pkl)
+
         # Store datasets
         self.train_ds = TensorDataset(
             train_ics,
@@ -172,16 +210,17 @@ class TaskDataModule(pl.LightningDataModule):
             train_conds,
             train_extra,
         )
+
         self.valid_ds = TensorDataset(
             valid_ics, valid_inputs, valid_targets, valid_inds, valid_conds, valid_extra
         )
+
         self.train_sampler = self.sampler_func(
             data_source=self.train_ds, num_samples=self.hparams.batch_size
         )
         self.valid_sampler = self.val_sampler_func(
             data_source=self.valid_ds, num_samples=self.hparams.batch_size
         )
-        # self.test_ds = TensorDataset(test_outputs, test_inputs, test_comb, test_inds)
 
     def train_dataloader(self, shuffle=True):
         train_dl = DataLoader(
@@ -201,11 +240,3 @@ class TaskDataModule(pl.LightningDataModule):
             num_workers=self.hparams.num_workers,
         )
         return valid_dl
-
-    # def test_dataloader(self):
-    #     test_dl = DataLoader(
-    #         self.test_ds,
-    #         batch_size=self.hparams.batch_size,
-    #         num_workers=self.hparams.num_workers,
-    #     )
-    #     return test_dl

@@ -1,6 +1,3 @@
-from abc import ABC, abstractmethod
-
-import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 from gymnasium import spaces
@@ -9,36 +6,17 @@ from interpretability.task_modeling.datamodule.samplers import (
     GroupedSampler,
     RandomSampler,
 )
+from interpretability.task_modeling.task_env.task_env import DecoupledEnvironment
 
 
-class DecoupledEnvironment(gym.Env, ABC):
+class MultiTaskWrapper(DecoupledEnvironment):
     """
-    Abstract class representing a decoupled environment.
-    This class is abstract and cannot be instantiated.
-    """
+    An environment for the MultiTask dataset (Driscol et al. 2021).
+    15 tasks are available: Select which ones to include in the
+    task_env config file.
 
-    @abstractmethod
-    def __init__(self, n_timesteps: int, noise: float):
-        super().__init__()
-        self.n_timesteps = n_timesteps
-        self.noise = noise
-
-    @abstractmethod
-    def step(self, action):
-        pass
-
-    @abstractmethod
-    def reset(self):
-        pass
-
-
-class MultiTaskWrapper:
-    """
-    An environment for an N-bit flip flop.
-    This is a simple toy text environment where the goal is to flip the required bit.
     """
 
-    # 6400 timesteps
     def __init__(
         self,
         task_list: list,
@@ -49,22 +27,44 @@ class MultiTaskWrapper:
         grouped_sampler: bool = False,
         dataset_name="MultiTask",
     ):
+        """
+        Args:
+            task_list: List of task names to include in the dataset
+            bin_size: Bin size of the dataset (default = 20 ms)
+            n_timesteps: Number of timesteps in the dataset (Default = 640 maximum)
+            num_targets: Number of targets in each task (Default = 32)
+            noise: Noise level of the dataset (Default = 0.31)
+            grouped_sampler: Whether to use a grouped sampler or a random sampler
+            - Grouped sampler: Samples tasks in groups by minibatch
+                May be necessary for shared motifs?
+            - Random sampler: Samples tasks randomly by minibatch
+            dataset_name: Name of the dataset
+            - Default = "MultiTask"
+        """
         # TODO: Seed environment
         self.n_timesteps = n_timesteps
         self.dataset_name = dataset_name
         self.bin_size = bin_size
+
+        # Iterate through the task list and create a list of MultiTask objects
         self.task_list = [
             MultiTask(
                 task, bin_size=self.bin_size, num_targets=num_targets, noise=noise
             )
             for task in task_list
         ]
+
+        # Create a string of the task list for the dataset name
         self.task_list_str = task_list
+
+        # Create the action, observation, and goal spaces
         self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(3,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-1.5, high=1.5, shape=(20,), dtype=np.float32
         )
         self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
+
+        # Labels for the inputs and outputs
         self.input_labels = [
             "Fixation",
             "StimMod1Cos",
@@ -102,7 +102,9 @@ class MultiTaskWrapper:
             self.sampler = RandomSampler
 
     def generate_dataset(self, n_samples):
-        # TODO: Maybe batch this?
+        """
+        Generates a dataset for the MultiTask dataset
+        """
         n_timesteps = self.n_timesteps
         ics_ds = np.zeros(shape=(n_samples * len(self.task_list), 3))
         outputs_ds = []
@@ -112,6 +114,8 @@ class MultiTaskWrapper:
         task_names = []
         conds_ds = []
         extra_ds = []
+
+        # Iterate through the task list and generate trials
         for task_num, task in enumerate(self.task_list):
             inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
             true_inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
@@ -144,15 +148,22 @@ class MultiTaskWrapper:
         conds_ds = np.concatenate(conds_ds, axis=0)
         extra_ds = np.concatenate(extra_ds, axis=0)
 
+        # Return dictionary of necessary variables for task-trained models
         dataset_dict = {
+            # ----------Mandatory------------------
             "inputs": inputs_ds,
             "targets": outputs_ds,
             "ics": ics_ds,
+            "conds": conds_ds,
+            # Extra is anything that is needed for the training
+            # that isn't an input, target, or ic
+            #   E.g. in Multi-task, it is the start and end index of
+            #   the response phase (for loss weighting)
             "extra": extra_ds,
+            # ----------Optional------------------
             "phase_dict": phase_list,
             "task_names": task_names,
             "true_inputs": true_inputs_ds,
-            "conds": conds_ds,
         }
         return dataset_dict
 
@@ -163,6 +174,14 @@ class MultiTaskWrapper:
 
 class MultiTask:
     def __init__(self, task_name: str, bin_size: int, num_targets: int, noise: float):
+        """
+        Args:
+
+            task_name: Name of the task to generate
+            bin_size: Bin size of the dataset (default = 20 ms)
+            num_targets: Number of targets in each task (Default = 32)
+            noise: Noise level of the dataset (Default = 0.31)
+        """
         self.task_name = task_name
         self.noise = noise
         self.bin_size = bin_size
@@ -227,6 +246,12 @@ class MultiTask:
             self.task_type = "Match"
 
     def generate_trial(self):
+        """
+        Generates a trial for the MultiTask dataset
+        Implements trial logic for each task type
+        """
+
+        # Generate the trial parameters and phase lengths
         bs = self.bin_size
         if self.task_type == "Delay":
             context_len = np.random.randint(300 / bs, 700 / bs)
@@ -268,6 +293,7 @@ class MultiTask:
             mem2_len = 0
             response_len = np.random.randint(300 / bs, 700 / bs)
 
+        # Set the indices for each phase
         stim1_ind = context_len
         mem1_ind = context_len + stim1_len
         stim2_ind = context_len + stim1_len + mem1_len
@@ -277,6 +303,7 @@ class MultiTask:
             context_len + stim1_len + mem1_len + stim2_len + mem2_len + response_len
         )
 
+        # Initialize the inputs and outputs and set the target angles
         inputs = np.zeros((total_len, 20))
         outputs = np.zeros((total_len, 3))
         targ_ang_list = np.linspace(-np.pi, np.pi, self.num_targets, endpoint=False)
@@ -287,7 +314,6 @@ class MultiTask:
                 inputs[:response_ind, 0] = 1
 
                 # Target
-
                 targ_num_1 = np.random.randint(0, self.num_targets)
                 targ_ang_1 = targ_ang_list[targ_num_1]
 
@@ -520,9 +546,6 @@ class MultiTask:
         inputs, outputs, phase_dict, task_name, true_inputs = self.generate_trial()
         fig = plt.figure(figsize=(10, 10))
 
-        plot_path = (
-            "/home/csverst/Github/InterpretabilityBenchmark/scripts/dev/multitask/plots"
-        )
         ax1 = fig.add_subplot(7, 1, 1)
         for phase in phase_dict:
             ax1.axvline(phase_dict[phase][0], color="k", linestyle="--")
@@ -597,7 +620,7 @@ class MultiTask:
         ax2.set_ylim(-1.5, 1.5)
 
         plt.suptitle(f"Trial: {self.task_name}")
-        plt.savefig(f"{plot_path}/{self.task_name}_state_diag.png")
+        plt.savefig(f"{self.task_name}_state_diag.png")
 
         fig = plt.figure()
         # Plot stim1, stim2 and response as a scatter plot
@@ -662,7 +685,7 @@ class MultiTask:
         ax_labels.set_aspect("equal", adjustable="box")
 
         plt.suptitle(f"Trial: {self.task_name}")
-        plt.savefig(f"{plot_path}/{self.task_name}_radial.png")
+        plt.savefig(f"{self.task_name}_radial.png")
 
     def reset(self):
         return super().reset()

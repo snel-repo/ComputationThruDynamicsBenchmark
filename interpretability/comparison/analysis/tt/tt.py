@@ -31,10 +31,21 @@ class Analysis_TT(Analysis):
         self.task_name = self.datamodule.data_env.dataset_name
 
     def get_model_input(self):
-
         all_data = self.datamodule.all_data
         tt_ics = torch.Tensor(all_data["ics"])
         tt_inputs = torch.Tensor(all_data["inputs"])
+        tt_targets = torch.Tensor(all_data["targets"])
+        return tt_ics, tt_inputs, tt_targets
+
+    def get_extra_input(self):
+        all_data = self.datamodule.all_data
+        tt_extra = torch.Tensor(all_data["extra"])
+        return tt_extra
+
+    def get_model_input_noiseless(self):
+        all_data = self.datamodule.all_data
+        tt_ics = torch.Tensor(all_data["ics"])
+        tt_inputs = torch.Tensor(all_data["true_inputs"])
         tt_targets = torch.Tensor(all_data["targets"])
         return tt_ics, tt_inputs, tt_targets
 
@@ -43,8 +54,17 @@ class Analysis_TT(Analysis):
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
         return out_dict
 
+    def get_model_output_noiseless(self):
+        tt_ics, tt_inputs, tt_targets = self.get_model_input_noiseless()
+        out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
+        return out_dict
+
     def get_latents(self):
         out_dict = self.get_model_output()
+        return out_dict["latents"]
+
+    def get_latents_noiseless(self):
+        out_dict = self.get_model_output_noiseless()
         return out_dict["latents"]
 
     def get_latents_pca(self, num_PCs=3):
@@ -58,6 +78,7 @@ class Analysis_TT(Analysis):
 
     def compute_FPs(
         self,
+        noiseless=True,
         inputs=None,
         n_inits=1024,
         noise_scale=0.0,
@@ -68,9 +89,14 @@ class Analysis_TT(Analysis):
         compute_jacobians=True,
     ):
         # Compute latent activity from task trained model
-        if inputs is None:
+        if inputs is None and noiseless:
+            _, inputs, _ = self.get_model_input_noiseless()
+            latents = self.get_latents_noiseless()
+        elif inputs is None and not noiseless:
             _, inputs, _ = self.get_model_input()
-        latents = self.get_latents()
+            latents = self.get_latents()
+        else:
+            latents = self.get_latents()
 
         fps = find_fixed_points(
             model=self.wrapper,
