@@ -25,18 +25,18 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "NBFF_GRU2GRU_Comparison"
+RUN_DESC = "NBFF_LFADS_Comparison2"
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"
-MODEL = "GRU_RNN"
+MODEL_CLASS = "LFADS"
+MODEL = "LFADS"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
-    model=dict(
-        latent_size=tune.grid_search([64]),
-    ),
+    # model=dict(
+    #     latent_size=tune.grid_search([64]),
+    # ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         prefix=tune.grid_search(["20240123_NBFF_GRU_Comparison"]),

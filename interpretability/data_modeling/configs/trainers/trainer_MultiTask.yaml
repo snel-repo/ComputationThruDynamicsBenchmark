@@ -1,8 +1,8 @@
 _target_: pytorch_lightning.Trainer
 log_every_n_steps: 20
-max_epochs: 3000
-gradient_clip_val: 0.1
+max_epochs: 200
+gradient_clip_val: 0.01
 # Prevent console output from individual models
-progress_bar_refresh_rate: 0
-weights_summary: null
+enable_progress_bar: False
+# weights_summary: null
 #auto_scale_batch_size: True

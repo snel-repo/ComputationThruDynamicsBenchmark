@@ -1,9 +1,0 @@
-_target_: dmfc_learning.datasets.dmfc_data.DMFCDataModule
-dataset_name: dmfc_rsg
-phase: val
-bin_width: 20
-batch_size: 64
-num_workers: 4
-input_type: "Step"
-input_smoothing: 3
-simplify_data: False

@@ -1,14 +1,20 @@
 import logging
+import os
 import pickle
 from pathlib import Path
 from typing import List
 
+import dotenv
 import hydra
 import pytorch_lightning as pl
 
 from interpretability.data_modeling.extensions.SAE.utils import flatten
 
+dotenv.load_dotenv(override=True)
+
 log = logging.getLogger(__name__)
+
+TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
 
 
 def train(
@@ -116,7 +122,7 @@ def train(
 
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
-    SAVE_PATH = trained_path
+    SAVE_PATH = TRAINED_MODEL_PATH + "data-trained/"
     dir_path = SAVE_PATH + run_tag
     Path(dir_path).mkdir(parents=True, exist_ok=True)
     path1 = SAVE_PATH + run_tag + "/model.pkl"

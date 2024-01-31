@@ -122,6 +122,7 @@ class SessionDataset(Dataset):
 class BasicDataModule(pl.LightningDataModule):
     def __init__(
         self,
+        prefix: str,
         system: str,
         gen_model: str,
         n_neurons: int,
@@ -143,11 +144,10 @@ class BasicDataModule(pl.LightningDataModule):
         ), "Dataset reshuffling is incompatible with the `attr_keys` argument."
         super().__init__()
         filename = (
+            f"{prefix}_"
             f"{system}_"
             f"model_{gen_model}_"
             f"n_neurons_{n_neurons}_"
-            f"nonlin_embed_{nonlin_embed}_"
-            f"obs_noise_{obs_noise}_"
             f"seed_{seed}.h5"
         )
         self.fpath = os.path.join(DATA_HOME, filename)

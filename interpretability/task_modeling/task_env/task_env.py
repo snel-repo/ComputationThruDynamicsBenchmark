@@ -38,10 +38,6 @@ class DecoupledEnvironment(gym.Env, ABC):
         pass
 
     @abstractmethod
-    def generate_trial(self):
-        pass
-
-    @abstractmethod
     def generate_dataset(self, n_samples):
         """Must return a dictionary with the following keys:
         #----------Mandatory keys----------
