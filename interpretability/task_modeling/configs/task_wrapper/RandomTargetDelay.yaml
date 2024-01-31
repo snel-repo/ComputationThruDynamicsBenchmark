@@ -8,5 +8,5 @@ loss_func:
   pos_weight: 0.5
   act_weight: 0.5
 
-learning_rate: 1.0e-4
+learning_rate: 1.0e-3
 weight_decay: 0

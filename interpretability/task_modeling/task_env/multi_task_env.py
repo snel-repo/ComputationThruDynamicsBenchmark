@@ -6,10 +6,9 @@ from interpretability.task_modeling.datamodule.samplers import (
     GroupedSampler,
     RandomSampler,
 )
-from interpretability.task_modeling.task_env.task_env import DecoupledEnvironment
 
 
-class MultiTaskWrapper(DecoupledEnvironment):
+class MultiTaskWrapper:
     """
     An environment for the MultiTask dataset (Driscol et al. 2021).
     15 tasks are available: Select which ones to include in the
