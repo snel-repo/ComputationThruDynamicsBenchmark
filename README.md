@@ -31,9 +31,9 @@ The two primary run scripts are "run_task_training.py" and "run_data_training.py
 Each uses ray, hydra, and PyTorch Lightning to handle hyperparameter sweeps and logging. WandB is used by default, but TensorBoard logging is also available.
 
 There are three primary tasks implemented, ranging from simple to complex:
-1. N-bit Flip Flop (NBFF): An extension of the 3-bit Flip-Flop from OTBB, this can be extended into higher dimensions for more complex dynamics.
+1. NBFF: An extension of the 3-bit Flip-Flop from OTBB, this can be extended into higher dimensions for more complex dynamics.
 2. MultiTask: A version of the task used in recent papers by Yang and Driscoll, this task combines 15 simple cognitive tasks into a single task to look at how dynamical motifs can generalize across tasks.
-3. MotorNet: A musculoskeletal modeling and control engine that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
+3. RandomTargetDelay: A musculoskeletal modeling and control engine (MotorNet) that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
 
 ## Quick-Start:
 To get an overview of the major components of the code-base, you should only need to run three scripts:
@@ -41,7 +41,7 @@ To get an overview of the major components of the code-base, you should only nee
 2. examples/run_data_training.py
 3. examples/compare_tt_dt_models.py
 
-Before running these scripts, you will need to modify the RUNS_HOME and SAVE_PATH variables in run_task_training.py to a location where you'd like to save your training logs/plots and the fully trained final models, respectively. In addition to the simulated spiking activity, the task-training module will save a copy of the trained model, the datamodule used to train, and the simulator that generated the spiking activity.
+Before running these scripts, you will need to modify the RUNS_HOME and SAVE_PATH variables in your .env file to a location where you'd like to save your training logs/plots and the fully trained final models, respectively. In addition to the simulated spiking activity, the task-training module will save a copy of the trained model, the datamodule used to train, and the simulator that generated the spiking activity.
 
 Once the task-trained model has been run, it should save an h5 file of spiking activity in the data-trained folder. Running the data-trained model should be straightforward as well!
 
@@ -63,7 +63,7 @@ To see what tasks can specifically be implemented, look in the config files for 
 TODO
 
 ### Data-Training:
-TODO
+Runs with either a generic SAE or LFADS models (currently). Whether to use a generic SAE or LFADS is controlled by the MODEL_CLASS variable, which for now is either SAE or LFADS.
 
 ### Comparisons:
 Comparator object takes in Analysis objects with specific return structures.

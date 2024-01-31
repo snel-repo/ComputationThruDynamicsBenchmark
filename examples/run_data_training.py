@@ -39,6 +39,7 @@ SEARCH_SPACE = dict(
     # ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
+        # Change the prefix to the correct path for your task-trained network
         prefix=tune.grid_search(["20240123_NBFF_GRU_Comparison"]),
     ),
     params=dict(
@@ -48,6 +49,7 @@ SEARCH_SPACE = dict(
 
 # -----------------Default Parameter Sets -----------------------------------
 cpath = "../data_modeling/configs"
+
 model_path = Path(
     (
         f"{cpath}/models/{MODEL_CLASS}/{DATA}/{DATA}_{MODEL}"
