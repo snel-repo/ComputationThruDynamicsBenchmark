@@ -7,6 +7,7 @@ from typing import List
 import hydra
 import pytorch_lightning as pl
 from gymnasium import Env
+import platform
 
 from interpretability.task_modeling.simulator.neural_simulator import (
     NeuralDataSimulator,
@@ -138,7 +139,10 @@ def train(
         accelerator="auto",
         _convert_="all",
     )
-    print(len(os.sched_getaffinity(0)))
+    if platform.system() == 'Windows' or platform.system() == 'Darwin':  # Darwin indicates MacOS
+        print(os.cpu_count())
+    else:
+        print(len(os.sched_getaffinity(0)))
     # -----------------------------Train model---------------------------
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
