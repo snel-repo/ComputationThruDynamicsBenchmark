@@ -63,7 +63,7 @@ class TaskTrainedWrapper(pl.LightningModule):
 
         self.task_env = task_env
         self.input_size = (
-            task_env.goal_space.shape[0] + task_env.observation_space.shape[0]
+            task_env.context_inputs.shape[0] + task_env.observation_space.shape[0]
         )
         self.output_size = task_env.action_space.shape[0]
 

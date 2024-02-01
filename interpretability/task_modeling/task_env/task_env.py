@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from gymnasium import spaces
 from motornet.environment import Environment
+from numpy import ndarray
+from torch._tensor import Tensor
 
 
 class DecoupledEnvironment(gym.Env, ABC):
@@ -68,7 +70,9 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.observation_space = spaces.Box(
             low=-1.5, high=1.5, shape=(n,), dtype=np.float32
         )
-        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
+        self.context_inputs = spaces.Box(
+            low=-1.5, high=1.5, shape=(0,), dtype=np.float32
+        )
         self.n = n
         self.state = np.zeros(n)
         self.input_labels = [f"Input {i}" for i in range(n)]
@@ -177,13 +181,13 @@ class RandomTargetDelay(Environment):
         self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
         self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
         self.output_labels = ["M1", "M2", "M3", "M4"]
-        self.goal_space = spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float32)
+        self.context_inputs = spaces.Box(low=-2, high=2, shape=(3,), dtype=np.float32)
         self.coupled_env = True
 
     def generate_dataset(self, n_samples):
         # Make target circular, change loss function to be pinned at zero
         initial_state = []
-        inputs = np.zeros((n_samples, self.n_timesteps, 2))
+        inputs = np.zeros((n_samples, self.n_timesteps, 3))
 
         goal_list = []
         go_cue_list = []
@@ -207,7 +211,10 @@ class RandomTargetDelay(Environment):
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
             goal_matrix[:go_cue, :] = initial_state_xy
             goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
-            inputs[i, target_on:, :] = info["goal"]
+
+            inputs[i, target_on:, 0:2] = info["goal"]
+            inputs[i, go_cue:, 2] = 1
+
             goal_list.append(goal_matrix)
 
         go_cue_list = np.array(go_cue_list)
@@ -233,6 +240,21 @@ class RandomTargetDelay(Environment):
         Sets the goal of the task. This is the target position of the effector.
         """
         self.goal = goal
+
+    def get_obs(self, action=None, deterministic: bool = False) -> Tensor | ndarray:
+        self.update_obs_buffer(action=action)
+
+        obs_as_list = [
+            self.obs_buffer["vision"][0],
+            self.obs_buffer["proprioception"][0],
+        ] + self.obs_buffer["action"][: self.action_frame_stacking]
+
+        obs = torch.cat(obs_as_list, dim=-1)
+
+        if deterministic is False:
+            obs = self.apply_noise(obs, noise=self.obs_noise)
+
+        return obs if self.differentiable else self.detach(obs)
 
     def reset(
         self,

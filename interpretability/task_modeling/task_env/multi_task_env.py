@@ -62,7 +62,9 @@ class MultiTaskWrapper(DecoupledEnvironment):
         self.observation_space = spaces.Box(
             low=-1.5, high=1.5, shape=(20,), dtype=np.float32
         )
-        self.goal_space = spaces.Box(low=-1.5, high=1.5, shape=(0,), dtype=np.float32)
+        self.context_inputs = spaces.Box(
+            low=-1.5, high=1.5, shape=(0,), dtype=np.float32
+        )
 
         # Labels for the inputs and outputs
         self.input_labels = [
