@@ -1,6 +1,8 @@
 import io
 
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import pytorch_lightning as pl
 import torch
