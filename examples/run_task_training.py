@@ -25,8 +25,8 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "MultiTask_Reconfig2"  # For WandB and run dir
-TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "NBFF_Tutorial"  # For WandB and run dir
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------

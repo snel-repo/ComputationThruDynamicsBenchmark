@@ -40,7 +40,7 @@ SEARCH_SPACE = dict(
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240131_NBFF_GRU_Tutorial"]),
+        prefix=tune.grid_search(["20240201_NBFF_GRU_Tutorial"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),

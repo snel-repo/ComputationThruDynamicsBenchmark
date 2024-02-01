@@ -12,19 +12,19 @@ TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
 # %%
 # Load the analysis
 # CHANGE THESE PATHS TO MATCH YOUR RUNS
-tt_path_GRU = TRAINED_MODEL_PATH + ("task-trained/20240123_NBFF_GRU_Comparison/")
-dt_GRU2GRU = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_GRU2GRU_Comparison/")
+tt_GRU = TRAINED_MODEL_PATH + ("task-trained/20240201_NBFF_GRU_Tutorial/")
+dt_GRU = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_GRU_Tutorial/")
 
 
-tt_analysis_GRU = Analysis_TT(run_name="NBFF_TT_GRU", filepath=tt_path_GRU)
-dt_analysis_GRU2GRU = Analysis_DT(run_name="NBFF_DT_GRU2GRU", filepath=dt_GRU2GRU)
+tt_analysis_GRU = Analysis_TT(run_name="NBFF_TT_GRU", filepath=tt_GRU)
+dt_analysis_GRU = Analysis_DT(run_name="NBFF_DT_GRU", filepath=dt_GRU)
 
 
 # %%
 comp = Comparison()
 
 comp.load_analysis(tt_analysis_GRU)
-comp.load_analysis(dt_analysis_GRU2GRU)
+comp.load_analysis(dt_analysis_GRU)
 
 # %%
 
