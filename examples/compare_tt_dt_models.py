@@ -12,8 +12,8 @@ TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
 # %%
 # Load the analysis
 # CHANGE THESE PATHS TO MATCH YOUR RUNS
-tt_GRU = TRAINED_MODEL_PATH + ("task-trained/20240201_NBFF_GRU_Tutorial/")
-dt_GRU = TRAINED_MODEL_PATH + ("data-trained/20240123_NBFF_GRU_Tutorial/")
+tt_GRU = TRAINED_MODEL_PATH + ("task-trained/20240131_NBFF_GRU_Tutorial/")
+dt_GRU = TRAINED_MODEL_PATH + ("data-trained/20240201_NBFF_GRU_Tutorial/")
 
 
 tt_analysis_GRU = Analysis_TT(run_name="NBFF_TT_GRU", filepath=tt_GRU)

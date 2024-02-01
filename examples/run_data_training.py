@@ -40,7 +40,7 @@ SEARCH_SPACE = dict(
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240201_NBFF_GRU_Tutorial"]),
+        prefix=tune.grid_search(["20240131_NBFF_GRU_Tutorial"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
@@ -79,7 +79,7 @@ path_dict = dict(
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
 RUNS_HOME = Path(RUNS_HOME)
-RUN_DIR = RUNS_HOME / "MultiDatasets" / "NODE" / RUN_TAG
+RUN_DIR = RUNS_HOME / "data-trained" / RUN_TAG
 
 
 def trial_function(trial):

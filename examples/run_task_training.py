@@ -81,7 +81,7 @@ def main(
     if RUN_DIR.exists() and OVERWRITE:
         shutil.rmtree(RUN_DIR)
 
-    RUN_DIR.mkdir()
+    RUN_DIR.mkdir(parents=True)
     shutil.copyfile(__file__, RUN_DIR / Path(__file__).name)
     tune.run(
         tune.with_parameters(
