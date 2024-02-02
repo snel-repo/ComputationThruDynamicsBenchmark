@@ -23,7 +23,7 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 RUN_DESC = "NBFF_Tutorial"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
