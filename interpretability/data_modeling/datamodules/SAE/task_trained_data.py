@@ -49,19 +49,23 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
                 f"seed_{seed}.h5"
             )
         else:
-            filename = (
+            filedir = (
                 f"{prefix}_"
                 f"{system}_"
                 f"model_{gen_model}_"
                 f"n_neurons_{n_neurons}_"
-                f"seed_{seed}.h5"
+                f"seed_{seed}"
             )
-        self.name = filename
-        self.fpath = os.path.join(DATA_HOME, filename)
+            fpath = os.path.join(DATA_HOME, filedir)
+            dirs = os.listdir(fpath)
+            filename = dirs[0]
+
+        self.name = os.path.join(filename)
+        self.fpath = filedir
 
     def prepare_data(self):
         filename = self.name
-        fpath = os.path.join(DATA_HOME, filename)
+        fpath = os.path.join(DATA_HOME, self.fpath, filename)
         if os.path.isfile(fpath):
             logger.info(f"Loading dataset {self.name}")
             return
@@ -71,7 +75,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # Load data arrays from file
-        data_path = os.path.join(DATA_HOME, self.name)
+        data_path = os.path.join(DATA_HOME, self.fpath, self.name)
         with h5py.File(data_path, "r") as h5file:
             # Load the data
             train_data = to_tensor(h5file["train_encod_data"][()])

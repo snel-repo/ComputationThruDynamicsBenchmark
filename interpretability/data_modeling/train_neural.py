@@ -122,13 +122,18 @@ def train(
 
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
-    SAVE_PATH = TRAINED_MODEL_PATH + "data-trained/"
-    dir_path = SAVE_PATH + run_tag
-    Path(dir_path).mkdir(parents=True, exist_ok=True)
-    path1 = SAVE_PATH + run_tag + "/model.pkl"
-    with open(path1, "wb") as f:
+    SAVE_PATH_MODEL = os.path.join(
+        TRAINED_MODEL_PATH, "data-trained", run_tag, "model.pkl"
+    )
+    SAVE_PATH_DATAMODULE = os.path.join(
+        TRAINED_MODEL_PATH, "data-trained", run_tag, "datamodule.pkl"
+    )
+
+    Path(SAVE_PATH_MODEL).mkdir(parents=True, exist_ok=True)
+    Path(SAVE_PATH_DATAMODULE).mkdir(parents=True, exist_ok=True)
+
+    with open(SAVE_PATH_MODEL, "wb") as f:
         pickle.dump(model, f)
 
-    path2 = SAVE_PATH + run_tag + "/datamodule.pkl"
-    with open(path2, "wb") as f:
+    with open(SAVE_PATH_DATAMODULE, "wb") as f:
         pickle.dump(datamodule, f)

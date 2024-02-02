@@ -15,3 +15,4 @@ motornet
 ipykernel
 ipywidgets
 opencv-python
+git+https://github.com/mitchellostrow/DSA.git#egg=DSA

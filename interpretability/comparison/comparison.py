@@ -183,15 +183,6 @@ class Comparison:
             lr=0.005,
         )
         similarities = dsa.fit_score()
-        # for i in range(self.num_analyses):
-        #     for j in range(i, self.num_analyses):
-        #         print(f"comparison {i}, {j} of {self.num_analyses**2}")
-        #         similarities = self.compare_dynamics_DSA_pair(
-        #             self.analyses[i], self.analyses[j],
-        #             n_delays=n_delays, rank=rank,
-        #             delay_interval=delay_interval, device=device
-        #         )
-        #         fit_mat[i, j] = similarities[0,1]
 
         fit_mat = similarities
         ij_figure = plt.figure()
@@ -210,28 +201,4 @@ class Comparison:
 
         # Colorbar
         ij_figure.colorbar(plt.imshow(fit_mat), ax=ij_ax)
-        return similarities
-
-    def compare_dynamics_DSA_pair(
-        self, analysis1, analysis2, n_delays=10, rank=3, delay_interval=1, device="cpu"
-    ):
-        # Function to compare the dynamics using DSA
-        lats_list = []
-        lats1 = analysis1.get_latents().detach().numpy()
-        lats2 = analysis2.get_latents().detach().numpy()
-
-        lats_list.append(lats1.reshape(-1, lats1.shape[-1]))
-        lats_list.append(lats2.reshape(-1, lats2.shape[-1]))
-
-        dsa = DSA(
-            lats_list,
-            n_delays=n_delays,
-            rank=rank,
-            delay_interval=delay_interval,
-            verbose=True,
-            device=device,
-            iters=1000,
-            lr=1e-2,
-        )
-        similarities = dsa.fit_score()
         return similarities

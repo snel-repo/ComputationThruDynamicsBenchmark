@@ -53,7 +53,9 @@ class NeuralDataSimulator:
         self.orig_std = None
         self.use_neurons = True
 
-    def simulate_neural_data(self, task_trained_model, datamodule, run_tag, seed=0):
+    def simulate_neural_data(
+        self, task_trained_model, datamodule, run_tag, subfolder, seed=0
+    ):
 
         # Make a filename based on the system being modeled, the number of neurons,
         # the nonlinearity, the observation noise, the epoch number, the model type,
@@ -86,10 +88,13 @@ class NeuralDataSimulator:
             f"{datamodule.data_env.dataset_name}_"
             f"model_{type(task_trained_model.model).__name__}_"
             f"n_neurons_{self.n_neurons}_"
-            f"seed_{seed}.h5"
+            f"seed_{seed}"
         )
 
         fpath = os.path.join(SIMULATED_HOME, filename)
+        # Make the directory if it doesn't exist
+        os.mkdir(fpath)
+        fpath = os.path.join(fpath, subfolder + ".h5")
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
         if self.use_neurons:
@@ -185,43 +190,3 @@ class NeuralDataSimulator:
             h5file.create_dataset("orig_std", data=orig_std)
             if self.use_neurons:
                 h5file.create_dataset("perm_neurons", data=perm_neurons)
-
-    def simulate_new_data(self, task_trained_model, datamodule, seed):
-
-        if self.readout is None:
-            ValueError("Must first generate data before simulating new data")
-
-        # Get trajectories and model predictions
-        train_data = datamodule.train_dataloader().dataset.tensors
-        _, latents = task_trained_model(train_data[0])
-        inputs = train_data[1].numpy()
-        n_trials, n_times, n_lat_dim = latents.shape
-        latents = latents.detach().numpy()
-
-        readout = self.readout
-        activity = latents @ readout
-
-        activity = (activity - self.orig_mean) / self.orig_std
-
-        rng = np.random.default_rng(seed)
-        if self.nonlin_embed:
-            scaling_matrix = np.logspace(0.2, 1, (self.n_neurons))
-            activity = activity * scaling_matrix[None, :]
-        # Add noise to the observations
-        if self.obs_noise is not None:
-            if self.nonlin_embed:
-                activity = apply_data_warp_sigmoid(activity)
-            elif self.obs_noise in ["poisson"]:
-                activity = np.exp(activity)
-            noise_fn = getattr(rng, self.obs_noise)
-            data = noise_fn(activity).astype(float)
-        else:
-            if self.nonlin_embed:
-                activity = apply_data_warp_sigmoid(activity)
-            data = activity
-
-        latents = latents.reshape(n_trials, n_times, n_lat_dim)
-        activity = activity.reshape(n_trials, n_times, self.n_neurons)
-        data = data.reshape(n_trials, n_times, self.n_neurons)
-
-        return data, activity, latents, inputs

@@ -27,15 +27,22 @@ def train(
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()
     overrides_flat = {}
+    subfolder = ""
     for key in override_keys:
         if type(overrides[key]) == dict:
             overrides_flat[key] = [
                 f"{k}={v}" for k, v in flatten(overrides[key]).items()
             ]
+            temp = [f"{k}={v}" for k, v in flatten(overrides[key]).items()]
+            # join the list of strings
+            subfolder += " ".join(temp)
+            subfolder += " "
         else:
             overrides_flat[key] = f"{key}={overrides[key]}"
+            subfolder += f"_{key}={overrides[key]}_"
 
     # Compose the configs for all components
+    subfolder = subfolder[:-1]
     config_all = {}
     for field in compose_list:
         with hydra.initialize(config_path=str(path_dict[field].parent), job_name=field):
@@ -145,17 +152,19 @@ def train(
 
     # Save the model, datamodule, and simulator to the directory
     log.info("Saving model, datamodule, and simulator")
-    dir_path = SAVE_PATH + run_tag
+    dir_path = os.path.join(SAVE_PATH, run_tag, subfolder, "")
     Path(dir_path).mkdir(parents=True, exist_ok=True)
-    path1 = SAVE_PATH + run_tag + "/model.pkl"
+    path1 = os.path.join(SAVE_PATH, run_tag, subfolder, "model.pkl")
     with open(path1, "wb") as f:
         pickle.dump(task_wrapper, f)
 
-    path2 = SAVE_PATH + run_tag + "/datamodule.pkl"
+    path2 = os.path.join(SAVE_PATH, run_tag, subfolder, "datamodule.pkl")
     with open(path2, "wb") as f:
         pickle.dump(datamodule, f)
 
-    simulator.simulate_neural_data(task_wrapper, datamodule, run_tag, seed=0)
-    path3 = SAVE_PATH + run_tag + "/simulator.pkl"
+    simulator.simulate_neural_data(
+        task_wrapper, datamodule, run_tag, subfolder=subfolder, seed=0
+    )
+    path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "simulator.pkl")
     with open(path3, "wb") as f:
         pickle.dump(simulator, f)

@@ -23,9 +23,9 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = False
+LOCAL_MODE = True
 OVERWRITE = True
-RUN_DESC = "NBFF_GRU_Tutorial"
+RUN_DESC = "NBFF_Comparison"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
 MODEL = "GRU_RNN"
@@ -40,7 +40,7 @@ SEARCH_SPACE = dict(
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240131_NBFF_GRU_Tutorial"]),
+        prefix=tune.grid_search(["20240202_NBFF_Comparison"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
@@ -97,7 +97,7 @@ def main(
     if RUN_DIR.exists() and OVERWRITE:
         shutil.rmtree(RUN_DIR)
 
-    RUN_DIR.mkdir()
+    RUN_DIR.mkdir(parents=True)
     shutil.copyfile(__file__, RUN_DIR / Path(__file__).name)
     run_dir = str(RUN_DIR)
     tune.run(

@@ -4,7 +4,7 @@ import torch
 from interpretability.comparison.analysis.analysis import Analysis
 
 
-class ExternalAnalysis(Analysis):
+class Analysis_Ext(Analysis):
     def __init__(self, run_name, filepath):
         self.run_name = run_name
         self.filepath = filepath
@@ -22,6 +22,9 @@ class ExternalAnalysis(Analysis):
 
     def get_latents(self):
         return self.latents
+
+    def get_rates(self):
+        return self.rates
 
     def get_model_output(self):
         return self.latents, self.rates

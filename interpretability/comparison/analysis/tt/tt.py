@@ -1,4 +1,5 @@
 import pickle
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,8 +16,16 @@ class Analysis_TT(Analysis):
         super().__init__(run_name, filepath)
         self.tt_or_dt = "tt"
         self.load_wrapper(filepath)
+        self.run_hps = None
 
     def load_wrapper(self, filepath):
+        # Split the filepath to get the hps
+        name = filepath.split("/")[-2]
+        hp_list = name.split(" ")
+        self.run_hps = {}
+        for hp in hp_list:
+            key, val = hp.split("=")
+            self.run_hps[key] = val
         # if self.task_train_wrapper is  empty, load the first one
         with open(filepath + "model.pkl", "rb") as f:
             self.wrapper = pickle.load(f)
@@ -26,8 +35,10 @@ class Analysis_TT(Analysis):
             self.datamodule = pickle.load(f)
             self.datamodule.prepare_data()
             self.datamodule.setup()
-        with open(filepath + "simulator.pkl", "rb") as f:
-            self.simulator = pickle.load(f)
+        # if the simulator exists
+        if Path(filepath + "simulator.pkl").exists():
+            with open(filepath + "simulator.pkl", "rb") as f:
+                self.simulator = pickle.load(f)
         self.task_name = self.datamodule.data_env.dataset_name
 
     def get_model_input(self):

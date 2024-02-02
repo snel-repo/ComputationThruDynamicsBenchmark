@@ -25,7 +25,9 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
-RUN_DESC = "NBFF_Tutorial"  # For WandB and run dir
+WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
+
+RUN_DESC = "NBFF_Comparison"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
@@ -33,7 +35,7 @@ MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.choice([128]),
+        latent_size=tune.grid_search([64]),
     ),
     datamodule=dict(
         # Data Parameters -----------------------------------
@@ -44,9 +46,12 @@ SEARCH_SPACE = dict(
         # Trainer Parameters -----------------------------------
         max_epochs=tune.choice([1000]),
     ),
+    # task_env = dict(
+    #     n = tune.grid_search([3,4]),
+    # ),
     # Data Parameters -----------------------------------
     params=dict(
-        seed=tune.choice([0]),
+        seed=tune.grid_search([0]),
     ),
 )
 
@@ -68,6 +73,10 @@ path_dict = dict(
     loggers=Path("configs/logger/default.yaml"),
     trainer=Path("configs/trainer/default.yaml"),
 )
+
+if not WANDB_LOGGING:
+    path_dict["loggers"] = Path("configs/logger/default_no_wandb.yaml")
+    path_dict["callbacks"] = Path("configs/callbacks/default_no_wandb.yaml")
 
 
 # -------------------Main Function----------------------------------
