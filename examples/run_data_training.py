@@ -23,20 +23,20 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = True
+LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "NBFF_Comparison"
+RUN_DESC = "NBFF_Comparison_NODE"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
-MODEL = "GRU_RNN"
+MODEL = "NODE"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
-    # model=dict(
-    #     latent_size=tune.grid_search([64]),
-    # ),
+    model=dict(
+        latent_size=tune.grid_search([3]),
+    ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
