@@ -20,12 +20,12 @@ class Analysis_TT(Analysis):
 
     def load_wrapper(self, filepath):
         # Split the filepath to get the hps
-        name = filepath.split("/")[-2]
-        hp_list = name.split(" ")
-        self.run_hps = {}
-        for hp in hp_list:
-            key, val = hp.split("=")
-            self.run_hps[key] = val
+        # name = filepath.split("/")[-2]
+        # hp_list = name.split(" ")
+        # self.run_hps = {}
+        # for hp in hp_list:
+        #     key, val = hp.split("=")
+        #     self.run_hps[key] = val
         # if self.task_train_wrapper is  empty, load the first one
         with open(filepath + "model.pkl", "rb") as f:
             self.wrapper = pickle.load(f)
