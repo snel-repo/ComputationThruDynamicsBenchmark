@@ -19,9 +19,11 @@ pip install -e .
 ```
 
 
-MotorNet and DSA should be installed automatically.
-See those repos for detailed instructions on their use.
+MotorNet should be installed automatically, but Dynamical Similarity Analysis (DSA) needs to be installed seperately.
+Follow this link for installation instructions.
 DSA: https://github.com/mitchellostrow/DSA
+
+For more information on MotorNet, see the documentation:
 MotorNet: https://www.motornet.org/index.html
 
 ## Usage

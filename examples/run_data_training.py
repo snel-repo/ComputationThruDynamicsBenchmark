@@ -25,7 +25,9 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-RUN_DESC = "NBFF_Comparison_NODE"
+WANDB_LOGGING = True
+
+RUN_DESC = "NBFF_Comparison_NODE_3"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
 MODEL = "NODE"
@@ -35,7 +37,7 @@ INFER_INPUTS = False
 # -------------------------------------
 SEARCH_SPACE = dict(
     model=dict(
-        latent_size=tune.grid_search([3]),
+        latent_size=tune.grid_search([10]),
     ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
@@ -67,6 +69,9 @@ callbacks_path = Path(f"{cpath}/callbacks/{MODEL_CLASS}/default_{DATA}.yaml")
 loggers_path = Path(f"{cpath}/loggers/{MODEL_CLASS}/default.yaml")
 trainer_path = Path(f"{cpath}/trainers/trainer_{DATA}.yaml")
 
+if not WANDB_LOGGING:
+    loggers_path = Path(f"{cpath}/loggers/{MODEL_CLASS}/default_no_wandb.yaml")
+    callbacks_path = Path(f"{cpath}/callbacks/{MODEL_CLASS}/default_no_wandb.yaml")
 path_dict = dict(
     model=model_path,
     datamodule=datamodule_path,
