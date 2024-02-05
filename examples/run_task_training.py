@@ -23,11 +23,11 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_Comparison_NewFiles"  # For WandB and run dir
+RUN_DESC = "NBFF_Tutorial"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
@@ -37,22 +37,19 @@ SEARCH_SPACE = dict(
     model=dict(
         latent_size=tune.grid_search([64]),
     ),
-    datamodule=dict(
-        # Data Parameters -----------------------------------
-        n_samples=tune.choice([1000]),
-        batch_size=tune.choice([512]),
-    ),
-    trainer=dict(
-        # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1000]),
-    ),
-    # task_env = dict(
-    #     n = tune.grid_search([3,4]),
+    # datamodule=dict(
+    #     # Data Parameters -----------------------------------
+    #     n_samples=tune.choice([1000]),
+    #     batch_size=tune.choice([512]),
+    # ),
+    # trainer=dict(
+    #     # Trainer Parameters -----------------------------------
+    #     max_epochs=tune.choice([1000]),
     # ),
     # Data Parameters -----------------------------------
-    params=dict(
-        seed=tune.grid_search([0]),
-    ),
+    # params=dict(
+    #     seed=tune.grid_search([0]),
+    # ),
 )
 
 

@@ -144,7 +144,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         return dataset_dict
 
     def render(self):
-        states, inputs = self.generate_trial()
+        inputs, states, _ = self.generate_trial()
         fig1, axes = plt.subplots(nrows=2, ncols=1, sharex=True)
         ax1 = axes[0]
         ax1.plot(states)
