@@ -11,7 +11,7 @@ This git repo contains code that will allow users to perform four basic steps:
 We recommend using Conda to run this code. Unfortunately, Ray support for Windows is spotty, so I recommend Linux.
 To create an environment and install the dependencies of the project, run the following commands:
 
-'''
+```
 git clone https://github.com/snel-repo/ComputationThruDynamicsBenchmark.git
 conda create --name CtDEnv python=3.10
 conda activate CtDEnv
@@ -19,9 +19,6 @@ cd ComputationThruDynamicsBenchmark
 pip install -e .
 ```
 
-<!-- MotorNet should be installed automatically, but Dynamical Similarity Analysis (DSA) needs to be installed seperately.
-Follow this link for installation instructions.
-DSA: https://github.com/mitchellostrow/DSA -->
 
 For more information on MotorNet, see the documentation:
 MotorNet: https://www.motornet.org/index.html
