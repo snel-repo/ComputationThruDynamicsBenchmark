@@ -1,14 +1,9 @@
 import os
 
-import dotenv
 import h5py
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
-
-# plt.switch_backend("Agg")
-dotenv.load_dotenv()
-SIMULATED_HOME = os.environ.get("SIMULATED_HOME")
 
 
 def sigmoidActivation(module, input):
@@ -54,7 +49,7 @@ class NeuralDataSimulator:
         self.use_neurons = True
 
     def simulate_neural_data(
-        self, task_trained_model, datamodule, run_tag, subfolder, seed=0
+        self, task_trained_model, datamodule, run_tag, subfolder, dataset_path, seed=0
     ):
 
         # Make a filename based on the system being modeled, the number of neurons,
@@ -91,7 +86,7 @@ class NeuralDataSimulator:
             f"seed_{seed}"
         )
 
-        fpath = os.path.join(SIMULATED_HOME, filename)
+        fpath = os.path.join(dataset_path, filename)
         # Make the directory if it doesn't exist
         os.mkdir(fpath)
         fpath = os.path.join(fpath, subfolder + ".h5")

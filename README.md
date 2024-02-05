@@ -10,17 +10,12 @@ This git repo contains code that will allow users to perform four basic steps:
 ## Installation
 We recommend using Conda to run this code. Unfortunately, Ray support for Windows is spotty, so I recommend Linux.
 To create an environment and install the dependencies of the project, run the following commands:
-```
+
+'''
 git clone https://github.com/snel-repo/ComputationThruDynamicsBenchmark.git
 conda create --name CtDEnv python=3.10
 conda activate CtDEnv
 cd ComputationThruDynamicsBenchmark
-pip install -e .
-```
-Now, install Dynamical Similarity Analysis (DSA) as a submodule and add it to the conda env:
-```
-git submodule add DSA: https://github.com/mitchellostrow/DSA
-cd DSA
 pip install -e .
 ```
 

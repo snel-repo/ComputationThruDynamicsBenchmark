@@ -16,6 +16,7 @@ from interpretability.data_modeling.extensions.SAE.utils import make_data_tag
 from interpretability.data_modeling.train_neural import train
 
 dotenv.load_dotenv(override=True)
+HOME_DIR = Path(os.environ.get("HOME_DIR"))
 RUNS_HOME = os.environ.get("RUNS_HOME")
 TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
 
