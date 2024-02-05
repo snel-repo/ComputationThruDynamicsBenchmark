@@ -2,7 +2,6 @@ import logging
 import os
 import pickle
 
-import dotenv
 import h5py
 import numpy as np
 import pytorch_lightning as pl
@@ -34,10 +33,6 @@ def load_dict_from_pickle(filename):
 
 
 logger = logging.getLogger(__name__)
-
-# Load the project data home
-dotenv.load_dotenv(override=True)
-DATA_HOME = os.environ["TASK_TRAINED_DATA_HOME"]
 
 
 def to_tensor(array):
@@ -72,9 +67,11 @@ class TaskDataModule(pl.LightningDataModule):
         self.input_labels = None
         self.output_labels = None
 
-    def set_environment(self, data_env):
+    def set_environment(self, data_env, data_path):
         """Set the environment for the data module"""
+        self.data_path = data_path
         self.data_env = data_env
+
         self.name = (
             f"{data_env.dataset_name}_{self.hparams.n_samples}S_{data_env.n_timesteps}T"
             f"_{self.hparams.seed}seed"
@@ -119,8 +116,8 @@ class TaskDataModule(pl.LightningDataModule):
 
         filename_h5 = f"{self.name}.h5"
         filename_pkl = f"{self.name}.pkl"
-        fpath = os.path.join(DATA_HOME, filename_h5)
-        fpath_pkl = os.path.join(DATA_HOME, filename_pkl)
+        fpath = os.path.join(self.data_path, filename_h5)
+        fpath_pkl = os.path.join(self.data_path, filename_pkl)
 
         # Check if the dataset already exists, and if so, load it
         if os.path.isfile(fpath) and os.path.isfile(fpath_pkl):
@@ -176,8 +173,8 @@ class TaskDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # Load data arrays from file
-        data_path = os.path.join(DATA_HOME, f"{self.name}.h5")
-        data_path_pkl = os.path.join(DATA_HOME, f"{self.name}.pkl")
+        data_path = os.path.join(self.data_path, f"{self.name}.h5")
+        data_path_pkl = os.path.join(self.data_path, f"{self.name}.pkl")
         with h5py.File(data_path, "r") as h5file:
             train_ics = to_tensor(h5file["train_ics"][()])
             valid_ics = to_tensor(h5file["valid_ics"][()])

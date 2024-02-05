@@ -4,15 +4,14 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import explained_variance_score
 
 
-def get_rate_r2(analysis_source, analysis_targ):
+# TODO Make metrics agnostic to the analysis class
+def get_rate_r2(rates_source, rates_targ):
     # Function to compare the rate-reconstruction of the different models
-    rates_source = analysis_source.get_rates()
     n_b_source, n_t_source, n_d_source = rates_source.shape
     rates_source_flat = (
         rates_source.reshape(n_b_source * n_t_source, n_d_source).detach().numpy()
     )
 
-    rates_targ = analysis_targ.get_rates()
     n_b_targ, n_t_targ, n_d_targ = rates_targ.shape
     rates_targ_flat = rates_targ.reshape(n_b_targ * n_t_targ, n_d_targ).detach().numpy()
 
@@ -21,9 +20,8 @@ def get_rate_r2(analysis_source, analysis_targ):
     return r2
 
 
-def get_state_r2(analysis_source, analysis_targ, num_pcs=3):
-    # Function to compare the latent activity
-    lats_source = analysis_source.get_latents()
+def get_state_r2(lats_source, lats_targ, num_pcs=3):
+    # Function to compare the latent activity821
     n_b_source, n_t_source, n_d_source = lats_source.shape
     lats_source_flat = (
         lats_source.reshape(n_b_source * n_t_source, n_d_source).detach().numpy()
@@ -32,7 +30,6 @@ def get_state_r2(analysis_source, analysis_targ, num_pcs=3):
     lats_source_flat_pca = pca.fit_transform(lats_source_flat)
     lats_source = lats_source_flat_pca.reshape((n_b_source, n_t_source, num_pcs))
 
-    lats_targ = analysis_targ.get_latents()
     n_b_targ, n_t_targ, n_d_targ = lats_targ.shape
     lats_targ_flat = lats_targ.reshape(n_b_targ * n_t_targ, n_d_targ).detach().numpy()
     pca = PCA(n_components=num_pcs)
@@ -49,15 +46,13 @@ def get_state_r2(analysis_source, analysis_targ, num_pcs=3):
     return np.mean(state_r2)
 
 
-def get_latents_vaf(analysis1, analysis2, num_pcs=3):
-    lats1 = analysis1.get_latents()
+def get_latents_vaf(lats1, lats2, num_pcs=3):
     lats1_flat = (
         lats1.reshape(lats1.shape[0] * lats1.shape[1], lats1.shape[2]).detach().numpy()
     )
     pca = PCA(n_components=num_pcs)
     lats1_flat_pca = pca.fit_transform(lats1_flat)
 
-    lats2 = analysis2.get_latents()
     lats2_flat = (
         lats2.reshape(lats2.shape[0] * lats2.shape[1], lats2.shape[2]).detach().numpy()
     )

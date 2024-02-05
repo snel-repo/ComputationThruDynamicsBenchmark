@@ -18,12 +18,12 @@ log = logging.getLogger(__name__)
 
 def train(
     overrides: dict = {},
-    path_dict: dict = {},
+    config_dict: dict = {},
     run_tag: str = "",
-    save_path: str = "",
+    path_dict: dict = {},
 ):
-    SAVE_PATH = save_path
-    compose_list = path_dict.keys()
+    # Print the current working directory
+    compose_list = config_dict.keys()
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()
     overrides_flat = {}
@@ -45,13 +45,15 @@ def train(
     subfolder = subfolder[:-1]
     config_all = {}
     for field in compose_list:
-        with hydra.initialize(config_path=str(path_dict[field].parent), job_name=field):
+        with hydra.initialize(
+            config_path=str(config_dict[field].parent), job_name=field
+        ):
             if field in overrides_flat.keys():
                 config_all[field] = hydra.compose(
-                    config_name=path_dict[field].name, overrides=overrides_flat[field]
+                    config_name=config_dict[field].name, overrides=overrides_flat[field]
                 )
             else:
-                config_all[field] = hydra.compose(config_name=path_dict[field].name)
+                config_all[field] = hydra.compose(config_name=config_dict[field].name)
 
     # Set seed for pytorch, numpy, and python.random
     if "params" in overrides:
@@ -99,7 +101,7 @@ def train(
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule"], _convert_="all"
     )
-    datamodule.set_environment(task_env)
+    datamodule.set_environment(data_env=task_env, data_path=path_dict["tt_datasets"])
 
     # ---------------------------Instantiate simulator---------------------------
     log.info("Instantiating neural data simulator")
@@ -152,6 +154,8 @@ def train(
 
     # Save the model, datamodule, and simulator to the directory
     log.info("Saving model, datamodule, and simulator")
+    SAVE_PATH = path_dict["trained_models"] / "task-trained"
+
     dir_path = os.path.join(SAVE_PATH, run_tag, subfolder, "")
     Path(dir_path).mkdir(parents=True, exist_ok=True)
     path1 = os.path.join(SAVE_PATH, run_tag, subfolder, "model.pkl")
@@ -163,8 +167,14 @@ def train(
         pickle.dump(datamodule, f)
 
     simulator.simulate_neural_data(
-        task_wrapper, datamodule, run_tag, subfolder=subfolder, seed=0
+        task_trained_model=task_wrapper,
+        datamodule=datamodule,
+        run_tag=run_tag,
+        dataset_path=path_dict["dt_datasets"],
+        subfolder=subfolder,
+        seed=0,
     )
+
     path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "simulator.pkl")
     with open(path3, "wb") as f:
         pickle.dump(simulator, f)

@@ -41,6 +41,8 @@ MANIFEST
 *.mp4
 *.gif
 *.avi
+*.json
+runs/*
 
 !/examples/png/*.png
 # PyInstaller
