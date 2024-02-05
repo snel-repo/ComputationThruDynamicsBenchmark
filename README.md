@@ -17,11 +17,16 @@ conda activate CtDEnv
 cd ComputationThruDynamicsBenchmark
 pip install -e .
 ```
+Now, install Dynamical Similarity Analysis (DSA) as a submodule and add it to the conda env:
+```
+git submodule add DSA: https://github.com/mitchellostrow/DSA
+cd DSA
+pip install -e .
+```
 
-
-MotorNet should be installed automatically, but Dynamical Similarity Analysis (DSA) needs to be installed seperately.
+<!-- MotorNet should be installed automatically, but Dynamical Similarity Analysis (DSA) needs to be installed seperately.
 Follow this link for installation instructions.
-DSA: https://github.com/mitchellostrow/DSA
+DSA: https://github.com/mitchellostrow/DSA -->
 
 For more information on MotorNet, see the documentation:
 MotorNet: https://www.motornet.org/index.html
