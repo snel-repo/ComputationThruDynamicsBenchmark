@@ -8,20 +8,14 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 logger = logging.getLogger(__name__)
-
-# Load the project data home
 dotenv.load_dotenv(override=True)
-DATA_HOME = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
-    "interpretability/data_modeling/datasets"
-)
+HOME_DIR = os.environ.get("HOME_DIR")
 
 
 def to_tensor(array):
     return torch.tensor(array, dtype=torch.float)
 
 
-# 3BFF_model_RNN_n_neurons_50_nonlin_embed_False_obs_noise_poisson_seed_0.h5
 class TaskTrainedRNNDataModule(pl.LightningDataModule):
     def __init__(
         self,
@@ -39,6 +33,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         super().__init__()
         self.save_hyperparameters()
         self.seed = seed
+        self.data_dir = os.path.join(HOME_DIR, "datasets", "dt")
         if prefix is None:
             filename = (
                 f"{system}_"
@@ -56,7 +51,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
                 f"n_neurons_{n_neurons}_"
                 f"seed_{seed}"
             )
-            fpath = os.path.join(DATA_HOME, filedir)
+            fpath = os.path.join(self.data_dir, filedir)
             dirs = os.listdir(fpath)
             filename = dirs[0]
 
@@ -65,7 +60,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
     def prepare_data(self):
         filename = self.name
-        fpath = os.path.join(DATA_HOME, self.fpath, filename)
+        fpath = os.path.join(self.data_dir, self.fpath, filename)
         if os.path.isfile(fpath):
             logger.info(f"Loading dataset {self.name}")
             return
@@ -75,7 +70,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # Load data arrays from file
-        data_path = os.path.join(DATA_HOME, self.fpath, self.name)
+        data_path = os.path.join(self.data_dir, self.fpath, self.name)
         with h5py.File(data_path, "r") as h5file:
             # Load the data
             train_data = to_tensor(h5file["train_encod_data"][()])

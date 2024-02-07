@@ -20,11 +20,11 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_Path_test"  # For WandB and run dir
+RUN_DESC = "NBFF_Tutorial_Short"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
@@ -32,7 +32,7 @@ MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([64]),
+        latent_size=tune.grid_search([128]),
     ),
     # datamodule=dict(
     #     # Data Parameters -----------------------------------
@@ -41,7 +41,7 @@ SEARCH_SPACE = dict(
     # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([10]),
+        max_epochs=tune.choice([50]),
     ),
     # Data Parameters -----------------------------------
     # params=dict(

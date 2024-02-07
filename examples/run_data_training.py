@@ -17,8 +17,6 @@ from interpretability.data_modeling.train_neural import train
 
 dotenv.load_dotenv(override=True)
 HOME_DIR = Path(os.environ.get("HOME_DIR"))
-RUNS_HOME = os.environ.get("RUNS_HOME")
-TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
 
 OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
@@ -28,22 +26,22 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_Comparison_NODE_3"
+RUN_DESC = "NBFF_Comparison"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
-MODEL = "NODE"
+MODEL = "GRU_RNN"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
     model=dict(
-        latent_size=tune.grid_search([10]),
+        latent_size=tune.grid_search([128]),
     ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240202_NBFF_Comparison"]),
+        prefix=tune.grid_search(["20240207_NBFF_Tutorial"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
@@ -73,7 +71,7 @@ trainer_path = Path(f"{cpath}/trainers/trainer_{DATA}.yaml")
 if not WANDB_LOGGING:
     loggers_path = Path(f"{cpath}/loggers/{MODEL_CLASS}/default_no_wandb.yaml")
     callbacks_path = Path(f"{cpath}/callbacks/{MODEL_CLASS}/default_no_wandb.yaml")
-path_dict = dict(
+config_dict = dict(
     model=model_path,
     datamodule=datamodule_path,
     callbacks=callbacks_path,
@@ -84,8 +82,13 @@ path_dict = dict(
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUNS_HOME = Path(RUNS_HOME)
-RUN_DIR = RUNS_HOME / "data-trained" / RUN_TAG
+RUNS_HOME = Path(HOME_DIR)
+RUN_DIR = HOME_DIR / "runs" / "data-trained" / RUN_TAG
+path_dict = dict(
+    tt_datasets=HOME_DIR / "datasets" / "tt",
+    dt_datasets=HOME_DIR / "datasets" / "dt",
+    trained_models=HOME_DIR / "trained_models",
+)
 
 
 def trial_function(trial):
@@ -96,7 +99,7 @@ def trial_function(trial):
 def main(
     run_tag_in: str,
     path_dict: dict,
-    trained_path: str,
+    config_dict: dict,
 ):
     if LOCAL_MODE:
         ray.init(local_mode=True)
@@ -108,9 +111,7 @@ def main(
     run_dir = str(RUN_DIR)
     tune.run(
         tune.with_parameters(
-            train,
-            run_tag=run_tag_in,
-            path_dict=path_dict,
+            train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
         resources_per_trial=dict(cpu=10, gpu=1),
@@ -130,6 +131,6 @@ def main(
 if __name__ == "__main__":
     main(
         run_tag_in=RUN_TAG,
+        config_dict=config_dict,
         path_dict=path_dict,
-        trained_path=TRAINED_MODEL_PATH,
     )

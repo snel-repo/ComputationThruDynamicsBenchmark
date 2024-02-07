@@ -125,6 +125,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         # or the readout output for decoupled environments
         # NOTE: for decoupled environments, actions and controlled are the same
         actions = []
+        joints = []
 
         count = 0
         terminated = False
@@ -153,6 +154,7 @@ class TaskTrainedWrapper(pl.LightningModule):
                     action=action, inputs=inputs[:, count, :]
                 )
                 controlled.append(info["states"][self.state_label])
+                joints.append(info["states"]["joint"])
                 actions.append(action)
                 env_state_list.append(env_states)
 
@@ -171,14 +173,17 @@ class TaskTrainedWrapper(pl.LightningModule):
         actions = torch.stack(actions, dim=1)
         if self.task_env.coupled_env:
             states = torch.stack(env_state_list, dim=1)
+            joints = torch.stack(joints, dim=1)
         else:
             states = None
+            joints = None
 
         output_dict = {
             "controlled": controlled,  # BETTER VARIABLE NAME?
             "latents": latents,
             "actions": actions,
             "states": states,
+            "joints": joints,
         }
         return output_dict
 

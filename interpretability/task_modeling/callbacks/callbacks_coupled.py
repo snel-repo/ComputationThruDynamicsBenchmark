@@ -8,12 +8,83 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-
-# import PCA from sklearn.decomposition
 from sklearn.decomposition import PCA
 
-# plt.switch_backend("Agg")
-DATA_HOME = "/home/csverst/Documents/tempData/"
+
+def calculate_arm_positions(
+    shoulder_angle, elbow_angle, upper_arm_length=1, forearm_length=1
+):
+
+    # Calculate elbow position relative to shoulder
+    elbow_x = np.cos(shoulder_angle) * upper_arm_length
+    elbow_y = np.sin(shoulder_angle) * upper_arm_length
+
+    # Calculate hand position relative to elbow, considering the elbow angle
+    hand_x = elbow_x + np.cos(shoulder_angle + elbow_angle) * forearm_length
+    hand_y = elbow_y + np.sin(shoulder_angle + elbow_angle) * forearm_length
+
+    return np.array([0, 0]), np.array([elbow_x, elbow_y]), np.array([hand_x, hand_y])
+
+
+def draw_muscle_activation(ax, center, radius, start_angle, end_angle, color):
+    """
+    Draws an arc to represent muscle activation around a joint.
+    """
+    # Note: In matplotlib, 0 degrees is at the X-axis and angles increase clockwise.
+    # We adjust angles because our definitions likely assume standard math angles
+    # (counterclockwise from the positive X-axis).
+    arc = patches.Arc(
+        center,
+        radius * 2,
+        radius * 2,
+        angle=0,
+        theta1=start_angle,
+        theta2=end_angle,
+        color=color,
+        linewidth=3,
+    )
+    ax.add_patch(arc)
+
+
+def draw_biarticular_muscle(ax, start_pos, end_pos, isFlexor, color):
+    """
+    Draws a line to represent biarticular muscle activation, correctly shifted
+    to indicate whether it is a flexor or extensor.
+    """
+    # Calculate the direction vector from start to end
+    direction = end_pos - start_pos
+    # Calculate the perpendicular vector
+    perpendicular = np.array([-direction[1], direction[0]])
+
+    if isFlexor:
+        # Rotate the perpendicular vector CCW for flexors to shift the line to the left
+        shift_vector = perpendicular * 0.1  # Scale the shift magnitude
+    else:
+        # Rotate the perpendicular vector CW for extensors
+        # to shift the line to the right
+        shift_vector = -perpendicular * 0.1  # Scale the shift magnitude
+
+    # Apply the shift
+    shifted_start_pos = start_pos + shift_vector
+    shifted_end_pos = end_pos + shift_vector
+
+    ax.plot(
+        [shifted_start_pos[0], shifted_end_pos[0]],
+        [shifted_start_pos[1], shifted_end_pos[1]],
+        color=color,
+        linewidth=2,
+    )
+
+
+# import PCA from sklearn.decomposition
+
+
+def get_activation_color(activation_level):
+    """
+    Returns a color based on the activation level using a colormap.
+    """
+    cmap = plt.get_cmap("rainbow")
+    return cmap(activation_level)
 
 
 def fig_to_rgb_array(fig):
@@ -165,8 +236,8 @@ class MotorNetVideoGeneration(pl.Callback):
                     linestyle="--",
                 )
 
-                ax.set_xlim(-1, 1)
-                ax.set_ylim(-1, 1)
+                ax.set_xlim(-1.2, 1.2)
+                ax.set_ylim(-1.2, 1.2)
 
                 ax.set_xticks([])
                 ax.set_yticks([])
@@ -183,6 +254,180 @@ class MotorNetVideoGeneration(pl.Callback):
         video_path = "combined_video.mp4"
         imageio.mimwrite(video_path, frames, fps=40)
 
+        # Log the video to wandb
+        wandb.log({"video": wandb.Video(video_path)})
+
+        # Remove the video file
+        os.remove(video_path)
+
+
+class MotorNetVideoGenerationArm(pl.Callback):
+    def __init__(self, log_every_n_epochs=100, num_trials_to_plot=10):
+        self.log_every_n_epochs = log_every_n_epochs
+        self.num_trials_to_plot = num_trials_to_plot
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+
+        # Get trajectories, model predictions, and actions
+        train_dataloader = trainer.datamodule.train_dataloader()
+        batch = next(iter(train_dataloader))
+        ics = batch[0].to(pl_module.device)
+        inputs = batch[1].to(pl_module.device)
+        targets = batch[2].to(pl_module.device)
+
+        output_dict = pl_module.forward(ics, inputs, targets)
+        upper_arm_length = trainer.model.task_env.effector.skeleton.l1
+        forearm_length = trainer.model.task_env.effector.skeleton.l2
+        controlled = output_dict["controlled"]
+        joints = output_dict["joints"]
+        actions = output_dict[
+            "actions"
+        ]  # Assuming actions are included in the output_dict
+
+        B, T, _ = controlled.shape
+
+        # Create a list to store frames
+        frames = []
+
+        for i in range(self.num_trials_to_plot):
+            for t in range(T):
+                fig, ax = plt.subplots(figsize=(5, 5))
+
+                shoulder_angle = joints[i, t, 0].item()  # Assuming angle is in degrees
+                elbow_angle = joints[i, t, 1].item()  # Assuming angle is in degrees
+
+                shoulder_angle_deg = np.rad2deg(shoulder_angle)
+                elbow_angle_deg = np.rad2deg(elbow_angle)
+
+                # Calculate arm segment positions
+                shoulder_pos, elbow_pos, hand_pos = calculate_arm_positions(
+                    shoulder_angle, elbow_angle, upper_arm_length, forearm_length
+                )
+
+                # Draw the arm
+                ax.plot(
+                    [shoulder_pos[0], elbow_pos[0]],
+                    [shoulder_pos[1], elbow_pos[1]],
+                    "k-",
+                )  # Upper arm
+                ax.plot(
+                    [elbow_pos[0], hand_pos[0]], [elbow_pos[1], hand_pos[1]], "k-"
+                )  # Forearm
+                sho_mono_radius = 0.1
+                elb_mono_radius = 0.05
+                # Transform to degrees
+
+                for muscle_idx in range(4):
+                    activation_level = actions[i, t, muscle_idx].item()
+                    color = get_activation_color(activation_level)
+                    if muscle_idx == 0:
+                        draw_muscle_activation(
+                            ax,
+                            shoulder_pos,
+                            sho_mono_radius,
+                            shoulder_angle_deg,
+                            180,
+                            color,
+                        )
+                    elif muscle_idx == 1:
+                        draw_muscle_activation(
+                            ax,
+                            shoulder_pos,
+                            sho_mono_radius,
+                            0,
+                            shoulder_angle_deg,
+                            color,
+                        )
+                    elif muscle_idx == 2:
+                        draw_muscle_activation(
+                            ax,
+                            elbow_pos,
+                            elb_mono_radius,
+                            shoulder_angle_deg + elbow_angle_deg,
+                            shoulder_angle_deg + 180,
+                            color,
+                        )
+                    elif muscle_idx == 3:
+                        draw_muscle_activation(
+                            ax,
+                            elbow_pos,
+                            elb_mono_radius,
+                            shoulder_angle_deg + 180,
+                            shoulder_angle_deg + elbow_angle_deg,
+                            color,
+                        )
+
+                # Biarticular muscle visualization
+                for muscle_idx in range(4, 6):
+                    activation_level = actions[i, t, muscle_idx].item()
+                    color = get_activation_color(activation_level)
+                    if muscle_idx == 4:
+                        draw_biarticular_muscle(
+                            ax, shoulder_pos, elbow_pos, isFlexor=True, color=color
+                        )
+                    elif muscle_idx == 5:
+                        draw_biarticular_muscle(
+                            ax, shoulder_pos, elbow_pos, isFlexor=False, color=color
+                        )
+                input_temp = inputs[i, t, :].detach().cpu().numpy()
+
+                # Draw a solid line a y = 0 to represent the ground
+                ax.plot([-0.5, 0.5], [0, 0], "k-", linewidth=3)
+                # if input_temp is all zeros
+                if input_temp.sum() != 0:
+                    # Plot as a green square
+                    input_patch = patches.Rectangle(
+                        (inputs[i, t, 0].item() - 0.05, inputs[i, t, 1].item() - 0.05),
+                        0.1,
+                        0.1,
+                        color="red",
+                    )
+                    ax.add_patch(input_patch)
+
+                    # Plot target position as a red square
+                    target = patches.Rectangle(
+                        (
+                            targets[i, t, 0].item() - 0.05,
+                            targets[i, t, 1].item() - 0.05,
+                        ),
+                        0.1,
+                        0.1,
+                        color="green",
+                    )
+                    ax.add_patch(target)
+
+                # Plot hand position as a yellow dot
+                ax.scatter(
+                    controlled[i, t, 0].item(),
+                    controlled[i, t, 1].item(),
+                    color="black",
+                )
+
+                # Draw a dashed line from the start position to the current position
+                ax.plot(
+                    controlled[i, :t, 0].detach().cpu().numpy(),
+                    controlled[i, :t, 1].detach().cpu().numpy(),
+                    color="black",
+                    linestyle="--",
+                )
+
+                ax.set_xlim(-1.2, 1.2)
+                ax.set_ylim(-1.2, 1.2)
+                ax.axis("off")  # Hide axes for better visualization
+
+                # Save figure to a numpy array
+                fig.canvas.draw()
+                img_arr = np.array(fig.canvas.renderer.buffer_rgba())
+                frames.append(img_arr)
+
+                # Close figure to save memory
+                plt.close(fig)
+
+        # Save frames to a video using imageio
+        video_path = "arm_movement_video.mp4"
+        imageio.mimwrite(video_path, frames, fps=40)
         # Log the video to wandb
         wandb.log({"video": wandb.Video(video_path)})
 

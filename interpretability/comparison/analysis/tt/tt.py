@@ -134,6 +134,7 @@ class Analysis_TT(Analysis):
         device="cpu",
         seed=0,
         compute_jacobians=True,
+        q_thresh=1e-5,
     ):
 
         latents = self.get_latents().detach().numpy()
@@ -148,7 +149,9 @@ class Analysis_TT(Analysis):
             compute_jacobians=compute_jacobians,
         )
         xstar = fps.xstar
+        q_vals = fps.qstar
         is_stable = fps.is_stable
+        q_flag = q_vals < q_thresh
         pca = PCA(n_components=3)
         xstar_pca = pca.fit_transform(xstar)
         lats_flat = latents.reshape(-1, latents.shape[-1])
@@ -160,7 +163,7 @@ class Analysis_TT(Analysis):
         colors = np.zeros((xstar.shape[0], 3))
         colors[is_stable, 0] = 1
         colors[~is_stable, 2] = 1
-        ax.scatter(xstar_pca[:, 0], xstar_pca[:, 1], xstar_pca[:, 2])
+        ax.scatter(xstar_pca[q_flag, 0], xstar_pca[q_flag, 1], xstar_pca[q_flag, 2])
         for i in range(num_traj):
             ax.plot(
                 lats_pca[i, :, 0],

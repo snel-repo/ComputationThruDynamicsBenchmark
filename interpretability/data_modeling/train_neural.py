@@ -14,16 +14,14 @@ dotenv.load_dotenv(override=True)
 
 log = logging.getLogger(__name__)
 
-TRAINED_MODEL_PATH = os.environ.get("TRAINED_MODEL_PATH")
-
 
 def train(
     overrides: dict = {},
-    path_dict: dict = {},
-    trained_path: str = "",
+    config_dict: dict = {},
+    path_dict: str = "",
     run_tag: str = "",
 ):
-    compose_list = path_dict.keys()
+    compose_list = config_dict.keys()
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()
     overrides_flat = {}
@@ -38,13 +36,15 @@ def train(
     # Compose the configs for all components
     config_all = {}
     for field in compose_list:
-        with hydra.initialize(config_path=str(path_dict[field].parent), job_name=field):
+        with hydra.initialize(
+            config_path=str(config_dict[field].parent), job_name=field
+        ):
             if field in overrides_flat.keys():
                 config_all[field] = hydra.compose(
-                    config_name=path_dict[field].name, overrides=overrides_flat[field]
+                    config_name=config_dict[field].name, overrides=overrides_flat[field]
                 )
             else:
-                config_all[field] = hydra.compose(config_name=path_dict[field].name)
+                config_all[field] = hydra.compose(config_name=config_dict[field].name)
 
     # Set seed for pytorch, numpy, and python.random
     if "params" in overrides:
@@ -122,7 +122,7 @@ def train(
 
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
-    save_path = os.path.join(TRAINED_MODEL_PATH, "data-trained", run_tag)
+    save_path = path_dict["trained_models"]
 
     Path(save_path).mkdir(parents=True, exist_ok=True)
     model_path = os.path.join(save_path, "model.pkl")

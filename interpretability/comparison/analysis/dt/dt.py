@@ -2,8 +2,11 @@ import pickle
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
+from sklearn.decomposition import PCA
 
 from interpretability.comparison.analysis.analysis import Analysis
+from interpretability.comparison.fixedpoints import find_fixed_points
 
 
 class Analysis_DT(Analysis):
@@ -51,3 +54,88 @@ class Analysis_DT(Analysis):
     def get_latents(self):
         _, latents = self.get_model_output()
         return latents
+
+    def compute_FPs(
+        self,
+        noiseless=True,
+        inputs=None,
+        n_inits=1024,
+        noise_scale=0.0,
+        learning_rate=1e-3,
+        max_iters=10000,
+        device="cpu",
+        seed=0,
+        compute_jacobians=True,
+    ):
+        # Compute latent activity from task trained model
+        if inputs is None and noiseless:
+            _, inputs = self.get_model_input()
+            latents = self.get_latents()
+        elif inputs is None and not noiseless:
+            _, inputs, _ = self.get_model_input()
+            latents = self.get_latents()
+        else:
+            latents = self.get_latents()
+
+        fps = find_fixed_points(
+            model=self.model,
+            state_trajs=latents,
+            inputs=inputs,
+            n_inits=n_inits,
+            noise_scale=noise_scale,
+            learning_rate=learning_rate,
+            max_iters=max_iters,
+            device=device,
+            seed=seed,
+            compute_jacobians=compute_jacobians,
+        )
+        return fps
+
+    def plot_fps(
+        self,
+        inputs=None,
+        num_traj=10,
+        n_inits=1024,
+        noise_scale=0.0,
+        learning_rate=1e-3,
+        max_iters=10000,
+        device="cpu",
+        seed=0,
+        compute_jacobians=True,
+        q_thresh=1e-5,
+    ):
+
+        latents = self.get_latents().detach().numpy()
+        fps = self.compute_FPs(
+            inputs=inputs,
+            n_inits=n_inits,
+            noise_scale=noise_scale,
+            learning_rate=learning_rate,
+            max_iters=max_iters,
+            device=device,
+            seed=seed,
+            compute_jacobians=compute_jacobians,
+        )
+        xstar = fps.xstar
+        q_vals = fps.qstar
+        is_stable = fps.is_stable
+        q_flag = q_vals < q_thresh
+        pca = PCA(n_components=3)
+        xstar_pca = pca.fit_transform(xstar)
+        lats_flat = latents.reshape(-1, latents.shape[-1])
+        lats_pca = pca.transform(lats_flat)
+        lats_pca = lats_pca.reshape(latents.shape[0], latents.shape[1], 3)
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        # Make a color vector based on stability
+        colors = np.zeros((xstar.shape[0], 3))
+        colors[is_stable, 0] = 1
+        colors[~is_stable, 2] = 1
+        ax.scatter(xstar_pca[q_flag, 0], xstar_pca[q_flag, 1], xstar_pca[q_flag, 2])
+        for i in range(num_traj):
+            ax.plot(
+                lats_pca[i, :, 0],
+                lats_pca[i, :, 1],
+                lats_pca[i, :, 2],
+            )
+        plt.show()

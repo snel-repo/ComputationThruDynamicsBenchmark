@@ -45,12 +45,16 @@ class Comparison:
         # Rotate the tick labels and set their alignment.
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
-    def compare_state_r2(self):
+    def compare_state_r2(self, num_pcs=3):
         # Function to compare the latent activity
         state_r2_mat = np.zeros((self.num_analyses, self.num_analyses))
         for i in range(self.num_analyses):
             for j in range(self.num_analyses):
-                state_r2_mat[i, j] = get_state_r2(self.analyses[i], self.analyses[j])
+                state_r2_mat[i, j] = get_state_r2(
+                    self.analyses[i].get_latents(),
+                    self.analyses[j].get_latents(),
+                    num_pcs=num_pcs,
+                )
 
         ij_figure = plt.figure()
         ij_ax = ij_figure.add_subplot(111)
