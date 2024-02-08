@@ -6,10 +6,16 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn as nn
 from gymnasium import spaces
 from motornet.environment import Environment
 from numpy import ndarray
 from torch._tensor import Tensor
+
+from interpretability.task_modeling.task_env.loss_func import (
+    MatchTargetLossMSE,
+    RandomTargetLoss,
+)
 
 
 class DecoupledEnvironment(gym.Env, ABC):
@@ -80,6 +86,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.noise = noise
         self.coupled_env = False
         self.switch_prob = switch_prob
+        self.loss_func = MatchTargetLossMSE()
 
     def step(self, action):
         # Generates state update given an input to the flip-flop
@@ -179,10 +186,17 @@ class RandomTargetDelay(Environment):
 
         self.dataset_name = "RandomTargetDelay"
         self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
-        self.input_labels = ["ShoAng", "ElbAng", "ShoVel", "ElbVel"]
-        self.output_labels = ["M1", "M2", "M3", "M4"]
+        self.input_labels = ["X", "Y", "GoCue"]
+        self.output_labels = ["Pec", "Delt", "Brad", "TriLong", "Biceps", "TriLat"]
         self.context_inputs = spaces.Box(low=-2, high=2, shape=(3,), dtype=np.float32)
         self.coupled_env = True
+
+        pos_weight = kwargs.get("pos_weight", 1.0)
+        act_weight = kwargs.get("act_weight", 1.0)
+
+        self.loss_func = RandomTargetLoss(
+            position_loss=nn.MSELoss(), pos_weight=pos_weight, act_weight=act_weight
+        )
 
     def generate_dataset(self, n_samples):
         # Make target circular, change loss function to be pinned at zero
@@ -192,34 +206,39 @@ class RandomTargetDelay(Environment):
         goal_list = []
         go_cue_list = []
         target_on_list = []
+        catch_trials = []
 
         for i in range(n_samples):
+            catch_trial = np.random.choice([0, 1], p=[0.8, 0.2])
             target_on = np.random.randint(10, 30)
             go_cue = np.random.randint(target_on, self.n_timesteps)
 
-            go_cue_list.append(go_cue)
             target_on_list.append(target_on)
 
-            obs, info = self.reset()
-            initial_state.append(torch.squeeze(info["states"]["joint"]))
-
-            # TODO: States["fingertip"]
-            initial_state_xy = self.joint2cartesian(
-                torch.squeeze(info["states"]["joint"])
-            ).chunk(2, dim=-1)[0]
+            info = self.generate_trial_info()
+            initial_state.append(info["ics_joint"])
+            initial_state_xy = info["ics_xy"]
 
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
-            goal_matrix[:go_cue, :] = initial_state_xy
-            goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
+            if catch_trial:
+                go_cue = -1
+                goal_matrix[:, :] = initial_state_xy
+            else:
+                inputs[i, go_cue:, 2] = 1
 
+                goal_matrix[:go_cue, :] = initial_state_xy
+                goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
+
+            go_cue_list.append(go_cue)
             inputs[i, target_on:, 0:2] = info["goal"]
-            inputs[i, go_cue:, 2] = 1
 
+            catch_trials.append(catch_trial)
             goal_list.append(goal_matrix)
 
         go_cue_list = np.array(go_cue_list)
         target_on_list = np.array(target_on_list)
         extra = np.stack((target_on_list, go_cue_list), axis=1)
+        conds = np.array(catch_trials)
 
         initial_state = torch.stack(initial_state, axis=0)
         goal_list = torch.stack(goal_list, axis=0)
@@ -227,10 +246,45 @@ class RandomTargetDelay(Environment):
             "ics": initial_state,
             "inputs": inputs,
             "targets": goal_list,
-            "conds": torch.zeros((n_samples, 1)),
+            "conds": conds,
             "extra": extra,
         }
         return dataset_dict
+
+    def generate_trial_info(self):
+        """
+        Generate a trial for the task.
+        This is a reach to a random target from a random starting
+        position with a delay period.
+        """
+        sho_limit = [0, 135]  # mechanical constraints - used to be -90 180
+        elb_limit = [0, 155]
+        sho_ang = np.deg2rad(np.random.uniform(sho_limit[0] + 20, sho_limit[1] - 20))
+        elb_ang = np.deg2rad(np.random.uniform(elb_limit[0] + 20, elb_limit[1] - 20))
+        sho_ang_targ = np.deg2rad(
+            np.random.uniform(sho_limit[0] + 20, sho_limit[1] - 20)
+        )
+        elb_ang_targ = np.deg2rad(
+            np.random.uniform(elb_limit[0] + 20, elb_limit[1] - 20)
+        )
+
+        angs = torch.tensor(np.array([sho_ang, elb_ang, 0, 0]))
+        ang_targ = torch.tensor(np.array([sho_ang_targ, elb_ang_targ, 0, 0]))
+
+        target_pos = self.joint2cartesian(
+            torch.tensor(ang_targ, dtype=torch.float32, device=self.device)
+        ).chunk(2, dim=-1)[0]
+
+        start_xy = self.joint2cartesian(
+            torch.tensor(angs, dtype=torch.float32, device=self.device)
+        ).chunk(2, dim=-1)[0]
+
+        info = dict(
+            ics_joint=angs,
+            ics_xy=start_xy,
+            goal=target_pos,
+        )
+        return info
 
     def set_goal(
         self,
@@ -269,6 +323,8 @@ class RandomTargetDelay(Environment):
         Here the goals (`i.e.`, the targets) are drawn from a random uniform
         distribution across the full joint space.
         """
+        sho_limit = np.deg2rad([0, 135])  # mechanical constraints - used to be -90 180
+        elb_limit = np.deg2rad([0, 155])
         # Make self.obs_noise a list
         self._set_generator(seed=seed)
         # if ic_state is in options, use that
@@ -287,8 +343,17 @@ class RandomTargetDelay(Environment):
         if options is not None and "target_state" in options.keys():
             self.goal = options["target_state"]
         else:
+            sho_ang = np.random.uniform(
+                sho_limit[0] + 20, sho_limit[1] - 20, size=batch_size
+            )
+            elb_ang = np.random.uniform(
+                elb_limit[0] + 20, elb_limit[1] - 20, size=batch_size
+            )
+            sho_vel = np.zeros(batch_size)
+            elb_vel = np.zeros(batch_size)
+            angs = np.stack((sho_ang, elb_ang, sho_vel, elb_vel), axis=1)
             self.goal = self.joint2cartesian(
-                self.effector.draw_random_uniform_states(batch_size)
+                torch.tensor(angs, dtype=torch.float32, device=self.device)
             ).chunk(2, dim=-1)[0]
 
         options = {

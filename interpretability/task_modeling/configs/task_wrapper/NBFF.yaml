@@ -2,6 +2,3 @@ _target_: interpretability.task_modeling.task_wrapper.task_wrapper.TaskTrainedWr
 
 learning_rate: 1.0e-3
 weight_decay: 1.0e-8
-
-loss_func:
-  _target_: interpretability.task_modeling.model.modules.loss_func.MatchTargetLossMSE

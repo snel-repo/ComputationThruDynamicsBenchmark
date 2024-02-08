@@ -237,11 +237,13 @@ class MotorNetVideoGeneration(pl.Callback):
                 )
 
                 ax.set_xlim(-1.2, 1.2)
-                ax.set_ylim(-1.2, 1.2)
+                ax.set_ylim(-0.2, 1.2)
 
                 ax.set_xticks([])
                 ax.set_yticks([])
-
+                # Preserved distance aspect ratio
+                ax.set_aspect("equal")
+                ax.set_title(f"Trial {i} - Step {t} of {T}")
                 # Save figure to a numpy array
                 fig.canvas.draw()
                 img_arr = np.array(fig.canvas.renderer.buffer_rgba())
@@ -414,9 +416,22 @@ class MotorNetVideoGenerationArm(pl.Callback):
                 )
 
                 ax.set_xlim(-1.2, 1.2)
-                ax.set_ylim(-1.2, 1.2)
+                ax.set_ylim(-0.2, 1.2)
                 ax.axis("off")  # Hide axes for better visualization
 
+                ax.set_title(f"Trial {i}")
+                # Draw a bar to represent the time in the trial
+                barStart = [-0.5, -0.1]
+                bar_t = t / T
+                barEnd = [barStart[0] + bar_t, -0.1]
+                ax.plot(
+                    [barStart[0], barEnd[0]],
+                    [barStart[1], barEnd[1]],
+                    "b-",
+                    linewidth=3,
+                )
+
+                ax.set_aspect("equal")
                 # Save figure to a numpy array
                 fig.canvas.draw()
                 img_arr = np.array(fig.canvas.renderer.buffer_rgba())
@@ -427,7 +442,7 @@ class MotorNetVideoGenerationArm(pl.Callback):
 
         # Save frames to a video using imageio
         video_path = "arm_movement_video.mp4"
-        imageio.mimwrite(video_path, frames, fps=40)
+        imageio.mimwrite(video_path, frames, fps=100)
         # Log the video to wandb
         wandb.log({"video": wandb.Video(video_path)})
 

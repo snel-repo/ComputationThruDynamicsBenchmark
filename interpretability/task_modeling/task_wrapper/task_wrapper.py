@@ -3,8 +3,6 @@ import torch
 from gymnasium import Env
 from torch import nn
 
-from interpretability.task_modeling.model.modules.loss_func import LossFunc
-
 
 class TaskTrainedWrapper(pl.LightningModule):
     """Wrapper for a task trained model
@@ -22,7 +20,6 @@ class TaskTrainedWrapper(pl.LightningModule):
         task_env: Env = None,
         model: nn.Module = None,
         state_label: str = None,
-        loss_func: LossFunc = None,
     ):
         """Initialize the wrapper
 
@@ -55,7 +52,6 @@ class TaskTrainedWrapper(pl.LightningModule):
         self.weight_decay = weight_decay
 
         self.state_label = state_label
-        self.loss_func = loss_func
         self.save_hyperparameters()
 
     def set_environment(self, task_env: Env):
@@ -66,6 +62,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             task_env.context_inputs.shape[0] + task_env.observation_space.shape[0]
         )
         self.output_size = task_env.action_space.shape[0]
+        self.loss_func = task_env.loss_func
 
     def set_model(self, model: nn.Module):
         """Set the model for the training pipeline"""

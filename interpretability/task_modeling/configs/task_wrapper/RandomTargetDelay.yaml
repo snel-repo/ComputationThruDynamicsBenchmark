@@ -1,12 +1,6 @@
 _target_: interpretability.task_modeling.task_wrapper.task_wrapper.TaskTrainedWrapper
 
 state_label: fingertip
-loss_func:
-  _target_: interpretability.task_modeling.model.modules.loss_func.RandomTargetLoss
-  position_loss:
-    _target_: torch.nn.L1Loss
-  pos_weight: 0.5
-  act_weight: 0.5
 
 learning_rate: 1.0e-3
 weight_decay: 0

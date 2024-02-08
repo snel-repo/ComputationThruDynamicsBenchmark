@@ -3,4 +3,4 @@ effector:
   _target_: motornet.effector.RigidTendonArm26
   muscle:
     _target_: motornet.muscle.MujocoHillMuscle
-max_ep_duration: 2.0
+max_ep_duration: 3.0

@@ -6,6 +6,7 @@ from interpretability.task_modeling.datamodule.samplers import (
     GroupedSampler,
     RandomSampler,
 )
+from interpretability.task_modeling.task_env.loss_func import MultiTaskLoss
 from interpretability.task_modeling.task_env.task_env import DecoupledEnvironment
 
 
@@ -102,6 +103,7 @@ class MultiTaskWrapper(DecoupledEnvironment):
             self.sampler = GroupedSampler
         else:
             self.sampler = RandomSampler
+        self.loss_func = MultiTaskLoss()
 
     def step(self, action):
         pass
