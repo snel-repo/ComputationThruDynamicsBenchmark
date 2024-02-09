@@ -76,7 +76,6 @@ class Comparison:
             plt.imshow(state_r2_mat),
             ax=ij_ax,
         )
-        ij_figure.set_clim(0, 1)
         return state_r2_mat
 
     def compare_to_reference_affine(self, ref_ind=None):

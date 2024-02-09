@@ -278,8 +278,9 @@ class MotorNetVideoGenerationArm(pl.Callback):
         ics = batch[0].to(pl_module.device)
         inputs = batch[1].to(pl_module.device)
         targets = batch[2].to(pl_module.device)
+        inputs_to_env = batch[6].to(pl_module.device)
 
-        output_dict = pl_module.forward(ics, inputs, targets)
+        output_dict = pl_module.forward(ics, inputs, targets, inputs_to_env)
         upper_arm_length = trainer.model.task_env.effector.skeleton.l1
         forearm_length = trainer.model.task_env.effector.skeleton.l2
         controlled = output_dict["controlled"]
@@ -430,6 +431,19 @@ class MotorNetVideoGenerationArm(pl.Callback):
                     "b-",
                     linewidth=3,
                 )
+                # Plot inputs_to_env as an arrow from the hand position with length 1
+                inputs_mag = torch.norm(inputs_to_env[i, t, :]).item()
+                if inputs_mag > 0.001:
+                    ax.arrow(
+                        controlled[i, t, 0].item(),
+                        controlled[i, t, 1].item(),
+                        inputs_to_env[i, t, 0].item() / (50 * inputs_mag),
+                        inputs_to_env[i, t, 1].item() / (50 * inputs_mag),
+                        head_width=0.05,
+                        head_length=0.1,
+                        fc="b",
+                        ec="b",
+                    )
 
                 ax.set_aspect("equal")
                 # Save figure to a numpy array

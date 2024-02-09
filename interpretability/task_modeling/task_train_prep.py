@@ -79,6 +79,10 @@ def train(
     log.info("Instantiating environment")
     task_env: Env = hydra.utils.instantiate(config_all["task_env"], _convert_="all")
 
+    # ---------------------------Instantiate simulation env------------------------
+    log.info("Instantiating environment for neural simulation")
+    sim_env: Env = hydra.utils.instantiate(config_all["sim_env"], _convert_="all")
+
     # ------------------------------Instantiate model--------------------------------
     log.info(f"Instantiating model <{config_all['model']._target_}")
     model: pl.LightningModule = hydra.utils.instantiate(
@@ -97,9 +101,9 @@ def train(
     task_wrapper.set_model(model)
 
     # --------------------------Instantiate datamodule----------------------------
-    log.info("Instantiating datamodule")
+    log.info("Instantiating datamodule for training")
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
-        config_all["datamodule"], _convert_="all"
+        config_all["datamodule_train"], _convert_="all"
     )
     datamodule.set_environment(data_env=task_env, data_path=path_dict["tt_datasets"])
 
@@ -147,13 +151,13 @@ def train(
         accelerator="auto",
         _convert_="all",
     )
-    print(len(os.sched_getaffinity(0)))
+
     # -----------------------------Train model---------------------------
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
 
     # Save the model, datamodule, and simulator to the directory
-    log.info("Saving model, datamodule, and simulator")
+    log.info("Saving model, datamodules, and simulator")
     SAVE_PATH = path_dict["trained_models"] / "task-trained"
 
     dir_path = os.path.join(SAVE_PATH, run_tag, subfolder, "")
@@ -162,13 +166,25 @@ def train(
     with open(path1, "wb") as f:
         pickle.dump(task_wrapper, f)
 
-    path2 = os.path.join(SAVE_PATH, run_tag, subfolder, "datamodule.pkl")
+    path2 = os.path.join(SAVE_PATH, run_tag, subfolder, "datamodule_train.pkl")
     with open(path2, "wb") as f:
         pickle.dump(datamodule, f)
 
+    # -----------------------Instantiate sim datamodule---------------------------
+    log.info("Instantiating datamodule for neural simulation")
+    sim_datamodule: pl.LightningDataModule = hydra.utils.instantiate(
+        config_all["datamodule_sim"], _convert_="all"
+    )
+    sim_datamodule.set_environment(
+        data_env=sim_env, data_path=path_dict["sim_datasets"]
+    )
+
+    sim_datamodule.prepare_data()
+    sim_datamodule.setup()
+
     simulator.simulate_neural_data(
         task_trained_model=task_wrapper,
-        datamodule=datamodule,
+        datamodule=sim_datamodule,
         run_tag=run_tag,
         dataset_path=path_dict["dt_datasets"],
         subfolder=subfolder,
@@ -178,3 +194,7 @@ def train(
     path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "simulator.pkl")
     with open(path3, "wb") as f:
         pickle.dump(simulator, f)
+
+    path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "datamodule_sim.pkl")
+    with open(path3, "wb") as f:
+        pickle.dump(sim_datamodule, f)

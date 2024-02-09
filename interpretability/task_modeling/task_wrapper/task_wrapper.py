@@ -78,7 +78,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         )
         return optimizer
 
-    def forward(self, ics, inputs, targets=None):
+    def forward(self, ics, inputs, targets=None, inputs_to_env=None):
         """Pass data through the model
         args:
             ics (torch.Tensor):
@@ -94,7 +94,7 @@ class TaskTrainedWrapper(pl.LightningModule):
 
         # If we are in a coupled environment, set the environment state
         if self.task_env.coupled_env:
-            options = {"ic_state": ics, "target_state": targets[:, 0, :]}
+            options = {"ic_state": ics}
             env_states, info = self.task_env.reset(
                 batch_size=batch_size, options=options
             )
@@ -145,11 +145,16 @@ class TaskTrainedWrapper(pl.LightningModule):
             # Update env if coupled
             if self.task_env.coupled_env:
                 self.task_env.set_goal(targets[:, count, :])
-
-                # Step the environment forward
-                env_states, _, terminated, _, info = self.task_env.step(
-                    action=action, inputs=inputs[:, count, :]
-                )
+                if inputs_to_env is not None:
+                    env_states, _, terminated, _, info = self.task_env.step(
+                        action=action,
+                        inputs=inputs[:, count, :],
+                        endpoint_load=inputs_to_env[:, count, :],
+                    )
+                else:
+                    env_states, _, terminated, _, info = self.task_env.step(
+                        action=action, inputs=inputs[:, count, :]
+                    )
                 controlled.append(info["states"][self.state_label])
                 joints.append(info["states"]["joint"])
                 actions.append(action)
@@ -191,9 +196,10 @@ class TaskTrainedWrapper(pl.LightningModule):
         targets = batch[2]
         conds = batch[4]
         extras = batch[5]
+        inputs_to_env = batch[6]
 
         # Pass data through the model
-        output_dict = self.forward(ics, inputs, targets)
+        output_dict = self.forward(ics, inputs, targets, inputs_to_env)
 
         # Compute the weighted loss
         loss_dict = {
@@ -203,6 +209,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             "inputs": inputs,
             "conds": conds,
             "extra": extras,
+            "epoch": self.current_epoch,
         }
 
         # Compute the loss using the loss function object
@@ -216,9 +223,10 @@ class TaskTrainedWrapper(pl.LightningModule):
         targets = batch[2]
         conds = batch[4]
         extras = batch[5]
+        inputs_to_env = batch[6]
 
         # Pass data through the model
-        output_dict = self.forward(ics, inputs, targets)
+        output_dict = self.forward(ics, inputs, targets, inputs_to_env=inputs_to_env)
 
         # Compute the weighted loss
         loss_dict = {
@@ -228,6 +236,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             "inputs": inputs,
             "conds": conds,
             "extra": extras,
+            "epoch": self.current_epoch,
         }
 
         # Compute the loss using the loss function object

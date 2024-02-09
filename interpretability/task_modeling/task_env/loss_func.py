@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -11,19 +12,30 @@ class LossFunc:
 
 
 class RandomTargetLoss(LossFunc):
-    def __init__(self, position_loss, pos_weight, act_weight):
+    def __init__(
+        self, position_loss, pos_weight, act_weight, full_trial_epoch: int = 200
+    ):
         self.position_loss = position_loss
         self.action_loss = nn.MSELoss()
         self.pos_weight = pos_weight
         self.act_weight = act_weight
+        self.full_trial_epoch = full_trial_epoch
 
     def __call__(self, loss_dict):
         pred = loss_dict["controlled"]
         target = loss_dict["targets"]
         act = loss_dict["actions"]
+        epoch = loss_dict["epoch"]
+        n_time = pred.shape[1]
+        # Gradually increase the percent of the trial to include in the loss
+        include_loss = np.ceil(n_time * min(1.0, epoch / self.full_trial_epoch)).astype(
+            int
+        )
         # inputs = loss_dict["inputs"]
         # TODO: torch.clip
-        pos_loss = self.pos_weight * self.position_loss(pred, target)
+        pos_loss = self.pos_weight * self.position_loss(
+            pred[:, :include_loss, :], target[:, :include_loss, :]
+        )
         act_loss = self.act_weight * self.action_loss(act, torch.zeros_like(act))
         return pos_loss + act_loss
 

@@ -1,0 +1,6 @@
+_target_: interpretability.task_modeling.task_env.task_env.NBitFlipFlop
+
+n: 3
+n_timesteps: 500
+noise: 0.2
+switch_prob: 0.01

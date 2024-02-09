@@ -130,6 +130,7 @@ class TaskDataModule(pl.LightningDataModule):
 
         # Extract the inputs, outputs, and initial conditions
         inputs_ds = dataset_dict["inputs"]
+        inputs_to_env_ds = dataset_dict["inputs_to_env"]
         targets_ds = dataset_dict["targets"]
         ics_ds = dataset_dict["ics"]
         conds_ds = dataset_dict["conds"]
@@ -155,6 +156,13 @@ class TaskDataModule(pl.LightningDataModule):
 
             h5file.create_dataset("train_inputs", data=inputs_ds[train_inds])
             h5file.create_dataset("valid_inputs", data=inputs_ds[valid_inds])
+
+            h5file.create_dataset(
+                "train_inputs_to_env", data=inputs_to_env_ds[train_inds]
+            )
+            h5file.create_dataset(
+                "valid_inputs_to_env", data=inputs_to_env_ds[valid_inds]
+            )
 
             h5file.create_dataset("train_targets", data=targets_ds[train_inds])
             h5file.create_dataset("valid_targets", data=targets_ds[valid_inds])
@@ -182,6 +190,9 @@ class TaskDataModule(pl.LightningDataModule):
             train_inputs = to_tensor(h5file["train_inputs"][()])
             valid_inputs = to_tensor(h5file["valid_inputs"][()])
 
+            train_inputs_to_env = to_tensor(h5file["train_inputs_to_env"][()])
+            valid_inputs_to_env = to_tensor(h5file["valid_inputs_to_env"][()])
+
             train_targets = to_tensor(h5file["train_targets"][()])
             valid_targets = to_tensor(h5file["valid_targets"][()])
 
@@ -206,10 +217,17 @@ class TaskDataModule(pl.LightningDataModule):
             train_inds,
             train_conds,
             train_extra,
+            train_inputs_to_env,
         )
 
         self.valid_ds = TensorDataset(
-            valid_ics, valid_inputs, valid_targets, valid_inds, valid_conds, valid_extra
+            valid_ics,
+            valid_inputs,
+            valid_targets,
+            valid_inds,
+            valid_conds,
+            valid_extra,
+            valid_inputs_to_env,
         )
 
         self.train_sampler = self.sampler_func(

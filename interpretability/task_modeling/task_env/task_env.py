@@ -142,6 +142,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         dataset_dict = {
             "ics": ics_ds,
             "inputs": inputs_ds,
+            "inputs_to_env": np.zeros(shape=(n_samples, n_timesteps, 0)),
             "targets": outputs_ds,
             "true_inputs": true_inputs_ds,
             "conds": np.zeros(shape=(n_samples, 1)),
@@ -194,6 +195,9 @@ class RandomTargetDelay(Environment):
         pos_weight = kwargs.get("pos_weight", 1.0)
         act_weight = kwargs.get("act_weight", 1.0)
 
+        self.bump_mag_low = kwargs.get("bump_mag_low", 5)
+        self.bump_mag_high = kwargs.get("bump_mag_high", 10)
+
         self.loss_func = RandomTargetLoss(
             position_loss=nn.MSELoss(), pos_weight=pos_weight, act_weight=act_weight
         )
@@ -207,17 +211,30 @@ class RandomTargetDelay(Environment):
         go_cue_list = []
         target_on_list = []
         catch_trials = []
+        ext_inputs_list = []
 
         for i in range(n_samples):
             catch_trial = np.random.choice([0, 1], p=[0.8, 0.2])
+            bump_trial = np.random.choice([0, 1], p=[0.5, 0.5])
             target_on = np.random.randint(10, 30)
             go_cue = np.random.randint(target_on, self.n_timesteps)
+
+            bump_time = np.random.randint(0, self.n_timesteps - 30)
+            bump_duration = np.random.randint(15, 30)
+            bump_theta = np.random.uniform(0, 2 * np.pi)
+            bump_mag = np.random.uniform(self.bump_mag_low, self.bump_mag_high)
 
             target_on_list.append(target_on)
 
             info = self.generate_trial_info()
             initial_state.append(info["ics_joint"])
             initial_state_xy = info["ics_xy"]
+
+            env_inputs_mat = np.zeros((self.n_timesteps, 2))
+            if bump_trial:
+                env_inputs_mat[bump_time : bump_time + bump_duration, :] = np.array(
+                    [bump_mag * np.cos(bump_theta), bump_mag * np.sin(bump_theta)]
+                )
 
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
             if catch_trial:
@@ -234,9 +251,11 @@ class RandomTargetDelay(Environment):
 
             catch_trials.append(catch_trial)
             goal_list.append(goal_matrix)
+            ext_inputs_list.append(env_inputs_mat)
 
         go_cue_list = np.array(go_cue_list)
         target_on_list = np.array(target_on_list)
+        env_inputs = np.stack(ext_inputs_list, axis=0)
         extra = np.stack((target_on_list, go_cue_list), axis=1)
         conds = np.array(catch_trials)
 
@@ -245,6 +264,7 @@ class RandomTargetDelay(Environment):
         dataset_dict = {
             "ics": initial_state,
             "inputs": inputs,
+            "inputs_to_env": env_inputs,
             "targets": goal_list,
             "conds": conds,
             "extra": extra,
@@ -261,6 +281,7 @@ class RandomTargetDelay(Environment):
         elb_limit = [0, 155]
         sho_ang = np.deg2rad(np.random.uniform(sho_limit[0] + 20, sho_limit[1] - 20))
         elb_ang = np.deg2rad(np.random.uniform(elb_limit[0] + 20, elb_limit[1] - 20))
+
         sho_ang_targ = np.deg2rad(
             np.random.uniform(sho_limit[0] + 20, sho_limit[1] - 20)
         )
