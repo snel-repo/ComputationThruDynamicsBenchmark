@@ -221,3 +221,8 @@ class Analysis_TT(Analysis):
         plt.setp(ax2.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
         plt.savefig("splits_comp.png")
         return id_comp, splits_comp
+
+    def save_latents(self, filepath):
+        latents = self.get_latents().detach().numpy()
+        with open(filepath, "wb") as f:
+            pickle.dump(latents, f)

@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 
+import dotenv
 import h5py
 import numpy as np
 import pytorch_lightning as pl
@@ -14,6 +15,9 @@ from interpretability.task_modeling.datamodule.samplers import (
     RandomSampler,
     SequentialSampler,
 )
+
+dotenv.load_dotenv(override=True)
+HOME_DIR = os.getenv("HOME_DIR")
 
 
 def save_dict_to_pickle(dic, filename):
@@ -66,10 +70,10 @@ class TaskDataModule(pl.LightningDataModule):
         self.name = None
         self.input_labels = None
         self.output_labels = None
+        self.for_sim = False
 
-    def set_environment(self, data_env, data_path):
+    def set_environment(self, data_env, for_sim=False):
         """Set the environment for the data module"""
-        self.data_path = data_path
         self.data_env = data_env
 
         self.name = (
@@ -83,7 +87,7 @@ class TaskDataModule(pl.LightningDataModule):
         # Set input/output labels according to the data environment
         self.input_labels = self.data_env.input_labels
         self.output_labels = self.data_env.output_labels
-
+        self.for_sim = for_sim
         # Set extra data if it exists
         if hasattr(self.data_env, "extra"):
             self.extra = self.data_env.extra
@@ -116,8 +120,12 @@ class TaskDataModule(pl.LightningDataModule):
 
         filename_h5 = f"{self.name}.h5"
         filename_pkl = f"{self.name}.pkl"
-        fpath = os.path.join(self.data_path, filename_h5)
-        fpath_pkl = os.path.join(self.data_path, filename_pkl)
+        if self.for_sim:
+            filename_h5 = f"{self.name}_sim.h5"
+            filename_pkl = f"{self.name}_sim.pkl"
+
+        fpath = os.path.join(HOME_DIR, "datasets", "tt", filename_h5)
+        fpath_pkl = os.path.join(HOME_DIR, "datasets", "tt", filename_pkl)
 
         # Check if the dataset already exists, and if so, load it
         if os.path.isfile(fpath) and os.path.isfile(fpath_pkl):
@@ -181,8 +189,15 @@ class TaskDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # Load data arrays from file
-        data_path = os.path.join(self.data_path, f"{self.name}.h5")
-        data_path_pkl = os.path.join(self.data_path, f"{self.name}.pkl")
+        if self.for_sim:
+            data_path = os.path.join(HOME_DIR, "datasets", "tt", f"{self.name}_sim.h5")
+            data_path_pkl = os.path.join(
+                HOME_DIR, "datasets", "tt", f"{self.name}_sim.pkl"
+            )
+        else:
+            data_path = os.path.join(HOME_DIR, "datasets", "tt", f"{self.name}.h5")
+            data_path_pkl = os.path.join(HOME_DIR, "datasets", "tt", f"{self.name}.pkl")
+
         with h5py.File(data_path, "r") as h5file:
             train_ics = to_tensor(h5file["train_ics"][()])
             valid_ics = to_tensor(h5file["valid_ics"][()])

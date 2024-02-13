@@ -105,7 +105,7 @@ def train(
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule_train"], _convert_="all"
     )
-    datamodule.set_environment(data_env=task_env, data_path=path_dict["tt_datasets"])
+    datamodule.set_environment(data_env=task_env)
 
     # ---------------------------Instantiate simulator---------------------------
     log.info("Instantiating neural data simulator")
@@ -176,7 +176,8 @@ def train(
         config_all["datamodule_sim"], _convert_="all"
     )
     sim_datamodule.set_environment(
-        data_env=sim_env, data_path=path_dict["sim_datasets"]
+        data_env=sim_env,
+        for_sim=True,
     )
 
     sim_datamodule.prepare_data()
