@@ -137,12 +137,18 @@ class Comparison:
         return vaf
 
     def compare_dynamics_DSA(
-        self, n_delays=20, rank=50, delay_interval=1, device="cpu"
+        self,
+        n_delays=20,
+        rank=50,
+        delay_interval=1,
+        device="cpu",
+        percent_data=0.01,
     ):
         latent_list = []
         for analysis in self.analyses:
             latents = analysis.get_latents().detach().numpy()
-            latent_list.append(latents.reshape(-1, latents.shape[-1]))
+            # latent_list.append(latents.reshape(-1, latents.shape[-1]))
+            latent_list.append(latents[: int(percent_data * latents.shape[0]), :, :])
 
         dsa = DSA(
             latent_list,

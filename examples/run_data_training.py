@@ -26,7 +26,7 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_Comparison"
+RUN_DESC = "NBFF_Comparison_1"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"
 MODEL = "GRU_RNN"
@@ -41,7 +41,7 @@ SEARCH_SPACE = dict(
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240207_NBFF_Tutorial"]),
+        prefix=tune.grid_search(["20240211_NBFF_DSA_Test"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),

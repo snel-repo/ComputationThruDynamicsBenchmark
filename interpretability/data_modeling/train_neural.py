@@ -123,6 +123,7 @@ def train(
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
     save_path = path_dict["trained_models"]
+    save_path = os.path.join(save_path, run_tag)
 
     Path(save_path).mkdir(parents=True, exist_ok=True)
     model_path = os.path.join(save_path, "model.pkl")

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from sklearn.decomposition import PCA
 
+from DSA.stats import dsa_bw_data_splits, dsa_to_id
 from interpretability.comparison.analysis.analysis import Analysis
 from interpretability.comparison.fixedpoints import find_fixed_points
 
@@ -24,7 +25,7 @@ class Analysis_TT(Analysis):
             self.wrapper = pickle.load(f)
         self.env = self.wrapper.task_env
         self.model = self.wrapper.model
-        with open(filepath + "datamodule.pkl", "rb") as f:
+        with open(filepath + "datamodule_train.pkl", "rb") as f:
             self.datamodule = pickle.load(f)
             self.datamodule.prepare_data()
             self.datamodule.setup()
@@ -174,3 +175,49 @@ class Analysis_TT(Analysis):
             coupled=False,
             seed=0,
         )
+
+    def find_DSA_hps(
+        self,
+        rank_sweep=[10, 20],
+        delay_sweep=[1, 5],
+    ):
+        id_comp = np.zeros((len(rank_sweep), len(delay_sweep)))
+        splits_comp = np.zeros((len(rank_sweep), len(delay_sweep)))
+        latents = self.get_latents().detach().numpy()
+        latents = latents.reshape(-1, latents.shape[-1])
+        for i, rank in enumerate(rank_sweep):
+            for j, delay in enumerate(delay_sweep):
+                print(f"Rank: {rank}, Delay: {delay}")
+                id_comp[i, j] = dsa_to_id(
+                    data=latents,
+                    rank=rank,
+                    n_delays=delay,
+                    delay_interval=1,
+                )
+                splits_comp[i, j] = dsa_bw_data_splits(
+                    data=latents,
+                    rank=rank,
+                    n_delays=delay,
+                    delay_interval=1,
+                )
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.imshow(id_comp)
+        ax.set_title("ID")
+        ax.set_xticks(np.arange(len(delay_sweep)))
+        ax.set_yticks(np.arange(len(rank_sweep)))
+        ax.set_xticklabels(delay_sweep)
+        ax.set_yticklabels(rank_sweep)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        plt.savefig("id_comp.png")
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot(111)
+        ax2.imshow(splits_comp)
+        ax2.set_title("Splits")
+        ax2.set_xticks(np.arange(len(delay_sweep)))
+        ax2.set_yticks(np.arange(len(rank_sweep)))
+        ax2.set_xticklabels(delay_sweep)
+        ax2.set_yticklabels(rank_sweep)
+        plt.setp(ax2.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        plt.savefig("splits_comp.png")
+        return id_comp, splits_comp

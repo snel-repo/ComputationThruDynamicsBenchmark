@@ -216,10 +216,14 @@ class RandomTargetDelay(Environment):
         for i in range(n_samples):
             catch_trial = np.random.choice([0, 1], p=[0.8, 0.2])
             bump_trial = np.random.choice([0, 1], p=[0.5, 0.5])
+            move_bump_trial = np.random.choice([0, 1], p=[0.5, 0.5])
+
             target_on = np.random.randint(10, 30)
             go_cue = np.random.randint(target_on, self.n_timesteps)
-
-            bump_time = np.random.randint(0, self.n_timesteps - 30)
+            if move_bump_trial:
+                bump_time = np.random.randint(go_cue, go_cue + 40)
+            else:
+                bump_time = np.random.randint(0, self.n_timesteps - 30)
             bump_duration = np.random.randint(15, 30)
             bump_theta = np.random.uniform(0, 2 * np.pi)
             bump_mag = np.random.uniform(self.bump_mag_low, self.bump_mag_high)
@@ -232,7 +236,8 @@ class RandomTargetDelay(Environment):
 
             env_inputs_mat = np.zeros((self.n_timesteps, 2))
             if bump_trial:
-                env_inputs_mat[bump_time : bump_time + bump_duration, :] = np.array(
+                bump_end = min(bump_time + bump_duration, self.n_timesteps)
+                env_inputs_mat[bump_time:bump_end, :] = np.array(
                     [bump_mag * np.cos(bump_theta), bump_mag * np.sin(bump_theta)]
                 )
 
@@ -279,14 +284,14 @@ class RandomTargetDelay(Environment):
         """
         sho_limit = [0, 135]  # mechanical constraints - used to be -90 180
         elb_limit = [0, 155]
-        sho_ang = np.deg2rad(np.random.uniform(sho_limit[0] + 20, sho_limit[1] - 20))
-        elb_ang = np.deg2rad(np.random.uniform(elb_limit[0] + 20, elb_limit[1] - 20))
+        sho_ang = np.deg2rad(np.random.uniform(sho_limit[0] + 30, sho_limit[1] - 30))
+        elb_ang = np.deg2rad(np.random.uniform(elb_limit[0] + 30, elb_limit[1] - 30))
 
         sho_ang_targ = np.deg2rad(
-            np.random.uniform(sho_limit[0] + 20, sho_limit[1] - 20)
+            np.random.uniform(sho_limit[0] + 30, sho_limit[1] - 30)
         )
         elb_ang_targ = np.deg2rad(
-            np.random.uniform(elb_limit[0] + 20, elb_limit[1] - 20)
+            np.random.uniform(elb_limit[0] + 30, elb_limit[1] - 30)
         )
 
         angs = torch.tensor(np.array([sho_ang, elb_ang, 0, 0]))

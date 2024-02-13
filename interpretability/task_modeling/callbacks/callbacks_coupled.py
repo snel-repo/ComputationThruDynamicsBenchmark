@@ -280,7 +280,12 @@ class MotorNetVideoGenerationArm(pl.Callback):
         targets = batch[2].to(pl_module.device)
         inputs_to_env = batch[6].to(pl_module.device)
 
-        output_dict = pl_module.forward(ics, inputs, targets, inputs_to_env)
+        output_dict = pl_module.forward(
+            ics[: self.num_trials_to_plot, :],
+            inputs[: self.num_trials_to_plot, :, :],
+            targets[: self.num_trials_to_plot, :, :],
+            inputs_to_env[: self.num_trials_to_plot, :, :],
+        )
         upper_arm_length = trainer.model.task_env.effector.skeleton.l1
         forearm_length = trainer.model.task_env.effector.skeleton.l2
         controlled = output_dict["controlled"]
