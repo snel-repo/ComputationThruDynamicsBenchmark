@@ -71,13 +71,6 @@ class NeuralDataSimulator:
             states = output_dict["states"]
             inputs = torch.concatenate((states, inputs), dim=-1).detach().numpy()
 
-        if self.n_neurons > latents.shape[-1]:
-            # If the number of neurons is greater than the number of latents,
-            # replicate the latents to match the number of neurons
-            n_latents = latents.shape[-1]
-            n_reps = int(np.ceil(self.n_neurons / n_latents))
-            latents = torch.cat([latents] * n_reps, dim=-1)
-
         filename = (
             f"{run_tag}_"
             f"{datamodule.data_env.dataset_name}_"
@@ -88,7 +81,9 @@ class NeuralDataSimulator:
 
         fpath = os.path.join(dataset_path, filename)
         # Make the directory if it doesn't exist
-        os.mkdir(fpath)
+        if not os.path.exists(fpath):
+            os.mkdir(fpath)
+
         fpath = os.path.join(fpath, subfolder + ".h5")
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
@@ -96,7 +91,14 @@ class NeuralDataSimulator:
             # Make random permutation of latents
             rng = np.random.default_rng(seed)
             # get random permutation indices
-            perm_inds = rng.permutation(n_lat_dim)
+            num_stacks = np.ceil(n_lat_dim / self.n_neurons) + 1
+            for i in range(int(num_stacks)):
+                perm_inds_stack = rng.permutation(n_lat_dim)
+                if i == 0:
+                    perm_inds = perm_inds_stack
+                else:
+                    perm_inds = np.concatenate((perm_inds, perm_inds_stack))
+            perm_inds = perm_inds[: self.n_neurons]
             latents_perm = latents[:, :, perm_inds]
             activity = latents_perm[:, :, : self.n_neurons]
             perm_neurons = perm_inds[: self.n_neurons]

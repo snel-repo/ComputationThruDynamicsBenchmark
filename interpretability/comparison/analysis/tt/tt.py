@@ -1,14 +1,19 @@
+import os
 import pickle
 from pathlib import Path
 
+import dotenv
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from DSA.stats import dsa_bw_data_splits, dsa_to_id
 from sklearn.decomposition import PCA
 
-from DSA.stats import dsa_bw_data_splits, dsa_to_id
 from interpretability.comparison.analysis.analysis import Analysis
 from interpretability.comparison.fixedpoints import find_fixed_points
+
+dotenv.load_dotenv(override=True)
+HOME_DIR = os.getenv("HOME_DIR")
 
 
 class Analysis_TT(Analysis):
@@ -209,7 +214,8 @@ class Analysis_TT(Analysis):
         ax.set_xticklabels(delay_sweep)
         ax.set_yticklabels(rank_sweep)
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
-        plt.savefig("id_comp.png")
+
+        plt.savefig(f"{HOME_DIR}/id_comp.png")
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111)
         ax2.imshow(splits_comp)
@@ -219,7 +225,7 @@ class Analysis_TT(Analysis):
         ax2.set_xticklabels(delay_sweep)
         ax2.set_yticklabels(rank_sweep)
         plt.setp(ax2.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
-        plt.savefig("splits_comp.png")
+        plt.savefig(f"{HOME_DIR}/splits_comp.png")
         return id_comp, splits_comp
 
     def save_latents(self, filepath):

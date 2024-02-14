@@ -118,14 +118,13 @@ class TaskDataModule(pl.LightningDataModule):
         """
         hps = self.hparams
 
-        filename_h5 = f"{self.name}.h5"
-        filename_pkl = f"{self.name}.pkl"
         if self.for_sim:
-            filename_h5 = f"{self.name}_sim.h5"
-            filename_pkl = f"{self.name}_sim.pkl"
+            sub_dir = "sim"
+        else:
+            sub_dir = "tt"
 
-        fpath = os.path.join(HOME_DIR, "datasets", "tt", filename_h5)
-        fpath_pkl = os.path.join(HOME_DIR, "datasets", "tt", filename_pkl)
+        fpath = os.path.join(HOME_DIR, "datasets", sub_dir, f"{self.name}.h5")
+        fpath_pkl = os.path.join(HOME_DIR, "datasets", sub_dir, f"{self.name}.pkl")
 
         # Check if the dataset already exists, and if so, load it
         if os.path.isfile(fpath) and os.path.isfile(fpath_pkl):
@@ -190,9 +189,9 @@ class TaskDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         # Load data arrays from file
         if self.for_sim:
-            data_path = os.path.join(HOME_DIR, "datasets", "tt", f"{self.name}_sim.h5")
+            data_path = os.path.join(HOME_DIR, "datasets", "sim", f"{self.name}.h5")
             data_path_pkl = os.path.join(
-                HOME_DIR, "datasets", "tt", f"{self.name}_sim.pkl"
+                HOME_DIR, "datasets", "sim", f"{self.name}.pkl"
             )
         else:
             data_path = os.path.join(HOME_DIR, "datasets", "tt", f"{self.name}.h5")

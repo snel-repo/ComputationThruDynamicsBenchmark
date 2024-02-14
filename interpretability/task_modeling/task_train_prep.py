@@ -57,9 +57,16 @@ def train(
 
     # Set seed for pytorch, numpy, and python.random
     if "params" in overrides:
-        pl.seed_everything(overrides["params"]["seed"], workers=True)
-    else:
-        pl.seed_everything(0, workers=True)
+        if "seed" in overrides["params"]:
+            pl.seed_everything(overrides["params"]["seed"], workers=True)
+            config_all["datamodule_train"]["seed"] = overrides["params"]["seed"]
+            config_all["datamodule_sim"]["seed"] += overrides["params"]["seed"]
+        else:
+            pl.seed_everything(0, workers=True)
+    if "env_params" in overrides:
+        for k, v in overrides["env_params"].items():
+            config_all["task_env"][k] = v
+            config_all["sim_env"][k] = v
 
     # Order of operations:
     # 1. Instantiate environment

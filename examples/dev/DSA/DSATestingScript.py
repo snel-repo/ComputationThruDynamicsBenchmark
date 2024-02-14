@@ -1,3 +1,4 @@
+# %%
 import os
 
 import dotenv
@@ -34,3 +35,5 @@ for analysis in analysis_list:
     comp.load_analysis(analysis)
 
 comp.compare_dynamics_DSA(n_delays=16, rank=400)
+
+# %%
