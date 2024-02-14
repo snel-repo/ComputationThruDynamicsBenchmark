@@ -1,3 +1,6 @@
 [submodule "DSA"]
 	path = DSA
 	url = https://github.com/mitchellostrow/DSA.git
+[submodule "libs/DSA"]
+	path = libs/DSA
+	url = https://github.com/mitchellostrow/DSA.git
