@@ -63,34 +63,40 @@ def train(
             config_all["datamodule_sim"]["seed"] += overrides["params"]["seed"]
         else:
             pl.seed_everything(0, workers=True)
+    # Set shared params for both the task and sim envs
     if "env_params" in overrides:
         for k, v in overrides["env_params"].items():
             config_all["task_env"][k] = v
             config_all["sim_env"][k] = v
 
     # Order of operations:
-    # 1. Instantiate environment
+    # 1. Instantiate environments
+    #    - task_env is for training
+    #    - sim_env is for simulating the neural data
     # 2. Instantiate model
     #    - init_model with the correct input and output sizes
     # 3. Instantiate task-wrapper
     #    - Set wrapper environment and model
-    # 4. Instantiate datamodule
+    # 4. Instantiate training datamodule
     #    - Set datamodule environment
     # 5. Instantiate simulator
     # 6. Instantiate callbacks
     # 7. Instantiate loggers
     # 8. Instantiate trainer
     # 9. Train model
+    # 10. Save model + datamodule
+    # 11. Instantiate sim datamodule
+    # 12. Simulate neural data
+    # 13. Save simulator + sim datamodule
 
-    # --------------------------Instantiate environment----------------------------
+    # -----Step 1:----------------Instantiate environments----------------------------
     log.info("Instantiating environment")
     task_env: Env = hydra.utils.instantiate(config_all["task_env"], _convert_="all")
 
-    # ---------------------------Instantiate simulation env------------------------
     log.info("Instantiating environment for neural simulation")
     sim_env: Env = hydra.utils.instantiate(config_all["sim_env"], _convert_="all")
 
-    # ------------------------------Instantiate model--------------------------------
+    # -----Step 2:-----------------Instantiate model--------------------------------
     log.info(f"Instantiating model <{config_all['model']._target_}")
     model: pl.LightningModule = hydra.utils.instantiate(
         config_all["model"], _convert_="all"
@@ -99,7 +105,7 @@ def train(
     n_inputs = task_env.observation_space.shape[0] + task_env.context_inputs.shape[0]
     model.init_model(n_inputs, n_outputs)
 
-    # -----------------------------Instantiate task-wrapper----------------------------
+    # -----Step 3:----------------Instantiate task-wrapper----------------------------
     log.info(f"Instantiating task-wrapper <{config_all['task_wrapper']._target_}")
     task_wrapper: pl.LightningModule = hydra.utils.instantiate(
         config_all["task_wrapper"], _convert_="all"
@@ -107,20 +113,20 @@ def train(
     task_wrapper.set_environment(task_env)
     task_wrapper.set_model(model)
 
-    # --------------------------Instantiate datamodule----------------------------
+    # -----Step 4:----------------Instantiate datamodule----------------------------
     log.info("Instantiating datamodule for training")
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule_train"], _convert_="all"
     )
     datamodule.set_environment(data_env=task_env)
 
-    # ---------------------------Instantiate simulator---------------------------
+    # -----Step 5:----------------Instantiate simulator---------------------------
     log.info("Instantiating neural data simulator")
     simulator: NeuralDataSimulator = hydra.utils.instantiate(
         config_all["simulator"], _convert_="all"
     )
 
-    # ---------------------------Instantiate callbacks---------------------------
+    # -----Step 6:-----------------Instantiate callbacks---------------------------
     callbacks: List[pl.Callback] = []
     if "callbacks" in config_all:
         for _, cb_conf in config_all["callbacks"].items():
@@ -128,7 +134,7 @@ def train(
                 log.info(f"Instantiating callback <{cb_conf._target_}>")
                 callbacks.append(hydra.utils.instantiate(cb_conf, _convert_="all"))
 
-    # -----------------------------Instantiate loggers----------------------------
+    # -----Step 7:------------------Instantiate loggers----------------------------
     flat_list = flatten(overrides).items()
     run_list = []
     for k, v in flat_list:
@@ -148,7 +154,7 @@ def train(
                     lg_conf["name"] = run_name
                 logger.append(hydra.utils.instantiate(lg_conf))
 
-    # -----------------------------Instantiate trainer---------------------------
+    # ------Step 8:--------------Instantiate trainer---------------------------
     targ_string = config_all["trainer"]._target_
     log.info(f"Instantiating trainer <{targ_string}>")
     trainer: pl.Trainer = hydra.utils.instantiate(
@@ -159,12 +165,12 @@ def train(
         _convert_="all",
     )
 
-    # -----------------------------Train model---------------------------
+    # -------Step 9:-----------------Train model---------------------------
     log.info("Training model")
     trainer.fit(model=task_wrapper, datamodule=datamodule)
 
-    # Save the model, datamodule, and simulator to the directory
-    log.info("Saving model, datamodules, and simulator")
+    # -------Step 10:----------Save model and datamodule---------------------------
+    log.info("Saving model and datamodule")
     SAVE_PATH = path_dict["trained_models"] / "task-trained"
 
     dir_path = os.path.join(SAVE_PATH, run_tag, subfolder, "")
@@ -177,7 +183,7 @@ def train(
     with open(path2, "wb") as f:
         pickle.dump(datamodule, f)
 
-    # -----------------------Instantiate sim datamodule---------------------------
+    # ------Step 11:------------Instantiate sim datamodule---------------------------
     log.info("Instantiating datamodule for neural simulation")
     sim_datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule_sim"], _convert_="all"
@@ -190,6 +196,7 @@ def train(
     sim_datamodule.prepare_data()
     sim_datamodule.setup()
 
+    # ------Step 12:------------Simulate neural data---------------------------
     simulator.simulate_neural_data(
         task_trained_model=task_wrapper,
         datamodule=sim_datamodule,
@@ -199,6 +206,7 @@ def train(
         seed=0,
     )
 
+    # ------Step 13:--------Save simulator and sim datamodule------------
     path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "simulator.pkl")
     with open(path3, "wb") as f:
         pickle.dump(simulator, f)

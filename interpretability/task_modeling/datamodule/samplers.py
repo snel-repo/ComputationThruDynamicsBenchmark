@@ -3,6 +3,8 @@ from torch.utils.data import BatchSampler
 
 
 class GroupedSampler(BatchSampler):
+    # This sampler yields batches of data grouped by trial type.
+    # This is useful for getting shared motifs on the MultiTask dataset
     def __init__(self, data_source, num_samples):
         self.dataset = data_source
         self.batch_size = num_samples

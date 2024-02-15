@@ -1,6 +1,4 @@
 _target_: interpretability.task_modeling.task_wrapper.task_wrapper.TaskTrainedWrapper
 
-state_label: fingertip
-
 learning_rate: 1.0e-3
 weight_decay: 0

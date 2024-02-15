@@ -24,32 +24,28 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_DSA_Comparison_LowerNoise_datagen"  # For WandB and run dir
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "MultiTaskTesting"  # For WandB and run dir
+TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
     model=dict(
-        latent_size=tune.grid_search([32, 64]),
+        latent_size=tune.grid_search([128]),
     ),
-    # datamodule=dict(
-    #     # Data Parameters -----------------------------------
-    #     n_samples=tune.choice([1000]),
-    #     batch_size=tune.choice([512]),
-    # ),
+    datamodule=dict(
+        # Data Parameters -----------------------------------
+        n_samples=tune.choice([200]),
+        batch_size=tune.choice([512]),
+    ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1500]),
-    ),
-    env_params=dict(
-        n=tune.grid_search([3, 4]),
-        noise=tune.grid_search([0.1]),
+        max_epochs=tune.choice([500]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
-        seed=tune.grid_search([0, 1]),
+        seed=tune.grid_search([0]),
     ),
 )
 

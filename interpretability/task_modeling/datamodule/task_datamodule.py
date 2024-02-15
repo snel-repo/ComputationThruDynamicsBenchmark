@@ -107,11 +107,14 @@ class TaskDataModule(pl.LightningDataModule):
         called by prepare_data. This method returns a dictionary
         with the following mandatory keys:
             inputs: The inputs to the model
+                (e.g., RNN inputs)
+            inputs_to_env: The inputs to the environment
+                (e.g., MotorNet bumps)
             targets: The targets for the model
                 (e.g., the outputs of the environment or MotorNet goal)
             ics: The initial conditions for the environment
-                (e.g., the start state for MotorNet)
-            conds: The conditions for the task
+                (e.g., the starting joint state for MotorNet)
+            conds: The condition of each trial
                 (e.g., which task in MultiTask)
             extra: Any extra data that is needed for training
                 (e.g., trial length for MultiTask)

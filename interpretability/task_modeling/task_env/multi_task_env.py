@@ -169,6 +169,7 @@ class MultiTaskWrapper(DecoupledEnvironment):
             # that isn't an input, target, or ic
             #   E.g. in Multi-task, it is the start and end index of
             #   the response phase (for loss weighting)
+            "inputs_to_env": np.zeros((n_samples * len(self.task_list), 0)),
             "extra": extra_ds,
             # ----------Optional------------------
             "phase_dict": phase_list,

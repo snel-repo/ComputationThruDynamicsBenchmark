@@ -9,9 +9,6 @@ import wandb
 # import PCA from sklearn.decomposition
 from sklearn.decomposition import PCA
 
-# plt.switch_backend("Agg")
-DATA_HOME = "/home/csverst/Documents/tempData/"
-
 
 def angle_diff(angle1, angle2):
     """
@@ -24,42 +21,11 @@ def angle_diff(angle1, angle2):
     Returns:
     float: The smallest angle between angle1 and angle2 in degrees.
     """
-    # Calculate the difference in angles and take modulo 360
     diff = (angle2 - angle1) % 2 * np.pi
-
-    # Adjust the difference to ensure it's the smallest angle
     if diff > np.pi:
         diff -= 2 * np.pi
 
     return abs(diff)
-
-
-def sigmoidActivation(module, input):
-    return 1 / (1 + module.exp(-1 * input))
-
-
-def apply_data_warp_sigmoid(data):
-    warp_functions = [sigmoidActivation, sigmoidActivation, sigmoidActivation]
-    firingMax = [2, 2, 2, 2]
-    numDims = data.shape[1]
-
-    a = np.array(1)
-    dataGen = type(a) == type(data)
-    if dataGen:
-        module = np
-    else:
-        module = torch
-
-    for i in range(numDims):
-
-        j = np.mod(i, len(warp_functions) * len(firingMax))
-        # print(f'Max firing {firingMax[np.mod(j, len(firingMax))]}
-        # warp {warp_functions[int(np.floor((j)/(len(warp_functions)+1)))]}')
-        data[:, i] = firingMax[np.mod(j, len(firingMax))] * warp_functions[
-            int(np.floor((j) / (len(warp_functions) + 1)))
-        ](module, data[:, i])
-
-    return data
 
 
 def fig_to_rgb_array(fig):
@@ -221,6 +187,8 @@ class StateTransitionScatterCallback(pl.Callback):
             figsize=(6, 2 * len(included_tasks)),
             sharex=False,
         )
+
+        # Get color mapping for phases
         color_dict = {
             "context": "k",
             "stim1": "r",
@@ -229,6 +197,8 @@ class StateTransitionScatterCallback(pl.Callback):
             "mem2": "purple",
             "response": "g",
         }
+
+        # Plot each trial types state transitions
         for trial_count, trial_type in enumerate(plot_dict.keys()):
             trial_num = plot_dict[trial_type]
             phase_trial = phase_dict[trial_num]
@@ -339,6 +309,7 @@ class MultiTaskPerformanceCallback(pl.Callback):
 
         logger = get_wandb_logger(trainer.loggers)
         percent_success = np.zeros(len(trainer.datamodule.data_env.task_list_str))
+
         # find indices where task_to_analyze is the task
         for task_num, task_to_analyze in enumerate(
             trainer.datamodule.data_env.task_list_str
@@ -364,9 +335,14 @@ class MultiTaskPerformanceCallback(pl.Callback):
 
             perf = np.zeros(len(task_phase_dict))
             perf_dist = np.ones(len(task_phase_dict))
+            no_respond_trial = np.zeros(len(task_phase_dict), dtype=bool)
+
+            # Iterate through task trials
             for i in range(len(task_phase_dict)):
                 response_edges = task_phase_dict[i]["response"]
                 response_len = response_edges[1] - response_edges[0]
+
+                # Compute average angle for the last 1/4 of the response period
                 response_val = tt_outputs[
                     i,
                     response_edges[0] + (3 * response_len // 4) : response_edges[1],
@@ -374,17 +350,25 @@ class MultiTaskPerformanceCallback(pl.Callback):
                 ]
                 mean_response = torch.mean(response_val, dim=0)
                 mean_angle = torch.atan2(mean_response[1], mean_response[0])
+
+                # Get the target angle
                 response_target = task_targets[
                     i, response_edges[0] + response_len // 2 : response_edges[1], 1:
                 ]
                 mean_target = torch.mean(response_target, dim=0)
                 mean_target_angle = torch.atan2(mean_target[1], mean_target[0])
+
+                # Compute the performance (angle difference)
                 perf[i] = angle_diff(mean_angle, mean_target_angle)
-                # if target is zero, check if response is zero
+
+                # if no response was correct, check if the response was close to 0
                 if torch.sum(np.abs(mean_target)) == 0:
+                    no_respond_trial[i] = True
                     perf_dist[i] = torch.sum(mean_response)
+
+            # Compute the percent success (angle < pi/10)
             flag_success_angle = perf < (np.pi / 10)
-            flag_success_noreport = perf_dist < 0.1
+            flag_success_noreport = np.logical_and(perf_dist < 0.1, no_respond_trial)
             flag_success = np.logical_or(flag_success_angle, flag_success_noreport)
             percent_success = np.sum(flag_success) / len(flag_success)
 

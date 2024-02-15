@@ -19,7 +19,6 @@ class TaskTrainedWrapper(pl.LightningModule):
         output_size=None,
         task_env: Env = None,
         model: nn.Module = None,
-        state_label: str = None,
     ):
         """Initialize the wrapper
 
@@ -36,8 +35,6 @@ class TaskTrainedWrapper(pl.LightningModule):
                 The environment to simulate
             model (nn.Module):
                 The model to train
-            state_label (str):
-                The name of the state variable to use for the loss (MotorNet only)
             loss_func (LossFunc):
                 The loss function to use
                 - see loss_func.py for examples
@@ -51,7 +48,6 @@ class TaskTrainedWrapper(pl.LightningModule):
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
 
-        self.state_label = state_label
         self.save_hyperparameters()
 
     def set_environment(self, task_env: Env):
@@ -63,6 +59,8 @@ class TaskTrainedWrapper(pl.LightningModule):
         )
         self.output_size = task_env.action_space.shape[0]
         self.loss_func = task_env.loss_func
+        if hasattr(task_env, "state_label"):
+            self.state_label = task_env.state_label
 
     def set_model(self, model: nn.Module):
         """Set the model for the training pipeline"""
@@ -78,7 +76,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         )
         return optimizer
 
-    def forward(self, ics, inputs, targets=None, inputs_to_env=None):
+    def forward(self, ics, inputs, inputs_to_env=None):
         """Pass data through the model
         args:
             ics (torch.Tensor):
@@ -92,59 +90,44 @@ class TaskTrainedWrapper(pl.LightningModule):
         """
         batch_size = ics.shape[0]
 
-        # If we are in a coupled environment, set the environment state
+        # If a coupled environment, set the environment state
         if self.task_env.coupled_env:
             options = {"ic_state": ics}
             env_states, info = self.task_env.reset(
                 batch_size=batch_size, options=options
             )
             env_state_list = []
+            joints = []  # Joint angles
         else:
             env_states = None
             env_state_list = None
 
-        # If the model has specialized initializations, call them
+        # Call initializations (if they exist)
         if hasattr(self.model, "init_hidden"):
             hidden = self.model.init_hidden(batch_size=batch_size).to(self.device)
         else:
             hidden = torch.zeros(batch_size, self.latent_size).to(self.device)
 
-        # Latents are the hidden states of the model
-        latents = []
-
-        # Controlled is what the model is attempting to control
-        # (i.e., hand position for MotorNet)
-        # or the readout output for decoupled environments
-        controlled = []
-
-        # Actions are the the model output themselves
-        # (i.e., the motor commands for MotorNet)
-        # or the readout output for decoupled environments
-        # NOTE: for decoupled environments, actions and controlled are the same
-        actions = []
-        joints = []
+        latents = []  # Latent activity of TT model
+        controlled = []  # Variable controlled by model
+        actions = []  # Actions taken by model (sometimes = controlled)
 
         count = 0
         terminated = False
         while not terminated and len(controlled) < self.task_env.n_timesteps:
 
-            # Get the appropriate model input for coupled and decoupled envs
+            # Build inputs to model
             if self.task_env.coupled_env:
-                # If we are in a coupled environment,
-                # both the environment state
-                # and the external inputs are fed into the model
                 model_input = torch.hstack((env_states, inputs[:, count, :]))
             else:
-                # If we are in a decoupled environment,
-                # only the external inputs are fed into the model
                 model_input = inputs[:, count, :]
 
             # Produce an action and a hidden state
             action, hidden = self.model(model_input, hidden)
 
-            # Update env if coupled
+            # Apply action to environment (for coupled)
             if self.task_env.coupled_env:
-                self.task_env.set_goal(targets[:, count, :])
+                # Apply external loads (if they exist)
                 if inputs_to_env is not None:
                     env_states, _, terminated, _, info = self.task_env.step(
                         action=action,
@@ -159,17 +142,14 @@ class TaskTrainedWrapper(pl.LightningModule):
                 joints.append(info["states"]["joint"])
                 actions.append(action)
                 env_state_list.append(env_states)
-
-            # If decoupled, just record the action
             else:
                 controlled.append(action)
                 actions.append(action)
 
-            # Record the hidden state
             latents.append(hidden)
             count += 1
 
-        # Stack into tensors
+        # Compile outputs
         controlled = torch.stack(controlled, dim=1)
         latents = torch.stack(latents, dim=1)
         actions = torch.stack(actions, dim=1)
@@ -199,7 +179,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         inputs_to_env = batch[6]
 
         # Pass data through the model
-        output_dict = self.forward(ics, inputs, targets, inputs_to_env)
+        output_dict = self.forward(ics, inputs, inputs_to_env)
 
         # Compute the weighted loss
         loss_dict = {
@@ -226,7 +206,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         inputs_to_env = batch[6]
 
         # Pass data through the model
-        output_dict = self.forward(ics, inputs, targets, inputs_to_env=inputs_to_env)
+        output_dict = self.forward(ics, inputs, inputs_to_env=inputs_to_env)
 
         # Compute the weighted loss
         loss_dict = {

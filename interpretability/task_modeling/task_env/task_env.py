@@ -191,6 +191,7 @@ class RandomTargetDelay(Environment):
         self.output_labels = ["Pec", "Delt", "Brad", "TriLong", "Biceps", "TriLat"]
         self.context_inputs = spaces.Box(low=-2, high=2, shape=(3,), dtype=np.float32)
         self.coupled_env = True
+        self.state_label = "fingertip"
 
         pos_weight = kwargs.get("pos_weight", 1.0)
         act_weight = kwargs.get("act_weight", 1.0)
