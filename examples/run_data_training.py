@@ -87,7 +87,7 @@ RUN_DIR = HOME_DIR / "runs" / "data-trained" / RUN_TAG
 path_dict = dict(
     tt_datasets=HOME_DIR / "datasets" / "tt",
     dt_datasets=HOME_DIR / "datasets" / "dt",
-    trained_models=HOME_DIR / "trained_models",
+    trained_models=HOME_DIR / "trained_models" / "data-trained",
 )
 
 
