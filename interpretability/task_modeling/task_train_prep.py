@@ -59,15 +59,15 @@ def train(
     if "params" in overrides:
         if "seed" in overrides["params"]:
             pl.seed_everything(overrides["params"]["seed"], workers=True)
-            config_all["datamodule_train"]["seed"] = overrides["params"]["seed"]
+            config_all["datamodule_task"]["seed"] = overrides["params"]["seed"]
             config_all["datamodule_sim"]["seed"] += overrides["params"]["seed"]
         else:
             pl.seed_everything(0, workers=True)
     # Set shared params for both the task and sim envs
     if "env_params" in overrides:
         for k, v in overrides["env_params"].items():
-            config_all["task_env"][k] = v
-            config_all["sim_env"][k] = v
+            config_all["env_task"][k] = v
+            config_all["env_sim"][k] = v
 
     # Order of operations:
     # 1. Instantiate environments
@@ -91,10 +91,10 @@ def train(
 
     # -----Step 1:----------------Instantiate environments----------------------------
     log.info("Instantiating environment")
-    task_env: Env = hydra.utils.instantiate(config_all["task_env"], _convert_="all")
+    task_env: Env = hydra.utils.instantiate(config_all["env_task"], _convert_="all")
 
     log.info("Instantiating environment for neural simulation")
-    sim_env: Env = hydra.utils.instantiate(config_all["sim_env"], _convert_="all")
+    sim_env: Env = hydra.utils.instantiate(config_all["env_sim"], _convert_="all")
 
     # -----Step 2:-----------------Instantiate model--------------------------------
     log.info(f"Instantiating model <{config_all['model']._target_}")
@@ -116,7 +116,7 @@ def train(
     # -----Step 4:----------------Instantiate datamodule----------------------------
     log.info("Instantiating datamodule for training")
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
-        config_all["datamodule_train"], _convert_="all"
+        config_all["datamodule_task"], _convert_="all"
     )
     datamodule.set_environment(data_env=task_env)
 

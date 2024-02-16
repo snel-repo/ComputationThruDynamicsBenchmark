@@ -185,7 +185,7 @@ class RasterPlot(pl.Callback):
             return
         # Get data samples
         dataloader = trainer.datamodule.val_dataloader()
-        spikes, _, inputs, latents, inds, rates = next(iter(dataloader))
+        spikes, _, inputs, extras, latents, inds, rates = next(iter(dataloader))
         spikes = spikes.to(pl_module.device)
         inputs = inputs.to(pl_module.device)
         # Compute model output
@@ -310,10 +310,12 @@ class LatentRegressionPlot(pl.Callback):
                 batch[0].to(pl_module.device), batch[2].to(pl_module.device)
             )
 
-        true_latents = torch.cat([batch[3] for batch in val_dataloader])
+        true_latents = torch.cat([batch[4] for batch in val_dataloader])
         true_latents = true_latents.to(pl_module.device)
         pred_latents = [batch_fwd(pl_module, batch)[1] for batch in val_dataloader]
         pred_latents = torch.cat(pred_latents)
+        B, T, N = true_latents.shape
+        true_latents = true_latents.reshape(B * T, N)
         regr_latents = linear_regression(true_latents, pred_latents)
         # Convert latents to numpy
         pred_latents = pred_latents.detach().cpu().numpy()
@@ -371,10 +373,10 @@ class WarpingVisualizationPlot(pl.Callback):
         val_dataloader = trainer.datamodule.val_dataloader()
         readout = trainer.datamodule.readout
 
-        true_rates = torch.cat([batch[5] for batch in val_dataloader])
+        true_rates = torch.cat([batch[6] for batch in val_dataloader])
         true_rates = true_rates.detach().cpu().numpy()
 
-        true_latents = torch.cat([batch[3] for batch in val_dataloader])
+        true_latents = torch.cat([batch[4] for batch in val_dataloader])
         true_latents = true_latents.detach().cpu().numpy()
         num_neurons = true_rates.shape[2]
         num_latents = true_latents.shape[2]
@@ -429,7 +431,7 @@ class TrajectoryPlotOverTimeCallback(pl.Callback):
         # Get trajectories and model predictions
         dataloader = trainer.datamodule.val_dataloader()
 
-        spikes, _, inputs, latents, _, rates = next(iter(dataloader))
+        spikes, _, inputs, extra, latents, _, rates = next(iter(dataloader))
         spikes = spikes.to(pl_module.device)
         inputs = inputs.to(pl_module.device)
         # Compute model output
@@ -479,7 +481,7 @@ class AvgFiringRateCallback(pl.Callback):
         # Get trajectories and model predictions
         dataloader = trainer.datamodule.val_dataloader()
 
-        _, _, inputs, latents, _, rates = next(iter(dataloader))
+        _, _, inputs, extra, latents, _, rates = next(iter(dataloader))
         # Plot the true and predicted trajectories
         fig, ax = plt.subplots()
 
@@ -525,7 +527,7 @@ class RateLatentMatchCallback(pl.Callback):
         e_rates, m_rates, l_rates = torch.chunk(rates, 3, dim=1)
         latents = torch.cat([batch_fwd(pl_module, batch)[1] for batch in dataloader])
         e_latents, m_latents, l_latents = torch.chunk(latents, 3, dim=1)
-        true_latents = torch.cat([batch[3] for batch in dataloader]).to(
+        true_latents = torch.cat([batch[4] for batch in dataloader]).to(
             pl_module.device
         )
         e_true_latents, m_true_latents, l_true_latents = torch.chunk(
@@ -582,7 +584,7 @@ class InputsPlot(pl.Callback):
         # Get inputs for plotting
         dataloader = trainer.datamodule.val_dataloader()
         batch = next(iter(dataloader))
-        spikes, recon, inputs, end_inds, set_inds, conds = batch
+        spikes, _, inputs, extra, latents, _, rates = batch
         n_inputs = inputs.shape[2]
 
         # Create subplots

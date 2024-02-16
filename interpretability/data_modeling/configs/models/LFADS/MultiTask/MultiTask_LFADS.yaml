@@ -5,8 +5,8 @@ gen_type: RNN
 inv_encoder: False
 encod_data_dim: 50
 encod_seq_len: 640
-recon_seq_len: 200
-ext_input_dim: 18 # Ext. Inputs
+recon_seq_len: 640
+ext_input_dim: 20 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 128 # Encoder for latent ICs hidden units
 ci_enc_dim: 0 # Controller encoder dimensionality
@@ -39,6 +39,7 @@ train_aug_stack:
       cd_rate: 0.3
       cd_pass_rate: 0.0
       ic_enc_seq_len: ${ic_enc_seq_len}
+    - _target_: interpretability.data_modeling.models.LFADS.modules.augmentations.MultiTaskTrialLengthMasking
   batch_order: [0]
   loss_order: [0]
 infer_aug_stack:
@@ -49,6 +50,7 @@ infer_aug_stack:
       encod_data_dim: ${encod_data_dim}
       encod_seq_len: ${encod_seq_len}
       scale_by_quadrant: False
+    - _target_: interpretability.data_modeling.models.LFADS.modules.augmentations.MultiTaskTrialLengthMasking
   loss_order: [0]
 
 # --------- priors / posteriors --------- #

@@ -1,7 +1,5 @@
-import numpy as np
 import pytorch_lightning as pl
 import torch
-import torch.nn.functional as F
 from torch import nn
 
 from interpretability.data_modeling.models.SAE.readouts import (
@@ -163,40 +161,12 @@ class NODELatentSAE(pl.LightningModule):
         spikes, recon_spikes, inputs, *_ = batch
         # Pass data through the model
         pred_logrates, pred_latents = self.forward(spikes, inputs)
-        total_points = pred_logrates.shape[1]
 
-        # Prepare the loss for incremental addition of points
-        if self.hparams.increment_trial:
-            group_number = int(self.current_epoch / self.hparams.epochs_per_group) + 1
-            num_points = min(group_number * self.hparams.points_per_group, total_points)
-            self.log("train/num_points", num_points)
-            pred_logrates = pred_logrates[:, :num_points, :]
-            recon_spikes = recon_spikes[:, :num_points, :]
         # Compute the weighted loss
-        loss_nll = F.poisson_nll_loss(pred_logrates, recon_spikes, reduction="none")
-
-        if self.hparams.dataset == "dmfc" or self.hparams.dataset == "malfoy":
-            weight1 = torch.ones_like(loss_nll)
-            _, _, _, end_idx, *_ = batch
-            end_idx = end_idx.detach().cpu().numpy().astype(int)
-            # Consider only as many points in loss as trial length
-            for i in range(len(end_idx)):
-                end1 = np.min([end_idx[i], loss_nll.shape[1]])
-                weight1[i, end1:, :] = 0
-                weight1[i, :, :] = weight1[i, :, :] / end_idx[i]
-            weight1 = weight1.to(self.device)
-            loss_nll = loss_nll * weight1
+        loss_nll = self.loss_func(pred_logrates, recon_spikes, inputs)
 
         loss_all_train = torch.mean(loss_nll)
         self.log("train/loss_all_train", loss_all_train)
-        if self.readout_type == "LipschitzFlow":
-            lip_loss_wt = torch.tensor(1e-6).to(self.device)
-            loss_lipschitz = lip_loss_wt * self.readout.lipschitz_loss_term().to(
-                self.device
-            )
-            loss_lipschitz = loss_lipschitz.to(self.device)
-            self.log("train/loss_lipschitz", loss_lipschitz)
-            loss_all_train += loss_lipschitz
 
         return loss_all_train
 
@@ -214,36 +184,7 @@ class NODELatentSAE(pl.LightningModule):
             # Pass data through the model
             pred_logrates, latents = self.forward(spikes, inputs)
 
-        total_points = pred_logrates.shape[1]
-        if self.hparams.increment_trial:
-            group_number = int(self.current_epoch / self.hparams.epochs_per_group) + 1
-            num_points = min(group_number * self.hparams.points_per_group, total_points)
-            self.log("valid/num_points", num_points)
-            pred_logrates = pred_logrates[:, :num_points, :]
-            recon_spikes = recon_spikes[:, :num_points, :]
-        loss_nll = F.poisson_nll_loss(pred_logrates, recon_spikes, reduction="none")
+        loss = self.loss_fun(pred_logrates, recon_spikes, inputs)
+        self.log("valid/loss_all", loss)
 
-        if self.hparams.dataset == "dmfc" or self.hparams.dataset == "malfoy":
-            weight1 = torch.ones_like(loss_nll)
-            _, _, _, end_idx, *_ = batch
-            end_idx = end_idx.detach().cpu().numpy().astype(int)
-            # Consider only as many points in loss as trial length
-            for i in range(len(end_idx)):
-                end1 = np.min([end_idx[i], loss_nll.shape[1]])
-                weight1[i, end1:, :] = 0
-                weight1[i, :, :] = weight1[i, :, :] / end_idx[i]
-            weight1 = weight1.to(self.device)
-            loss_nll = loss_nll * weight1
-
-        loss_all_train = torch.mean(loss_nll)
-        self.log("valid/loss_all", loss_all_train)
-        if self.readout_type == "LipschitzFlow":
-            lip_loss_wt = torch.tensor(1e-6).to(loss_all_train.device)
-            loss_lipschitz = lip_loss_wt * self.readout.lipschitz_loss_term().to(
-                self.device
-            )
-            loss_lipschitz = loss_lipschitz.to(loss_all_train.device)
-            self.log("valid/loss_lipschitz", loss_lipschitz)
-            loss_all_train += loss_lipschitz
-
-        return loss_all_train
+        return loss

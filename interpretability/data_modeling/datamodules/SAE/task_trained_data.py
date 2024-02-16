@@ -34,26 +34,17 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         self.save_hyperparameters()
         self.seed = seed
         self.data_dir = os.path.join(HOME_DIR, "datasets", "dt")
-        if prefix is None:
-            filename = (
-                f"{system}_"
-                f"model_{gen_model}_"
-                f"n_neurons_{n_neurons}_"
-                f"nonlin_embed_{nonlin_embed}_"
-                f"obs_noise_{obs_noise}_"
-                f"seed_{seed}.h5"
-            )
-        else:
-            filedir = (
-                f"{prefix}_"
-                f"{system}_"
-                f"model_{gen_model}_"
-                f"n_neurons_{n_neurons}_"
-                f"seed_{seed}"
-            )
-            fpath = os.path.join(self.data_dir, filedir)
-            dirs = os.listdir(fpath)
-            filename = dirs[0]
+
+        filedir = (
+            f"{prefix}_"
+            f"{system}_"
+            f"model_{gen_model}_"
+            f"n_neurons_{n_neurons}_"
+            f"seed_{seed}"
+        )
+        fpath = os.path.join(self.data_dir, filedir)
+        dirs = os.listdir(fpath)
+        filename = dirs[0]
 
         self.name = os.path.join(filename)
         self.fpath = filedir
@@ -93,19 +84,27 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
             self.orig_std = h5file["orig_std"][()]
             self.readout = h5file["readout"][()]
 
-            self.train_inputs = h5file["train_inputs"][()]
-            self.valid_inputs = h5file["valid_inputs"][()]
+            train_inputs = h5file["train_inputs"][()]
+            valid_inputs = h5file["valid_inputs"][()]
+
+            train_extra = h5file["train_extra"][()]
+            valid_extra = h5file["valid_extra"][()]
+
             # self.test_inputs = h5file["test_inputs"][()]
 
-        train_inputs = to_tensor(self.train_inputs)
-        valid_inputs = to_tensor(self.valid_inputs)
-        # test_inputs = to_tensor(self.test_inputs)
+        train_inputs = to_tensor(train_inputs)
+        valid_inputs = to_tensor(valid_inputs)
+
+        train_extra = to_tensor(train_extra)
+        valid_extra = to_tensor(valid_extra)
+
         if self.hparams.provide_inputs:
             # Store datasets
             self.train_ds = TensorDataset(
                 train_data,
                 train_data,
                 train_inputs,
+                train_extra,
                 train_latents,
                 train_inds,
                 train_activity,
@@ -115,6 +114,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
                 valid_data,
                 valid_data,
                 valid_inputs,
+                valid_extra,
                 valid_latents,
                 valid_inds,
                 valid_activity,
@@ -124,6 +124,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
                 train_data,
                 train_data,
                 None,
+                train_extra,
                 train_latents,
                 train_inds,
                 train_activity,
@@ -133,6 +134,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
                 valid_data,
                 valid_data,
                 None,
+                valid_extra,
                 valid_latents,
                 valid_inds,
                 valid_activity,

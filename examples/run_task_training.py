@@ -20,28 +20,28 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
 
 # ---------------Options---------------
-LOCAL_MODE = False  # Set to True to run locally (for debugging)
+LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "MultiTaskTesting"  # For WandB and run dir
-TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "RandomTargetDelay_GRU_RNN_Final"  # For WandB and run dir
+TASK = "RandomTargetDelay"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     # Model Parameters -----------------------------------
-    model=dict(
-        latent_size=tune.grid_search([128]),
-    ),
-    datamodule=dict(
-        # Data Parameters -----------------------------------
-        n_samples=tune.choice([200]),
-        batch_size=tune.choice([512]),
-    ),
+    # model=dict(
+    #     latent_size=tune.grid_search([64]),
+    # ),
+    # datamodule=dict(
+    #     # Data Parameters -----------------------------------
+    #     n_samples=tune.choice([10]),
+    #     batch_size=tune.choice([512]),
+    # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([500]),
+        max_epochs=tune.choice([2500]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
@@ -73,11 +73,11 @@ RUN_DIR = HOME_DIR / "runs" / "task-trained" / RUN_TAG
 # -----------------Default Parameter Sets -----------------------------------
 config_dict = dict(
     task_wrapper=Path(f"configs/task_wrapper/{TASK}.yaml"),
-    task_env=Path(f"configs/task_env/{TASK}.yaml"),
-    sim_env=Path(f"configs/sim_env/{TASK}.yaml"),
-    model=Path(f"configs/model/{MODEL}.yaml"),
-    datamodule_train=Path(f"configs/datamodule_train/datamodule_{TASK}.yaml"),
+    env_task=Path(f"configs/env_task/{TASK}.yaml"),
+    env_sim=Path(f"configs/env_sim/{TASK}.yaml"),
+    datamodule_task=Path(f"configs/datamodule_train/datamodule_{TASK}.yaml"),
     datamodule_sim=Path(f"configs/datamodule_sim/datamodule_{TASK}.yaml"),
+    model=Path(f"configs/model/{MODEL}.yaml"),
     simulator=Path(f"configs/simulator/default_{TASK}.yaml"),
     callbacks=Path(f"configs/callbacks/default_{TASK}.yaml"),
     loggers=Path("configs/logger/default.yaml"),

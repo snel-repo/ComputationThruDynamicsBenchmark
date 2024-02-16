@@ -1,5 +1,6 @@
 import os
 
+import dotenv
 import h5py
 import numpy as np
 import pytorch_lightning as pl
@@ -10,15 +11,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from .tuples import SessionBatch
 
+dotenv.load_dotenv(override=True)
+
 MANDATORY_KEYS = {
     "train": ["encod_data", "recon_data"],
     "valid": ["encod_data", "recon_data"],
     "test": ["encod_data", "recon_data"],
 }
-DATA_HOME = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
-    "interpretability/data_modeling/datasets"
-)
+HOME_DIR = os.environ.get("HOME_DIR")
 
 
 def to_tensor(array):
@@ -143,14 +143,20 @@ class BasicDataModule(pl.LightningDataModule):
             reshuffle_tv_seed is None or len(attr_keys) == 0
         ), "Dataset reshuffling is incompatible with the `attr_keys` argument."
         super().__init__()
-        filename = (
+
+        filedir = (
             f"{prefix}_"
             f"{system}_"
             f"model_{gen_model}_"
             f"n_neurons_{n_neurons}_"
-            f"seed_{seed}.h5"
+            f"seed_{seed}"
         )
-        self.fpath = os.path.join(DATA_HOME, filename)
+        data_dir = os.path.join(HOME_DIR, "datasets", "dt")
+        fpath = os.path.join(data_dir, filedir)
+        dirs = os.listdir(fpath)
+        filename = dirs[0]
+
+        self.fpath = os.path.join(fpath, filename)
         self.save_hyperparameters()
 
     def setup(self, stage=None):

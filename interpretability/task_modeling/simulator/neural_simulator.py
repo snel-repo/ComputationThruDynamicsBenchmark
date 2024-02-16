@@ -61,9 +61,9 @@ class NeuralDataSimulator:
 
         ics = torch.Tensor(all_data["ics"])
         inputs = torch.Tensor(all_data["inputs"])
-        targets = torch.Tensor(all_data["targets"])
+        extra = torch.Tensor(all_data["extra"])
 
-        output_dict = task_trained_model(ics, inputs, targets)
+        output_dict = task_trained_model(ics, inputs)
 
         latents = output_dict["latents"]
 
@@ -91,7 +91,7 @@ class NeuralDataSimulator:
             # Make random permutation of latents
             rng = np.random.default_rng(seed)
             # get random permutation indices
-            num_stacks = np.ceil(n_lat_dim / self.n_neurons) + 1
+            num_stacks = np.ceil(self.n_neurons / n_lat_dim)
             for i in range(int(num_stacks)):
                 perm_inds_stack = rng.permutation(n_lat_dim)
                 if i == 0:
@@ -176,6 +176,9 @@ class NeuralDataSimulator:
 
             h5file.create_dataset("train_latents", data=latents[train_inds])
             h5file.create_dataset("valid_latents", data=latents[valid_inds])
+
+            h5file.create_dataset("train_extra", data=extra[train_inds])
+            h5file.create_dataset("valid_extra", data=extra[valid_inds])
             # h5file.create_dataset("test_latents", data=latents[test_inds])
 
             h5file.create_dataset("train_inds", data=train_inds)

@@ -7,9 +7,12 @@ encoder_window: -1
 heldin_size: 50
 heldout_size: 50
 latent_size: 128
-input_size: 3
+input_size: 20
 
 weight_decay: 0
 lr: 5e-3
 
 dropout: 0.05
+
+loss_func:
+  _target_: interpretability.data_modeling.models.SAE.loss_func.MultiTaskPoissonLossFunc

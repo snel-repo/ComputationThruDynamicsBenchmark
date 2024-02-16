@@ -26,22 +26,22 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_Comparison_1"
+RUN_DESC = "MultiTask_LFADS_testing"
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"
-MODEL = "GRU_RNN"
-DATA = "NBFF"
+MODEL_CLASS = "LFADS"
+MODEL = "LFADS"
+DATA = "MultiTask"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
-    model=dict(
-        latent_size=tune.grid_search([128]),
-    ),
+    # model=dict(
+    #     latent_size=tune.grid_search([128]),
+    # ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240213_NBFF_ColabTesting3"]),
+        prefix=tune.grid_search(["20240215_MultiTask_GRU_RNN_Test"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),

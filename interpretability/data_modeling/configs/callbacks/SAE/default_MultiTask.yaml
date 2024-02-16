@@ -17,10 +17,6 @@ trajectory_plot_callback:
   _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.TrajectoryPlot
   log_every_n_epochs: 100
 
-latent_regression_plot_callback:
-  _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.LatentRegressionPlot
-  log_every_n_epochs: 100
-
 trajectory_callback:
   _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.TrajectoryPlotOverTimeCallback
   log_every_n_epochs: 100

@@ -158,6 +158,26 @@ class CoordinatedDropout:
         self.grad_masks = []
 
 
+class MultiTaskTrialLengthMasking:
+    def __init__(self):
+        pass
+
+    def process_batch(self, batch):
+        return batch
+
+    def process_losses(self, recon_loss, batch, log_fn, data_split):
+        # Mask the recon loss to the length of the trial
+        _, _, _, extra, *_ = batch
+        trial_lens = extra[:, 1]
+        trial_mask = torch.ones_like(recon_loss)
+        for i, trial_len in enumerate(trial_lens):
+            trial_mask[i, trial_len:] = 0
+        # normalize so trials are weighted equally
+        trial_mask = trial_mask / trial_lens.float().mean()
+        recon_loss = recon_loss * trial_mask
+        return recon_loss
+
+
 class SampleValidation:
     def __init__(self, sv_rate, ic_enc_seq_len, recon_reduce_mean):
         self.sv_rate = sv_rate
