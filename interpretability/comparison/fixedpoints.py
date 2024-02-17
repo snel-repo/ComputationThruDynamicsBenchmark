@@ -68,7 +68,7 @@ def find_fixed_points(
         # Compute q and dq for the current states
         x_store[:, iter_count - 1, :] = states.cpu().detach().numpy()
         q_store[:, iter_count - 1] = q_prev.cpu().detach().numpy()
-        _, F = model.model(inputs, states)
+        F = model(inputs, states)
         q = 0.5 * torch.sum((F.squeeze() - states.squeeze()) ** 2, dim=1)
         dq = torch.abs(q - q_prev)
         q_scalar = torch.mean(q)
@@ -112,7 +112,7 @@ def find_fixed_points(
         # Compute the Jacobian for each fixed point
         def J_func(model, inputs_, x):
             # This function takes both the additional inputs and the state.
-            _, F = model(inputs_, x)
+            F = model(inputs_, x)
             return F.squeeze()
 
         def compute_jacobians_func(model, inputs, x_data):
@@ -130,7 +130,7 @@ def find_fixed_points(
 
             return all_J
 
-        all_J = compute_jacobians_func(model.model, inputs, all_fps.xstar)
+        all_J = compute_jacobians_func(model, inputs, all_fps.xstar)
         # Recombine and decompose Jacobians for the whole batch
         if all_J:
             dFdx = torch.stack(all_J).cpu().detach().numpy()
@@ -269,7 +269,7 @@ def find_fixed_points_dt(
 
             return all_J
 
-        all_J = compute_jacobians_func(model.model, inputs, all_fps.xstar)
+        all_J = compute_jacobians_func(model, inputs, all_fps.xstar)
         # Recombine and decompose Jacobians for the whole batch
         if all_J:
             dFdx = torch.stack(all_J).cpu().detach().numpy()

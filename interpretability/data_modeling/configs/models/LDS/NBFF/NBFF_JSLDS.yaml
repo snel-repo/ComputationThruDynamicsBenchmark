@@ -1,0 +1,39 @@
+_target_: lfads_jslds.model.lfads_jslds_model
+
+data_dim: 50
+ntimesteps: 500
+ii_dim: 3
+batch_size: 64
+fp_reg: 10.0
+out_nl_reg: 1.0
+out_staylor_reg: 1.0
+taylor_reg: 1.0
+enc_dim: 128
+con_dim: 128
+gen_dim: 64
+factors_dim: 10
+mlp_nlayers: 2
+mlp_n: 64
+var_min: 0.001
+l2reg: 0.00002
+ic_prior_var: 0.1
+prior: "ar"
+ar_mean: 0.0
+ar_autocorrelation_tau: 1e-10
+ar_noise_variance: 0.1
+
+num_batches: 25000
+print_every: 200
+
+step_size: 0.001
+decay_factor: 0.9999
+decay_steps: 1
+
+keep_rate: 0.98
+
+max_grad_norm: 5.0
+
+kl_warmup_start: 500.0
+kl_warmup_end: 1000.0
+kl_min: 0.00
+kl_max: 1.0

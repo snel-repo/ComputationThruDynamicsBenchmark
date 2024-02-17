@@ -110,7 +110,7 @@ class Analysis_TT(Analysis):
             latents = self.get_latents()
 
         fps = find_fixed_points(
-            model=self.wrapper,
+            model=self.wrapper.model.cell,
             state_trajs=latents,
             inputs=inputs,
             n_inits=n_inits,
@@ -170,7 +170,9 @@ class Analysis_TT(Analysis):
                 lats_pca[i, :, 1],
                 lats_pca[i, :, 2],
             )
+        ax.set_title("tt_Fixed Points")
         plt.show()
+        plt.savefig(f"tt_fps_{self.run_name}.png")
 
     def simulate_neural_data(self):
         self.simulator.simulate_neural_data(

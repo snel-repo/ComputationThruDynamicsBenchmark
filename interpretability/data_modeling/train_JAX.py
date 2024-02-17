@@ -2,11 +2,11 @@ import logging
 import os
 import pickle
 from pathlib import Path
-from typing import List
 
 import dotenv
 import hydra
 import pytorch_lightning as pl
+from jax.lib import xla_bridge
 
 from interpretability.data_modeling.extensions.SAE.utils import flatten
 
@@ -15,12 +15,14 @@ dotenv.load_dotenv(override=True)
 log = logging.getLogger(__name__)
 
 
-def train(
+def train_JAX(
     overrides: dict = {},
     config_dict: dict = {},
     path_dict: str = "",
     run_tag: str = "",
 ):
+    print("XXXXXXXXXXXXXXXXXXXXXXXX")
+    print(xla_bridge.get_backend().platform_version)
     compose_list = config_dict.keys()
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()
@@ -51,55 +53,12 @@ def train(
         pl.seed_everything(overrides["params"]["seed"], workers=True)
         if "seed" in config_all["datamodule"]:
             config_all["datamodule"]["seed"] = overrides["params"]["seed"]
-        if "obs_dim" in overrides["params"]:
-            config_all["datamodule"]["obs_dim"] = overrides["params"]["obs_dim"]
-            config_all["model"]["heldin_size"] = overrides["params"]["obs_dim"]
-            config_all["model"]["heldout_size"] = overrides["params"]["obs_dim"]
-        if "lr_all" in overrides["params"]:
-            config_all["model"]["lr_readout"] = overrides["params"]["lr_all"]
-            config_all["model"]["lr_encoder"] = overrides["params"]["lr_all"]
-            config_all["model"]["lr_decoder"] = overrides["params"]["lr_all"]
-        if "decay_all" in overrides["params"]:
-            config_all["model"]["decay_readout"] = overrides["params"]["decay_all"]
-            config_all["model"]["decay_encoder"] = overrides["params"]["decay_all"]
-            config_all["model"]["decay_decoder"] = overrides["params"]["decay_all"]
-
     else:
         pl.seed_everything(0, workers=True)
 
     # --------------------------Instantiate datamodule-------------------------------
     log.info("Instantiating datamodule")
-    datamodule: pl.LightningDataModule = hydra.utils.instantiate(
-        config_all["datamodule"], _convert_="all"
-    )
-
-    # ---------------------------Instantiate callbacks---------------------------
-    callbacks: List[pl.Callback] = []
-    if "callbacks" in config_all:
-        for _, cb_conf in config_all["callbacks"].items():
-            if "_target_" in cb_conf:
-                log.info(f"Instantiating callback <{cb_conf._target_}>")
-                callbacks.append(hydra.utils.instantiate(cb_conf, _convert_="all"))
-
-    # -----------------------------Instantiate loggers----------------------------
-    flat_list = flatten(overrides).items()
-    run_list = []
-    for k, v in flat_list:
-        if type(v) == float:
-            v = "{:.2E}".format(v)
-        k_list = k.split(".")
-        run_list.append(f"{k_list[-1]}={v}")
-    run_name = "_".join(run_list)
-
-    logger: List[pl.LightningLoggerBase] = []
-    if "loggers" in config_all:
-        for _, lg_conf in config_all["loggers"].items():
-            if "_target_" in lg_conf:
-                log.info(f"Instantiating logger <{lg_conf._target_}>")
-                if lg_conf._target_ == "pytorch_lightning.loggers.WandbLogger":
-                    lg_conf["group"] = run_tag
-                    lg_conf["name"] = run_name
-                logger.append(hydra.utils.instantiate(lg_conf))
+    datamodule = hydra.utils.instantiate(config_all["datamodule"], _convert_="all")
 
     # ------------------------------Instantiate model--------------------------------
     log.info(f"Instantiating model <{config_all['model']._target_}")
@@ -109,16 +68,15 @@ def train(
     # -----------------------------Instantiate trainer---------------------------
     targ_string = config_all["trainer"]._target_
     log.info(f"Instantiating trainer <{targ_string}>")
-    trainer: pl.Trainer = hydra.utils.instantiate(
+    trainer = hydra.utils.instantiate(
         config_all["trainer"],
-        logger=logger,
-        callbacks=callbacks,
-        accelerator="auto",
         _convert_="all",
     )
+    trainer.set_model_and_data(model, datamodule)
+
     # -----------------------------Train the model-------------------------------
     log.info("Starting training")
-    trainer.fit(model=model, datamodule=datamodule)
+    trainer.train()
 
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory

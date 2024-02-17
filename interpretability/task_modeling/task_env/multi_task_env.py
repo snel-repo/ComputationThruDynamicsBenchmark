@@ -183,6 +183,210 @@ class MultiTaskWrapper(DecoupledEnvironment):
             task.plot_trial()
 
 
+class MultiTaskWrapperGeneralize(DecoupledEnvironment):
+    """
+    An environment for the MultiTask dataset (Driscol et al. 2021).
+    15 tasks are available: Select which ones to include in the
+    task_env config file.
+
+    """
+
+    def __init__(
+        self,
+        task_list: list,
+        bin_size: int,
+        n_timesteps: int,
+        num_targets: int,
+        noise: float,
+        grouped_sampler: bool = False,
+        dataset_name="MultiTask",
+        task_to_test: str = "MemAnti",
+    ):
+        """
+        Args:
+            task_list: List of task names to include in the dataset
+            bin_size: Bin size of the dataset (default = 20 ms)
+            n_timesteps: Number of timesteps in the dataset (Default = 640 maximum)
+            num_targets: Number of targets in each task (Default = 32)
+            noise: Noise level of the dataset (Default = 0.31)
+            grouped_sampler: Whether to use a grouped sampler or a random sampler
+            - Grouped sampler: Samples tasks in groups by minibatch
+                May be necessary for shared motifs?
+            - Random sampler: Samples tasks randomly by minibatch
+            dataset_name: Name of the dataset
+            - Default = "MultiTask"
+        """
+        # TODO: Seed environment
+        self.n_timesteps = n_timesteps
+        self.dataset_name = dataset_name
+        self.bin_size = bin_size
+
+        # Iterate through the task list and create a list of MultiTask objects
+        self.task_list = [
+            MultiTask(
+                task, bin_size=self.bin_size, num_targets=num_targets, noise=noise
+            )
+            for task in task_list
+        ]
+
+        # Create a string of the task list for the dataset name
+        self.task_list_str = task_list
+
+        # Create the action, observation, and goal spaces
+        self.action_space = spaces.Box(low=-1.5, high=1.5, shape=(3,), dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=-1.5, high=1.5, shape=(20,), dtype=np.float32
+        )
+        self.context_inputs = spaces.Box(
+            low=-1.5, high=1.5, shape=(0,), dtype=np.float32
+        )
+
+        # Labels for the inputs and outputs
+        self.input_labels = [
+            "Fixation",
+            "StimMod1Cos",
+            "StimMod1Sin",
+            "StimMod2Cos",
+            "StimMod2Sin",
+            "DelayPro",
+            "MemoryPro",
+            "ReactPro",
+            "DelayAnti",
+            "MemoryAnti",
+            "ReactAnti",
+            "IntMod1",
+            "IntMod2",
+            "ContextIntMod1",
+            "ContextIntMod2",
+            "IntMultimodal",
+            "ReactMatch2Sample",
+            "ReactNonMatch2Sample",
+            "ReactCatPro",
+            "ReactCatAnti",
+        ]
+
+        self.output_labels = [
+            "Fixation",
+            "ResponseCos",
+            "ResponseSin",
+        ]
+        self.noise = noise
+        self.coupled_env = False
+        self.extra = "phase_dict"
+        if grouped_sampler:
+            self.sampler = GroupedSampler
+        else:
+            self.sampler = RandomSampler
+        self.loss_func = MultiTaskLoss()
+
+    def step(self, action):
+        pass
+
+    def reset(self):
+        pass
+
+    def generate_dataset(self, n_samples):
+        """
+        Generates a dataset for the MultiTask dataset
+        """
+        n_timesteps = self.n_timesteps
+        ics_ds = np.zeros(shape=(n_samples * len(self.task_list), 3))
+        outputs_ds = []
+        inputs_ds = []
+        true_inputs_ds = []
+        phase_list = []
+        task_names = []
+        conds_ds = []
+        extra_ds = []
+
+        delay_vec = np.zeros((n_samples, 1))
+        delay_vec[5] = 1
+        delay_vec[8] = 1
+
+        memory_vec = np.zeros((n_samples, 1))
+        memory_vec[6] = 1
+        memory_vec[9] = 1
+
+        react_vec = np.zeros((n_samples, 1))
+        react_vec[7] = 1
+        react_vec[10] = 1
+
+        pro_vec = np.zeros((n_samples, 1))
+        pro_vec[5] = 1
+        pro_vec[6] = 1
+        pro_vec[7] = 1
+
+        anti_vec = np.zeros((n_samples, 1))
+        anti_vec[8] = 1
+        anti_vec[9] = 1
+        anti_vec[10] = 1
+
+        # MemoryAnti = MemoryPro - ProVec + AntiVec
+        memory_pro = np.zeros((n_samples, 1))
+        memory_pro[6] = 1
+
+        memory_anti = memory_pro - pro_vec + anti_vec
+
+        # Iterate through the task list and generate trials
+        for task_num, task in enumerate(self.task_list):
+            inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
+            true_inputs_task = np.zeros(shape=(n_samples, n_timesteps, 20))
+            outputs_task = np.zeros(shape=(n_samples, n_timesteps, 3))
+            extra_task = np.zeros(shape=(n_samples, 2))
+            for i in range(n_samples):
+                (
+                    inputs_noise,
+                    outputs,
+                    phase_dict,
+                    task_name,
+                    inputs,
+                ) = task.generate_trial()
+                inputs_noise_temp = np.zeros_like(inputs_noise)
+                inputs_noise_temp[:, 6:] = memory_anti[6:]
+                trial_len = inputs_noise.shape[0]
+                outputs_task[i, :trial_len, :] = outputs
+                inputs_task[i, :trial_len, :] = inputs_noise
+                true_inputs_task[i, :trial_len, :] = inputs
+                phase_list.append(phase_dict)
+                task_names.append(task_name)
+                extra_task[i, :] = phase_dict["response"]
+            conds_ds.append(task_num * np.ones(shape=(n_samples, 1)))
+            inputs_ds.append(inputs_task)
+            outputs_ds.append(outputs_task)
+            true_inputs_ds.append(true_inputs_task)
+            extra_ds.append(extra_task)
+
+        inputs_ds = np.concatenate(inputs_ds, axis=0)
+        true_inputs_ds = np.concatenate(true_inputs_ds, axis=0)
+        outputs_ds = np.concatenate(outputs_ds, axis=0)
+        conds_ds = np.concatenate(conds_ds, axis=0)
+        extra_ds = np.concatenate(extra_ds, axis=0)
+
+        # Return dictionary of necessary variables for task-trained models
+        dataset_dict = {
+            # ----------Mandatory------------------
+            "inputs": inputs_ds,
+            "targets": outputs_ds,
+            "ics": ics_ds,
+            "conds": conds_ds,
+            # Extra is anything that is needed for the training
+            # that isn't an input, target, or ic
+            #   E.g. in Multi-task, it is the start and end index of
+            #   the response phase (for loss weighting)
+            "inputs_to_env": np.zeros((n_samples * len(self.task_list), 0)),
+            "extra": extra_ds,
+            # ----------Optional------------------
+            "phase_dict": phase_list,
+            "task_names": task_names,
+            "true_inputs": true_inputs_ds,
+        }
+        return dataset_dict
+
+    def plot_tasks(self):
+        for task in self.task_list:
+            task.plot_trial()
+
+
 class MultiTask:
     def __init__(self, task_name: str, bin_size: int, num_targets: int, noise: float):
         """

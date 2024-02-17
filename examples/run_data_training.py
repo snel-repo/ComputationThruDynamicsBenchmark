@@ -13,7 +13,8 @@ from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
 from interpretability.data_modeling.extensions.SAE.utils import make_data_tag
-from interpretability.data_modeling.train_neural import train
+from interpretability.data_modeling.train_JAX import train_JAX
+from interpretability.data_modeling.train_PTL import train_PTL
 
 dotenv.load_dotenv(override=True)
 HOME_DIR = Path(os.environ.get("HOME_DIR"))
@@ -26,11 +27,11 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "MultiTask_LFADS_testing"
+RUN_DESC = "NBFF_JSLDS_testing"
 NUM_SAMPLES = 1
-MODEL_CLASS = "LFADS"
-MODEL = "LFADS"
-DATA = "MultiTask"
+MODEL_CLASS = "LDS"  # "LFADS" or "LDS"
+MODEL = "JSLDS"
+DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
@@ -41,7 +42,7 @@ SEARCH_SPACE = dict(
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240215_MultiTask_GRU_RNN_Test"]),
+        prefix=tune.grid_search(["20240216_NBFF_GRU_RNN_Final"]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
@@ -57,6 +58,7 @@ model_path = Path(
         f"{'_infer' if INFER_INPUTS else ''}.yaml"
     )
 )
+
 datamodule_path = Path(
     (
         f"{cpath}/datamodules/{MODEL_CLASS}/data_{DATA}"
@@ -66,18 +68,28 @@ datamodule_path = Path(
 
 callbacks_path = Path(f"{cpath}/callbacks/{MODEL_CLASS}/default_{DATA}.yaml")
 loggers_path = Path(f"{cpath}/loggers/{MODEL_CLASS}/default.yaml")
-trainer_path = Path(f"{cpath}/trainers/trainer_{DATA}.yaml")
+trainer_path = Path(f"{cpath}/trainers/{MODEL_CLASS}/trainer_{DATA}.yaml")
 
 if not WANDB_LOGGING:
     loggers_path = Path(f"{cpath}/loggers/{MODEL_CLASS}/default_no_wandb.yaml")
     callbacks_path = Path(f"{cpath}/callbacks/{MODEL_CLASS}/default_no_wandb.yaml")
-config_dict = dict(
-    model=model_path,
-    datamodule=datamodule_path,
-    callbacks=callbacks_path,
-    loggers=loggers_path,
-    trainer=trainer_path,
-)
+
+if MODEL_CLASS not in ["LDS"]:
+    config_dict = dict(
+        model=model_path,
+        datamodule=datamodule_path,
+        callbacks=callbacks_path,
+        loggers=loggers_path,
+        trainer=trainer_path,
+    )
+    train = train_PTL
+else:
+    config_dict = dict(
+        model=model_path,
+        datamodule=datamodule_path,
+        trainer=trainer_path,
+    )
+    train = train_JAX
 
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")

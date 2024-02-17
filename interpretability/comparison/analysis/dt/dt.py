@@ -1,4 +1,5 @@
 import pickle
+import types
 
 import numpy as np
 import torch
@@ -9,51 +10,89 @@ from interpretability.comparison.analysis.analysis import Analysis
 from interpretability.comparison.fixedpoints import find_fixed_points
 
 
+def get_model_inputs_SAE(self):
+    dt_train_ds = self.datamodule.train_ds
+    dt_val_ds = self.datamodule.valid_ds
+    dt_spiking = torch.cat((dt_train_ds.tensors[0], dt_val_ds.tensors[0]), dim=0)
+    dt_inputs = torch.cat((dt_train_ds.tensors[2], dt_val_ds.tensors[2]), dim=0)
+
+    return dt_spiking, dt_inputs
+
+
+def get_model_inputs_LFADS(self):
+    dt_train_ds = self.datamodule.train_data
+    dt_val_ds = self.datamodule.valid_data
+
+    spiking_train = dt_train_ds[0][0]
+    inputs_train = dt_train_ds[0][2]
+    spiking_val = dt_val_ds[0][0]
+    inputs_val = dt_val_ds[0][2]
+
+    dt_spiking = torch.cat((spiking_train, spiking_val), dim=0)
+    dt_inputs = torch.cat((inputs_train, inputs_val), dim=0)
+    return dt_spiking, dt_inputs
+
+
+def get_model_outputs_SAE(self):
+    dt_spiking, dt_inputs = self.get_model_inputs()
+    rates, latents = self.model(dt_spiking, dt_inputs)
+    return rates, latents
+
+
+def get_model_outputs_LFADS(self):
+    t_data = self.datamodule.train_data
+    v_data = self.datamodule.valid_data
+    output_dict = self.model(t_data[0])
+    output_dict_val = self.model(v_data[0])
+    rates_train = output_dict[0]
+    latents_train = output_dict[6]
+    rates_val = output_dict_val[0]
+    latents_val = output_dict_val[6]
+    rates = torch.cat((rates_train, rates_val), dim=0)
+    latents = torch.cat((latents_train, latents_val), dim=0)
+    return rates, latents
+
+
+def get_latents_SAE(self):
+    _, latents = self.get_model_outputs()
+    return latents
+
+
+def get_latents_LFADS(self):
+    rates, latents = self.get_model_outputs()
+    return latents
+
+
+def get_dynamics_model_SAE(self):
+    return self.model.decoder.cell
+
+
+def get_dynamics_model_LFADS(self):
+    return self.model.decoder.rnn.cell.gen_cell
+
+
 class Analysis_DT(Analysis):
-    def __init__(self, run_name, filepath):
+    def __init__(self, run_name, filepath, model_type="SAE"):
         self.tt_or_dt = "dt"
         self.run_name = run_name
+        self.model_type = model_type
         self.load_wrapper(filepath)
+        if self.model_type == "SAE":
+            self.get_model_inputs = types.MethodType(get_model_inputs_SAE, self)
+            self.get_model_outputs = types.MethodType(get_model_outputs_SAE, self)
+            self.get_latents = types.MethodType(get_latents_SAE, self)
+            self.get_dynamics_model = types.MethodType(get_dynamics_model_SAE, self)
+        elif self.model_type == "LFADS":
+            self.get_model_inputs = types.MethodType(get_model_inputs_LFADS, self)
+            self.get_model_outputs = types.MethodType(get_model_outputs_LFADS, self)
+            self.get_latents = types.MethodType(get_latents_LFADS, self)
+            self.get_dynamics_model = types.MethodType(get_dynamics_model_LFADS, self)
 
     def load_wrapper(self, filepath):
         with open(filepath + "model.pkl", "rb") as f:
             self.model = pickle.load(f)
         with open(filepath + "datamodule.pkl", "rb") as f:
             self.datamodule = pickle.load(f)
-
-    def get_model_input(self):
-        dt_train_ds = self.datamodule.train_ds
-        dt_val_ds = self.datamodule.valid_ds
-        dt_train_inds = dt_train_ds.tensors[4].int()
-        dt_val_inds = dt_val_ds.tensors[4].int()
-
-        n_t, n_neurons = dt_train_ds.tensors[0][0].shape
-        _, n_inputs = dt_train_ds.tensors[2][0].shape
-
-        trial_count = dt_train_inds.shape[0] + dt_val_inds.shape[0]
-
-        dt_val_ds = self.datamodule.valid_ds
-        dt_spiking = np.zeros((trial_count, n_t, n_neurons))
-        dt_inputs = np.zeros((trial_count, n_t, n_inputs))
-        for i in range(len(dt_train_inds)):
-            dt_spiking[dt_train_inds[i], :, :] = dt_train_ds.tensors[0][i]
-            dt_inputs[dt_train_inds[i], :, :] = dt_train_ds.tensors[2][i]
-        for i in range(len(dt_val_inds)):
-            dt_spiking[dt_val_inds[i], :, :] = dt_val_ds.tensors[0][i]
-            dt_inputs[dt_val_inds[i], :, :] = dt_val_ds.tensors[2][i]
-
-        dt_spiking = torch.tensor(dt_spiking).float()
-        dt_inputs = torch.tensor(dt_inputs).float()
-        return dt_spiking, dt_inputs
-
-    def get_model_output(self):
-        dt_spiking, dt_inputs = self.get_model_input()
-        rates, latents = self.model(dt_spiking, dt_inputs)
-        return rates, latents
-
-    def get_latents(self):
-        _, latents = self.get_model_output()
-        return latents
 
     def compute_FPs(
         self,
@@ -69,16 +108,13 @@ class Analysis_DT(Analysis):
     ):
         # Compute latent activity from task trained model
         if inputs is None and noiseless:
-            _, inputs = self.get_model_input()
-            latents = self.get_latents()
-        elif inputs is None and not noiseless:
-            _, inputs, _ = self.get_model_input()
+            _, inputs = self.get_model_inputs()
             latents = self.get_latents()
         else:
             latents = self.get_latents()
 
         fps = find_fixed_points(
-            model=self.model,
+            model=self.get_dynamics_model(),
             state_trajs=latents,
             inputs=inputs,
             n_inits=n_inits,
@@ -99,7 +135,7 @@ class Analysis_DT(Analysis):
         noise_scale=0.0,
         learning_rate=1e-3,
         max_iters=10000,
-        device="cpu",
+        device="cuda",
         seed=0,
         compute_jacobians=True,
         q_thresh=1e-5,
@@ -138,4 +174,6 @@ class Analysis_DT(Analysis):
                 lats_pca[i, :, 1],
                 lats_pca[i, :, 2],
             )
+        ax.set_title(f"{self.model_type}_Fixed Points")
         plt.show()
+        plt.savefig(self.run_name + f"_{self.model_type}_fps.png")
