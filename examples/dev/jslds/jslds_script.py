@@ -12,7 +12,7 @@ data = lfads_jslds_data(system, gen_model, n_neurons, seed, prefix)
 data_dim = 50
 ntimesteps = 500
 ii_dim = 3
-batch_size = 64
+batch_size = 800
 fp_reg = 10.0
 out_nl_reg = 1.0
 out_staylor_reg = 1.0
@@ -83,7 +83,9 @@ model = lfads_jslds_model(
 )
 
 # run model on batch of data
-outputs = model.forward(data.train_data[:64], data.train_inputs[:64], jr.PRNGKey(0))
+outputs = model.forward(
+    data.train_data[:batch_size], data.train_inputs[:batch_size], jr.PRNGKey(0)
+)
 
 # train the model on the dataset
 trainer = lfads_jslds_trainer()

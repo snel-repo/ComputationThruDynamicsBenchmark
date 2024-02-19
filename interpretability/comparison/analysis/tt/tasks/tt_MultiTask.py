@@ -94,7 +94,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
         inputs_phase = torch.cat(inputs_phase)
 
         fps = find_fixed_points(
-            model=self.wrapper,
+            model=self.wrapper.model.cell,
             state_trajs=lats_phase,
             inputs=inputs_phase,
             n_inits=n_inits,
@@ -163,7 +163,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
             else:
                 max_iters1 = max_iters
             fps = find_fixed_points(
-                model=self.wrapper,
+                model=self.wrapper.model.cell,
                 state_trajs=lats_phase,
                 inputs=inputs1,
                 n_inits=n_inits,
@@ -271,7 +271,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
                 max_iters1 = max_iters
 
             fps = find_fixed_points(
-                model=self.wrapper,
+                model=self.wrapper.model.cell,
                 state_trajs=lats_phase,
                 inputs=inputs1,
                 n_inits=n_inits,

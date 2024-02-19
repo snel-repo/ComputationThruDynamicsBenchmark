@@ -95,11 +95,11 @@ else:
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
 RUNS_HOME = Path(HOME_DIR)
-RUN_DIR = HOME_DIR / "runs" / "data-trained" / RUN_TAG
+RUN_DIR = HOME_DIR / "data" / "runs" / "data-trained" / RUN_TAG
 path_dict = dict(
-    tt_datasets=HOME_DIR / "datasets" / "tt",
-    dt_datasets=HOME_DIR / "datasets" / "dt",
-    trained_models=HOME_DIR / "trained_models" / "data-trained",
+    tt_datasets=HOME_DIR / "data" / "datasets" / "tt",
+    dt_datasets=HOME_DIR / "data" / "datasets" / "dt",
+    trained_models=HOME_DIR / "data" / "trained_models" / "data-trained",
 )
 
 
@@ -137,6 +137,9 @@ def main(
             sort_by_metric=True,
         ),
         trial_dirname_creator=trial_function,
+        runtime_env={
+            "conda": {"env_name": "jaxEnv1"},
+        },
     )
 
 
