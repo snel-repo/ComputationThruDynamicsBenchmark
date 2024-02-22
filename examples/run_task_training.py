@@ -24,8 +24,8 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "MultiTask_GRU_Regen_1"  # For WandB and run dir
-TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "NBFF_GRU_Test"  # For WandB and run dir
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
@@ -41,7 +41,7 @@ SEARCH_SPACE = dict(
     # ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([2]),
+        max_epochs=tune.choice([1]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
@@ -68,7 +68,7 @@ for key, val in path_dict.items():
 
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUN_DIR = HOME_DIR / "runs" / "task-trained" / RUN_TAG
+RUN_DIR = HOME_DIR / "data" / "runs" / "task-trained" / RUN_TAG
 
 # -----------------Default Parameter Sets -----------------------------------
 config_dict = dict(

@@ -187,7 +187,7 @@ class RandomTargetDelay(Environment):
 
         self.dataset_name = "RandomTargetDelay"
         self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
-        self.input_labels = ["X", "Y", "GoCue"]
+        self.input_labels = ["TargetX", "TargetY", "GoCue"]
         self.output_labels = ["Pec", "Delt", "Brad", "TriLong", "Biceps", "TriLat"]
         self.context_inputs = spaces.Box(low=-2, high=2, shape=(3,), dtype=np.float32)
         self.coupled_env = True

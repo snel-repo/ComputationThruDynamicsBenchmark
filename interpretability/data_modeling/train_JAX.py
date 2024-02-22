@@ -6,7 +6,6 @@ from pathlib import Path
 import dotenv
 import hydra
 import pytorch_lightning as pl
-from jax.lib import xla_bridge
 
 from interpretability.data_modeling.extensions.SAE.utils import flatten
 
@@ -21,8 +20,6 @@ def train_JAX(
     path_dict: str = "",
     run_tag: str = "",
 ):
-    print("XXXXXXXXXXXXXXXXXXXXXXXX")
-    print(xla_bridge.get_backend().platform_version)
     compose_list = config_dict.keys()
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()

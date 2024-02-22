@@ -27,6 +27,8 @@ class MultiTaskWrapper(DecoupledEnvironment):
         noise: float,
         grouped_sampler: bool = False,
         dataset_name="MultiTask",
+        *args,
+        **kwargs,
     ):
         """
         Args:
@@ -67,6 +69,8 @@ class MultiTaskWrapper(DecoupledEnvironment):
             low=-1.5, high=1.5, shape=(0,), dtype=np.float32
         )
 
+        latent_l2 = kwargs.get("L2_lats", 1.0)
+
         # Labels for the inputs and outputs
         self.input_labels = [
             "Fixation",
@@ -99,11 +103,12 @@ class MultiTaskWrapper(DecoupledEnvironment):
         self.noise = noise
         self.coupled_env = False
         self.extra = "phase_dict"
+        self.latent_l2 = latent_l2
         if grouped_sampler:
             self.sampler = GroupedSampler
         else:
             self.sampler = RandomSampler
-        self.loss_func = MultiTaskLoss()
+        self.loss_func = MultiTaskLoss(lat_loss_weight=latent_l2)
 
     def step(self, action):
         pass

@@ -184,6 +184,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         # Compute the weighted loss
         loss_dict = {
             "controlled": output_dict["controlled"],
+            "latents": output_dict["latents"],
             "actions": output_dict["actions"],
             "targets": targets,
             "inputs": inputs,
@@ -212,6 +213,7 @@ class TaskTrainedWrapper(pl.LightningModule):
         loss_dict = {
             "controlled": output_dict["controlled"],
             "actions": output_dict["actions"],
+            "latents": output_dict["latents"],
             "targets": targets,
             "inputs": inputs,
             "conds": conds,

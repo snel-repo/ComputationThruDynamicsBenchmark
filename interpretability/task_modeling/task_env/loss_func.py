@@ -65,12 +65,13 @@ class L1LossFunc(LossFunc):
 
 
 class MultiTaskLoss(LossFunc):
-    def __init__(self):
+    def __init__(self, lat_loss_weight=1e-6):
         pass
 
     def __call__(self, loss_dict):
         pred = loss_dict["controlled"]
         target = loss_dict["targets"]
+        latents = loss_dict["latents"]
         # action = loss_dict["actions"]
         inputs = loss_dict["inputs"]
         extras = loss_dict["extra"]
@@ -78,12 +79,17 @@ class MultiTaskLoss(LossFunc):
         resp_end = extras[:, 1].long()
         recon_loss = nn.MSELoss(reduction="none")(pred, target)
         mask = torch.ones_like(recon_loss)
+        mask_lats = torch.ones_like(latents)
         mask[:, 0:5, :] = 0
         for i in range(inputs.shape[0]):
             mask[i, resp_start[i] : resp_end[i], :] = 5.0
             mask[i, resp_start[i] : resp_start[i] + 5, :] = 0.0
             mask[i, resp_end[i] :, :] = 0.0
+            mask_lats[i, : resp_end[i], :] = 0
 
         masked_loss = recon_loss * mask
-        total_loss = masked_loss.sum(dim=1).mean()
+        lats_loss = (
+            nn.MSELoss(reduction="none")(latents, torch.zeros_like(latents)) * mask_lats
+        )
+        total_loss = masked_loss.sum(dim=1).mean() + lats_loss.sum(dim=1).mean()
         return total_loss

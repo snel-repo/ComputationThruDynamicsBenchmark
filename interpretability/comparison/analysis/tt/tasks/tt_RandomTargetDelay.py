@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FFMpegWriter
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression
 
 from interpretability.comparison.analysis.tt.tt import Analysis_TT
 
@@ -22,6 +23,7 @@ class TT_RandomTargetDelay(Analysis_TT):
         # plot the trial
         # get the trial
         tt_ics, tt_inputs, tt_targets = self.get_model_input()
+        tt_extra = self.get_extra_input()
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
         controlled = out_dict["controlled"]
         states = out_dict["states"]
@@ -52,6 +54,8 @@ class TT_RandomTargetDelay(Analysis_TT):
             controlled_trial[:, 0],
             controlled_trial[:, 1],
             color="k",
+            # dashed line
+            linestyle="--",
         )
         ax.set_aspect("equal")
         ax.set_xlabel("X Position (cm)")
@@ -76,16 +80,16 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax.plot(out_dict["actions"][trial_num, :, :].detach().numpy())
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Muscle Activation (AU)")
-
+        ax.set_xlim([0, 300])
         plt.tight_layout()
 
         fig = plt.figure(figsize=(5, 5))
         ax = fig.add_subplot(211)
+        ax.plot(states[trial_num, :, 0].detach().numpy(), "g", label="Vision")
+        ax.plot(states[trial_num, :, 1].detach().numpy(), "g")
 
-        ax.plot(states[trial_num, :, 2].detach().numpy(), "g", label="Vision")
-        ax.plot(states[trial_num, :, 3].detach().numpy(), "g")
-        for i in range(4, 10):
-            if i == 4:
+        for i in range(2, 8):
+            if i == 2:
                 ax.plot(
                     states[trial_num, :, i].detach().numpy(),
                     color="r",
@@ -94,8 +98,8 @@ class TT_RandomTargetDelay(Analysis_TT):
             else:
                 ax.plot(states[trial_num, :, i].detach().numpy(), color="r")
 
-        for i in range(10, 16):
-            if i == 10:
+        for i in range(8, 14):
+            if i == 8:
                 ax.plot(
                     states[trial_num, :, i].detach().numpy(),
                     color="b",
@@ -103,6 +107,7 @@ class TT_RandomTargetDelay(Analysis_TT):
                 )
             else:
                 ax.plot(states[trial_num, :, i].detach().numpy(), color="b")
+
         ax.set_ylabel("State inputs")
         ax.set_xlim([0, 250])
 
@@ -115,60 +120,123 @@ class TT_RandomTargetDelay(Analysis_TT):
 
         ax.plot(states[trial_num, :, 0].detach().numpy(), "g", label="go_cue")
         ax.plot(states[trial_num, :, 1].detach().numpy(), "g")
+        # Add a vertical line at the go cue
+        target_on_ind = tt_extra[trial_num, 0].detach().numpy()
+        go_cue_ind = tt_extra[trial_num, 1].detach().numpy()
+        ax.axvline(target_on_ind, color="k", linestyle="--")
+        ax.axvline(go_cue_ind, color="g", linestyle="--")
 
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Goal Inputs")
-        ax.set_xlim([0, 250])
+        ax.set_xlim([0, 300])
         ax.legend(loc="lower right")
 
     def generate_latent_video(
         self,
         align_to="go_cue",
+        dims_by="target",  # PCA, hand, target
         color_by="target",
         pre_window=10,
         post_window=10,
         fps=10,
     ):
+        # Get model inputs
         tt_ics, tt_inputs, tt_targets = self.get_model_input()
         extra = self.get_extra_input()
+
+        # Get model outputs
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
         latents = out_dict["latents"]
+        hand_pos = out_dict["controlled"]
 
+        # Get the target and start locations
         start_location = tt_targets[:, 0, :].detach().numpy()
         target_location = tt_targets[:, -1, :].detach().numpy()
 
+        # Get the go cue and target on times
         target_on = extra[:, 0]
         go_cue = extra[:, 1]
 
+        go_trials = go_cue.detach().numpy() > 0
+
+        # Make a hand position decoder
+        lats_flat = latents.reshape(-1, latents.shape[-1]).detach().numpy()
+        hand_pos_flat = hand_pos.reshape(-1, hand_pos.shape[-1]).detach().numpy()
+        hand_pos_decoder = LinearRegression().fit(lats_flat, hand_pos_flat)
+
+        # Make a target location decoder
+        target_location_flat = (
+            tt_targets.reshape(-1, tt_targets.shape[-1]).detach().numpy()
+        )
+        target_location_decoder = LinearRegression().fit(
+            lats_flat, target_location_flat
+        )
+
         # align latents to "align_to" variable
         if align_to == "go_cue":
+            # Only use trials where the go cue has been given
+            target_on = target_on[go_trials]
+            start_location = start_location[go_trials]
+            target_location = target_location[go_trials]
+            latents = latents[go_trials]
+            go_cue = go_cue[go_trials]
+            hand_pos = hand_pos[go_trials]
             align_to_vec = go_cue
+
         elif align_to == "target_on":
             align_to_vec = target_on
         else:
             raise ValueError("align_to must be 'go_cue' or 'target_on'")
 
+        # Align latents to the align_to variable
         n_trials, n_time, n_lats = latents.shape
-        latents_aligned = np.zeros((n_trials, pre_window + post_window, n_lats))
+        latents_aligned = []
         for i in range(n_trials):
             align_ind = align_to_vec[i].detach().numpy()
             align_ind = align_ind.astype(int)
-
-            window_start = np.min(align_ind - pre_window, 0)
-            window_end = np.max(align_ind + post_window, n_time)
+            window_start = align_ind - pre_window
+            window_end = align_ind + post_window
             window_start = int(window_start)
             window_end = int(window_end)
-
-            latents_aligned[i, :, :] = (
-                latents[i, window_start:window_end, :].detach().numpy()
-            )
+            if window_start > 0 and window_end < n_time:
+                latents_aligned.append(
+                    latents[i, window_start:window_end, :].detach().numpy()
+                )
+        latents_aligned = np.array(latents_aligned)
 
         latents_aligned_flat = latents_aligned.reshape(-1, latents_aligned.shape[-1])
         pca = PCA(n_components=3)
         latents_aligned_pca = pca.fit_transform(latents_aligned_flat)
-        latents_aligned_pca = latents_aligned_pca.reshape(
-            latents_aligned.shape[0], latents_aligned.shape[1], 3
-        )
+
+        if dims_by == "PCA":
+            latents_aligned_pca = latents_aligned_pca.reshape(
+                latents_aligned.shape[0], latents_aligned.shape[1], 3
+            )
+        elif dims_by == "hand":
+            latents_aligned_plot = hand_pos_decoder.predict(latents_aligned_flat)
+            latents_aligned_plot = latents_aligned_plot.reshape(
+                latents_aligned.shape[0], latents_aligned.shape[1], 2
+            )
+            first_pc = latents_aligned_pca[:, 0].reshape(
+                latents_aligned.shape[0], latents_aligned.shape[1], 1
+            )
+            latents_aligned_plot = np.concatenate(
+                (latents_aligned_plot, first_pc),
+                axis=2,
+            )
+
+        elif dims_by == "target":
+            latents_aligned_plot = target_location_decoder.predict(latents_aligned_flat)
+            latents_aligned_plot = latents_aligned_plot.reshape(
+                latents_aligned.shape[0], latents_aligned.shape[1], 2
+            )
+            first_pc = latents_aligned_pca[:, 0].reshape(
+                latents_aligned.shape[0], latents_aligned.shape[1], 1
+            )
+            latents_aligned_plot = np.concatenate(
+                (latents_aligned_plot, first_pc),
+                axis=2,
+            )
 
         def map_to_color(positions):
             # Normalize each dimension [0, 1]
@@ -194,21 +262,21 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax = fig.add_subplot(111, projection="3d")
         # Initialize the video writer
         writer = FFMpegWriter(fps=fps)
-
+        n_trials_plot = latents_aligned_plot.shape[0]
         # Create a video file and write frames
         with writer.saving(fig, f"{color_by}_{align_to}_latent_video.mp4", 100):
             for t in range(pre_window + post_window):
                 print(f"Writing frame {t} of {pre_window + post_window}")
                 ax.clear()
-                for i in range(n_trials):
+                for i in range(n_trials_plot):
                     ax.scatter(
-                        latents_aligned_pca[i, t, 0],
-                        latents_aligned_pca[i, t, 1],
-                        latents_aligned_pca[i, t, 2],
+                        latents_aligned_plot[i, t, 0],
+                        latents_aligned_plot[i, t, 1],
+                        latents_aligned_plot[i, t, 2],
                         color=colors[i],
                     )
                 ax.set_title(f"Time {t-pre_window}")
-                ax.set_xlim([-5, 5])  # Set this according to your data range
-                ax.set_ylim([-5, 5])  # Set this according to your data range
-                ax.set_zlim([-5, 5])
+                ax.set_xlim([-1, 1])  # Set this according to your data range
+                ax.set_ylim([-1, 1])  # Set this according to your data range
+                ax.set_zlim([-1, 1])
                 writer.grab_frame()

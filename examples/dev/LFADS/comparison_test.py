@@ -5,15 +5,15 @@ from interpretability.comparison.analysis.dt.dt import Analysis_DT
 from interpretability.comparison.analysis.tt.tt import Analysis_TT
 
 tt_path = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
+    "/home/csverst/Github/InterpretabilityBenchmark/data/"
     "trained_models/task-trained/20240216_NBFF_GRU_RNN_Final/seed=0/"
 )
 dt_path = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
+    "/home/csverst/Github/InterpretabilityBenchmark/data/"
     "trained_models/data-trained/20240216_NBFF_LFADS_FPAnalysis/"
 )
 dt_path_GRU = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
+    "/home/csverst/Github/InterpretabilityBenchmark/data/"
     "trained_models/data-trained/20240216_NBFF_GRU_FPAnalysis/"
 )
 

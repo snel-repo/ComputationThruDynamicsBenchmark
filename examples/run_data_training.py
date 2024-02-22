@@ -27,17 +27,17 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_JSLDS_testing"
+RUN_DESC = "NBFF_LFADS_test"
 NUM_SAMPLES = 1
-MODEL_CLASS = "LDS"  # "LFADS" or "LDS"
-MODEL = "JSLDS"
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"
 DATA = "NBFF"
 INFER_INPUTS = False
 
 # -------------------------------------
 SEARCH_SPACE = dict(
     # model=dict(
-    #     latent_size=tune.grid_search([128]),
+    #     num_batches=tune.grid_search([200]),
     # ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
@@ -137,9 +137,6 @@ def main(
             sort_by_metric=True,
         ),
         trial_dirname_creator=trial_function,
-        runtime_env={
-            "conda": {"env_name": "jaxEnv1"},
-        },
     )
 
 

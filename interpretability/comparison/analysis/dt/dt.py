@@ -3,11 +3,22 @@ import types
 
 import numpy as np
 import torch
+from jax import random
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 
 from interpretability.comparison.analysis.analysis import Analysis
 from interpretability.comparison.fixedpoints import find_fixed_points
+
+
+def get_model_inputs_LDS(self):
+    train_ds = torch.tensor(self.datamodule.train_data)
+    val_ds = torch.tensor(self.datamodule.eval_data)
+    train_inputs = torch.tensor(self.datamodule.train_inputs)
+    val_inputs = torch.tensor(self.datamodule.eval_inputs)
+    dt_spiking = torch.cat((train_ds, val_ds), dim=0)
+    dt_inputs = torch.cat((train_inputs, val_inputs), dim=0)
+    return dt_spiking, dt_inputs
 
 
 def get_model_inputs_SAE(self):
@@ -33,6 +44,14 @@ def get_model_inputs_LFADS(self):
     return dt_spiking, dt_inputs
 
 
+def get_model_outputs_LDS(self):
+    spiking, inputs = self.get_model_inputs()
+    key = random.PRNGKey(0)
+
+    out_dict = self.model.forward(spiking, inputs, key)
+    return out_dict["lograte_t"], out_dict["gen_t"]
+
+
 def get_model_outputs_SAE(self):
     dt_spiking, dt_inputs = self.get_model_inputs()
     rates, latents = self.model(dt_spiking, dt_inputs)
@@ -51,6 +70,11 @@ def get_model_outputs_LFADS(self):
     rates = torch.cat((rates_train, rates_val), dim=0)
     latents = torch.cat((latents_train, latents_val), dim=0)
     return rates, latents
+
+
+def get_latents_LDS(self):
+    _, latents = self.get_model_outputs()
+    return latents
 
 
 def get_latents_SAE(self):
@@ -87,6 +111,11 @@ class Analysis_DT(Analysis):
             self.get_model_outputs = types.MethodType(get_model_outputs_LFADS, self)
             self.get_latents = types.MethodType(get_latents_LFADS, self)
             self.get_dynamics_model = types.MethodType(get_dynamics_model_LFADS, self)
+        elif self.model_type == "LDS":
+            self.get_model_inputs = types.MethodType(get_model_inputs_LDS, self)
+            self.get_model_outputs = types.MethodType(get_model_outputs_LDS, self)
+            self.get_latents = types.MethodType(get_latents_LDS, self)
+            self.get_dynamics_model = None
 
     def load_wrapper(self, filepath):
         with open(filepath + "model.pkl", "rb") as f:
@@ -177,3 +206,20 @@ class Analysis_DT(Analysis):
         ax.set_title(f"{self.model_type}_Fixed Points")
         plt.show()
         plt.savefig(self.run_name + f"_{self.model_type}_fps.png")
+
+    def plot_trial(self, trial_num):
+        latents = self.get_latents().detach().numpy()
+        pca = PCA(n_components=3)
+        lats_flat = latents[trial_num].reshape(-1, latents.shape[-1])
+        lats_pca = pca.fit_transform(lats_flat)
+        lats_pca = lats_pca.reshape(latents.shape[1], 3)
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        ax.plot(
+            lats_pca[:, 0],
+            lats_pca[:, 1],
+            lats_pca[:, 2],
+        )
+        ax.set_title(f"{self.model_type}_Trial {trial_num} Latent Activity")
+        plt.show()
+        plt.savefig(self.run_name + f"_{self.model_type}_trial_{trial_num}_latents.png")
