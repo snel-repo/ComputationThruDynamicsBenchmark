@@ -27,12 +27,14 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_LFADS_test"
+RUN_DESC = "NBFF_GRU_test"
 NUM_SAMPLES = 1
-MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
-MODEL = "LFADS"
+MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
+MODEL = "GRU_RNN"
 DATA = "NBFF"
 INFER_INPUTS = False
+
+prefix = "20240223_NBFF_GRU_Test2"
 
 # -------------------------------------
 SEARCH_SPACE = dict(
@@ -42,7 +44,7 @@ SEARCH_SPACE = dict(
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search(["20240216_NBFF_GRU_RNN_Final"]),
+        prefix=tune.grid_search([prefix]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
@@ -95,11 +97,10 @@ else:
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
 RUNS_HOME = Path(HOME_DIR)
-RUN_DIR = HOME_DIR / "data" / "runs" / "data-trained" / RUN_TAG
+RUN_DIR = HOME_DIR / "content" / "runs" / "data-trained" / RUN_TAG
 path_dict = dict(
-    tt_datasets=HOME_DIR / "data" / "datasets" / "tt",
-    dt_datasets=HOME_DIR / "data" / "datasets" / "dt",
-    trained_models=HOME_DIR / "data" / "trained_models" / "data-trained",
+    dt_datasets=HOME_DIR / "content" / "datasets" / "dt",
+    trained_models=HOME_DIR / "content" / "trained_models" / "data-trained",
 )
 
 

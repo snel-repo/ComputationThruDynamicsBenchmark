@@ -24,7 +24,7 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_GRU_Test"  # For WandB and run dir
+RUN_DESC = "NBFF_GRU_Final"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
@@ -39,10 +39,10 @@ SEARCH_SPACE = dict(
     #     n_samples=tune.choice([10]),
     #     batch_size=tune.choice([512]),
     # ),
-    trainer=dict(
-        # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1]),
-    ),
+    # trainer=dict(
+    #     # Trainer Parameters -----------------------------------
+    #     max_epochs=tune.choice([1]),
+    # ),
     # Data Parameters -----------------------------------
     params=dict(
         seed=tune.grid_search([0]),
@@ -56,10 +56,10 @@ dotenv.load_dotenv()
 HOME_DIR = Path(os.environ.get("HOME_DIR"))
 
 path_dict = dict(
-    tt_datasets=HOME_DIR / "datasets" / "tt",
-    sim_datasets=HOME_DIR / "datasets" / "sim",
-    dt_datasets=HOME_DIR / "datasets" / "dt",
-    trained_models=HOME_DIR / "trained_models",
+    tt_datasets=HOME_DIR / "content" / "datasets" / "tt",
+    sim_datasets=HOME_DIR / "content" / "datasets" / "sim",
+    dt_datasets=HOME_DIR / "content" / "datasets" / "dt",
+    trained_models=HOME_DIR / "content" / "trained_models",
 )
 # Make the directories if they don't exist
 for key, val in path_dict.items():
@@ -68,7 +68,7 @@ for key, val in path_dict.items():
 
 DATE_STR = datetime.now().strftime("%Y%m%d")
 RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
-RUN_DIR = HOME_DIR / "data" / "runs" / "task-trained" / RUN_TAG
+RUN_DIR = HOME_DIR / "content" / "runs" / "task-trained" / RUN_TAG
 
 # -----------------Default Parameter Sets -----------------------------------
 config_dict = dict(

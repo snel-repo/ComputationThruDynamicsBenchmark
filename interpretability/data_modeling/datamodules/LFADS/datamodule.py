@@ -138,6 +138,7 @@ class BasicDataModule(pl.LightningDataModule):
         sv_seed: int = 0,
         dm_ic_enc_seq_len: int = 0,
         provide_inputs: bool = True,
+        file_index: int = 0,
     ):
         assert (
             reshuffle_tv_seed is None or len(attr_keys) == 0
@@ -151,10 +152,15 @@ class BasicDataModule(pl.LightningDataModule):
             f"n_neurons_{n_neurons}_"
             f"seed_{seed}"
         )
-        data_dir = os.path.join(HOME_DIR, "datasets", "dt")
+        data_dir = os.path.join(HOME_DIR, "content", "datasets", "dt")
         fpath = os.path.join(data_dir, filedir)
         dirs = os.listdir(fpath)
-        filename = dirs[0]
+        if file_index >= len(dirs):
+            raise ValueError(
+                f"File index {file_index} is out of range for directory {fpath}"
+            )
+        else:
+            filename = dirs[file_index]
 
         self.fpath = os.path.join(fpath, filename)
         self.save_hyperparameters()

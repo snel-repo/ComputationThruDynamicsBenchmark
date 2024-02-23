@@ -17,9 +17,21 @@ conda create --name CtDEnv python=3.10
 conda activate CtDEnv
 cd ComputationThruDynamicsBenchmark
 pip install -e .
+pip install -e libs/DSA/.
+pip install -e libs/lfads-jslds/.
+
+# To get GPUs working with jax, you have to use the CUDA 11 version:
+# Here are the commands to get it working for our linux servers; find the correct version for your system.
+pip uninstall jax jaxlib
+conda install cuda -c nvidia/label/cuda-11.8.0
+pip install --upgrade https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.4.4+cuda11.cudnn82-cp310-cp310-manylinux2014_x86_64.whl
+pip install --upgrade jax==0.4.4
+conda install -c conda-forge cudnn=8.2.0.53
 ```
 
+lfads-jslds is a JAX model that implements Jacobian-Switching Linear Dynamical Systems, provided by David Zoltowski.
 
+We use MotorNet, a musculoskeletal modeling package called MotorNet from Oli Codol.
 For more information on MotorNet, see the documentation:
 MotorNet: https://www.motornet.org/index.html
 
@@ -29,7 +41,7 @@ The two primary run scripts are "run_task_training.py" and "run_data_training.py
 
 Each uses ray, hydra, and PyTorch Lightning to handle hyperparameter sweeps and logging. WandB is used by default, but TensorBoard logging is also available.
 
-There are three primary tasks implemented, ranging from simple to complex:
+There are three tasks implemented, ranging from simple to complex:
 1. NBFF: An extension of the 3-bit Flip-Flop from OTBB, this can be extended into higher dimensions for more complex dynamics.
 2. MultiTask: A version of the task used in recent papers by Yang and Driscoll, this task combines 15 simple cognitive tasks into a single task to look at how dynamical motifs can generalize across tasks.
 3. RandomTargetDelay: A musculoskeletal modeling and control engine (MotorNet) that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
@@ -40,11 +52,14 @@ To get an overview of the major components of the code-base, you should only nee
 2. examples/run_data_training.py
 3. examples/compare_tt_dt_models.py
 
-Before running these scripts, you will need to modify the RUNS_HOME and SAVE_PATH variables in your .env file to a location where you'd like to save your training logs/plots and the fully trained final models, respectively. In addition to the simulated spiking activity, the task-training module will save a copy of the trained model, the datamodule used to train, and the simulator that generated the spiking activity.
+Before running these scripts, you will need to modify the HOME_DIR variable in your .env file to a location where you'd like to save the outputs of the runs (datasets, logging info, trained models).
 
-Once the task-trained model has been run, it should save an h5 file of spiking activity in the data-trained folder. Running the data-trained model should be straightforward as well!
+Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/tt/ Modify "prefix" in run_data_training to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
+If there is more than one simulated dataset (i.e., if you did a hyperparameter sweep of task-trained models), the code currently just takes the first folder in the directory unless you pass in a "file_index" parameter into the datamodule to select a different simulated dataset.
 
-Once both have been run and the trained models saved to pickle files, the "compare_tt_dt_models.py" file performs basic visualizations and latent activity comparisons.
+Once run_data_training.py is complete, it will save a trained model and the datamodule as .pkl files. These pickle files will be loaded into analysis objects that have automated functions to compare models, perform fixed-point analyses, etc.
+
+After both task-trained and data-trained models have been run, modify the dt_path and tt_path in compare_tt_dt_models.py to plot some basic comparisons and fixed-point analyses on the trained models!
 
 ## Overview of major components:
 ### Task-Training:
@@ -73,6 +88,23 @@ Talk to me!
 
 ## License
 None yet
+
+There are three major items that are saved by these scripts, following this directory structure:
+- runs: The logs of the training runs produced by WandB.
+- datasets: .h5 and .pkl files of the datasets used at different phases of the pipeline:
+- - tt: Data for training the task-trained model
+- - sim: Data passed through the task-trained model to generate simulated spiking activity
+- - dt: Simulated spiking activity for data-trained models
+- trained_models: Where the datamodule and trained models are saved for use by Analysis objects.
+- - task-trained:
+- - - datamodule_train.pkl: Pickled PyTorch Lightning datamodule used to train model
+- - - datamodule_sim.pkl: Pickled PyTorch Lightning datamodule used to simulate neural activity
+- - - model.pkl: Trained PyTorchLightning module
+- - - simulator.pkl: Object used to simulate neural spiking activity
+- - data-trained:
+- - - datamodule.pkl: Pickled datamodule object for data-training
+- - - model.pkl: Trained model object
+
 
 ## Contact
 chrissversteeg@gmail.com for questions/concerns!

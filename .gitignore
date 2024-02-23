@@ -42,7 +42,10 @@ MANIFEST
 *.gif
 *.avi
 *.json
+
 data/runs/*
+content/*
+old/*
 
 !/examples/png/*.png
 # PyInstaller

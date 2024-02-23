@@ -29,6 +29,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         batch_size: int = 64,
         num_workers: int = 2,
         provide_inputs: bool = True,
+        file_index: int = 0,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -44,7 +45,12 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         )
         fpath = os.path.join(self.data_dir, filedir)
         dirs = os.listdir(fpath)
-        filename = dirs[0]
+        if file_index >= len(dirs):
+            raise ValueError(
+                f"File index {file_index} is out of range for directory {fpath}"
+            )
+        else:
+            filename = dirs[0]
 
         self.name = os.path.join(filename)
         self.fpath = filedir
