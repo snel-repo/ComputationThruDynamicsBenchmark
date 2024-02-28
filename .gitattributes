@@ -1,1 +1,4 @@
 content/benchmark_datasets/*.pkl filter=lfs diff=lfs merge=lfs -text
+content/benchmark_datasets/pretr*.pkl filter=lfs diff=lfs merge=lfs -text
+content/benchmark_datasets/pretrained/*.pkl filter=lfs diff=lfs merge=lfs -text
+content/benchmark_datasets/pretrained/tt/*.pkl filter=lfs diff=lfs merge=lfs -text
