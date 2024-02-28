@@ -73,8 +73,13 @@ To see what tasks can specifically be implemented, look in the config files for 
 5. task_env: Task logic and data generation pipelines for each task.
 6. task_wrapper: The class that collects all of the required components above, performs training and validation loops, configures optimizers etc.
 
+The task-training pipeline actually generates a "train" task_env  / datamodule  and a "sim" task_env / datamodule.
+The "train" versions are what is being used to train the task-trained models, while the "sim" is what is used to generate the simulated neural activity. This allows users to specify different conditions for the training and simulation pipelines, and to do more complex analyses like testing for generalization performance across task types.
+
 ### Simulation:
-TODO
+The simulator's instance variables contains the parameters for the neural data simulation. There are options to change the noise model for the simulation, change the number of simulated neurons, and whether to embed the latent activity onto a non-linear manifold prior to sampling spiking activity (experimental).
+
+The main method for this object is "simulate_neural_data", which takes in a trained model, a datamodule with the trials to simulate neural activity from, the run tag, path variables, and a random seed. This method saves an h5 file of spiking activity (along with other variables that might be needed for training, e.g., inputs etc.) in the "content/datasets/dt/" folder.
 
 ### Data-Training:
 Runs with either a generic SAE or LFADS models (currently). Whether to use a generic SAE or LFADS is controlled by the MODEL_CLASS variable, which for now is either SAE or LFADS.

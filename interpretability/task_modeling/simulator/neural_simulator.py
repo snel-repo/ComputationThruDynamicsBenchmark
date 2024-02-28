@@ -3,7 +3,6 @@ import os
 import h5py
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
 
 
 def sigmoidActivation(module, input):
@@ -152,10 +151,9 @@ class NeuralDataSimulator:
         data = data.reshape(n_trials, n_times, self.n_neurons)
 
         # Perform data splits
-        inds = np.arange(n_trials)
-        train_inds, valid_inds = train_test_split(
-            inds, test_size=0.2, random_state=seed
-        )
+        train_inds = range(0, int(0.8 * n_trials))
+        valid_inds = range(int(0.8 * n_trials), n_trials)
+
         # Save the trajectories
         with h5py.File(fpath, "w") as h5file:
             h5file.create_dataset("train_encod_data", data=data[train_inds])

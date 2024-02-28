@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from DSA import DSA
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 
-from DSA import DSA
 from interpretability.comparison.metrics import (
     get_latents_vaf,
     get_rate_r2,
@@ -28,20 +28,21 @@ class Comparison:
 
     def compare_rate_r2(self):
         # Function to compare the rate-reconstruction of the different models
-        state_r2_mat = np.zeros((self.num_analyses, self.num_analyses))
+        rate_r2_mat = np.zeros(self.num_analyses)
         for i in range(self.num_analyses):
-            for j in range(self.num_analyses):
-                state_r2_mat[i, j] = get_rate_r2(self.analyses[i], self.analyses[j])
+            if self.analyses[i].tt_or_dt == "dt":
+                rate_r2_mat[i] = get_rate_r2(
+                    self.analyses[i].get_rates(), self.analyses[i].get_true_rates()
+                )
         fig = plt.figure()
         ax = fig.add_subplot(111)
         # Plot it as an image
-        ax.imshow(state_r2_mat)
-        ax.set_title("Rate R2 from i to j")
+        ax.bar(np.arange(self.num_analyses), rate_r2_mat)
+        ax.set_title("Rate R2 for data-trained model")
         # Set ticks
         ax.set_xticks(np.arange(self.num_analyses))
-        ax.set_yticks(np.arange(self.num_analyses))
         ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
-        ax.set_yticklabels([analysis.run_name for analysis in self.analyses])
+        ax.set_ylabel("Rate R2")
         # Rotate the tick labels and set their alignment.
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
@@ -197,6 +198,25 @@ class Comparison:
             latents_pca = latents_pca_flat.reshape(latents.shape)
             for j in range(num_trials):
                 axes[i, j].plot(latents_pca[j, :, :num_pcs])
+                if i == 0:
+                    axes[i, j].set_title(f"Trial {j}")
+                if i == self.num_analyses - 1:
+                    axes[i, j].set_xlabel("Time")
+                else:
+                    axes[i, j].set_xticks([])
+
+            axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
+
+    def plot_inputs(self, num_trials, num_pcs=3):
+        # Function to plot one trial from each analysis
+        fig = plt.figure()
+        # One subplot row per analysis
+        # One subplot column per trial
+        axes = fig.subplots(self.num_analyses, num_trials)
+        for i in range(self.num_analyses):
+            inputs = self.analyses[i].get_inputs().detach().numpy()
+            for j in range(num_trials):
+                axes[i, j].plot(inputs[j, :, :])
                 if i == 0:
                     axes[i, j].set_title(f"Trial {j}")
                 if i == self.num_analyses - 1:

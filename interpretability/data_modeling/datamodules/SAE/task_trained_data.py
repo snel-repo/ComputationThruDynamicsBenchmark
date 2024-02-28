@@ -20,8 +20,8 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
     def __init__(
         self,
         prefix=None,
-        system: str = "3BitFlipFlop",
-        gen_model: str = "GRU",
+        system: str = "3BFF",
+        gen_model: str = "GRU_RNN",
         n_neurons: int = 50,
         nonlin_embed: bool = False,
         seed: int = 0,
@@ -34,7 +34,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         super().__init__()
         self.save_hyperparameters()
         self.seed = seed
-        self.data_dir = os.path.join(HOME_DIR, "datasets", "dt")
+        self.data_dir = os.path.join(HOME_DIR, "content", "datasets", "dt")
 
         filedir = (
             f"{prefix}_"

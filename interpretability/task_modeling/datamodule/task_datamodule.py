@@ -71,6 +71,8 @@ class TaskDataModule(pl.LightningDataModule):
         self.input_labels = None
         self.output_labels = None
         self.for_sim = False
+        if data_env is not None:
+            self.set_environment(data_env)
 
     def set_environment(self, data_env, for_sim=False):
         """Set the environment for the data module"""

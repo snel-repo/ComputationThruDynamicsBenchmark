@@ -72,6 +72,7 @@ def train_PTL(
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule"], _convert_="all"
     )
+    tt_name = datamodule.name[:-3]
 
     # ---------------------------Instantiate callbacks---------------------------
     callbacks: List[pl.Callback] = []
@@ -123,7 +124,7 @@ def train_PTL(
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
     save_path = path_dict["trained_models"]
-    save_path = os.path.join(save_path, run_tag)
+    save_path = os.path.join(save_path, tt_name, run_tag)
 
     Path(save_path).mkdir(parents=True, exist_ok=True)
     model_path = os.path.join(save_path, "model.pkl")

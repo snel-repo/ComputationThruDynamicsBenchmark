@@ -30,6 +30,15 @@ def get_model_inputs_SAE(self):
     return dt_spiking, dt_inputs
 
 
+def get_true_rates_SAE(self):
+    dt_train_ds = self.datamodule.train_ds
+    dt_val_ds = self.datamodule.valid_ds
+    rates_train = dt_train_ds.tensors[6]
+    rates_val = dt_val_ds.tensors[6]
+    true_rates = torch.cat((rates_train, rates_val), dim=0)
+    return true_rates
+
+
 def get_model_inputs_LFADS(self):
     dt_train_ds = self.datamodule.train_data
     dt_val_ds = self.datamodule.valid_data
@@ -106,15 +115,18 @@ class Analysis_DT(Analysis):
             self.get_model_outputs = types.MethodType(get_model_outputs_SAE, self)
             self.get_latents = types.MethodType(get_latents_SAE, self)
             self.get_dynamics_model = types.MethodType(get_dynamics_model_SAE, self)
+            self.get_true_rates = types.MethodType(get_true_rates_SAE, self)
         elif self.model_type == "LFADS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LFADS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LFADS, self)
             self.get_latents = types.MethodType(get_latents_LFADS, self)
             self.get_dynamics_model = types.MethodType(get_dynamics_model_LFADS, self)
+            self.get_true_rates = None
         elif self.model_type == "LDS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LDS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LDS, self)
             self.get_latents = types.MethodType(get_latents_LDS, self)
+            self.get_tru_rates = None
             self.get_dynamics_model = None
 
     def load_wrapper(self, filepath):
@@ -141,6 +153,8 @@ class Analysis_DT(Analysis):
             latents = self.get_latents()
         else:
             latents = self.get_latents()
+        latents = latents.to(device)
+        inputs = inputs.to(device)
 
         fps = find_fixed_points(
             model=self.get_dynamics_model(),
@@ -207,19 +221,36 @@ class Analysis_DT(Analysis):
         plt.show()
         plt.savefig(self.run_name + f"_{self.model_type}_fps.png")
 
-    def plot_trial(self, trial_num):
+    def plot_trial(self, num_trials=10, scatterPlot=True):
         latents = self.get_latents().detach().numpy()
         pca = PCA(n_components=3)
-        lats_flat = latents[trial_num].reshape(-1, latents.shape[-1])
+        lats_flat = latents.reshape(-1, latents.shape[-1])
         lats_pca = pca.fit_transform(lats_flat)
-        lats_pca = lats_pca.reshape(latents.shape[1], 3)
-        fig = plt.figure(figsize=(10, 10))
-        ax = fig.add_subplot(111, projection="3d")
-        ax.plot(
-            lats_pca[:, 0],
-            lats_pca[:, 1],
-            lats_pca[:, 2],
-        )
-        ax.set_title(f"{self.model_type}_Trial {trial_num} Latent Activity")
-        plt.show()
-        plt.savefig(self.run_name + f"_{self.model_type}_trial_{trial_num}_latents.png")
+        lats_pca = lats_pca.reshape(-1, latents.shape[1], 3)
+        if scatterPlot:
+
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(111, projection="3d")
+            for i in range(num_trials):
+                ax.plot(
+                    lats_pca[i, :, 0],
+                    lats_pca[i, :, 1],
+                    lats_pca[i, :, 2],
+                )
+            ax.set_title(f"{self.model_type}_Trial Latent Activity")
+            plt.show()
+            plt.savefig(self.run_name + f"_{self.model_type}_trial_latents.png")
+        else:
+            fig = plt.figure(figsize=(10, 4 * num_trials))
+            for i in range(num_trials):
+                ax = fig.add_subplot(num_trials, 1, i + 1)
+                ax.plot(lats_pca[i, :, 0])
+                ax.plot(lats_pca[i, :, 1])
+                ax.plot(lats_pca[i, :, 2])
+            plt.title(f"{self.model_type}_Trial Latent Activity")
+            plt.show()
+            plt.savefig(self.run_name + f"_{self.model_type}_trial_latents_time.png")
+
+    def get_inputs(self):
+        _, inputs = self.get_model_inputs()
+        return inputs

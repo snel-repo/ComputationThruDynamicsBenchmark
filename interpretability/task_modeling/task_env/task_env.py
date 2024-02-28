@@ -12,10 +12,7 @@ from motornet.environment import Environment
 from numpy import ndarray
 from torch._tensor import Tensor
 
-from interpretability.task_modeling.task_env.loss_func import (
-    MatchTargetLossMSE,
-    RandomTargetLoss,
-)
+from interpretability.task_modeling.task_env.loss_func import NBFFLoss, RandomTargetLoss
 
 
 class DecoupledEnvironment(gym.Env, ABC):
@@ -69,7 +66,9 @@ class NBitFlipFlop(DecoupledEnvironment):
     This is a simple toy environment where the goal is to flip the required bit.
     """
 
-    def __init__(self, n_timesteps: int, noise: float, n=1, switch_prob=0.01):
+    def __init__(
+        self, n_timesteps: int, noise: float, n=1, switch_prob=0.01, transition_blind=4
+    ):
         super().__init__(n_timesteps=n_timesteps, noise=noise)
         self.dataset_name = f"{n}BFF"
         self.action_space = spaces.Box(low=-0.5, high=1.5, shape=(n,), dtype=np.float32)
@@ -86,7 +85,8 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.noise = noise
         self.coupled_env = False
         self.switch_prob = switch_prob
-        self.loss_func = MatchTargetLossMSE()
+        self.transition_blind = transition_blind
+        self.loss_func = NBFFLoss(transition_blind=transition_blind)
 
     def step(self, action):
         # Generates state update given an input to the flip-flop
@@ -153,15 +153,37 @@ class NBitFlipFlop(DecoupledEnvironment):
 
     def render(self):
         inputs, states, _ = self.generate_trial()
-        fig1, axes = plt.subplots(nrows=2, ncols=1, sharex=True)
-        ax1 = axes[0]
-        ax1.plot(states)
-        ax1.set_ylabel("Flip-flop state")
-        ax2 = axes[1]
-        ax2.plot(inputs)
+        fig1, axes = plt.subplots(nrows=self.n + 1, ncols=1, sharex=True)
+        colors = plt.cm.rainbow(np.linspace(0, 1, self.n))
+        for i in range(self.n):
+            axes[i].plot(states[:, i], color=colors[i])
+            axes[i].set_ylabel(f"State {i}")
+            axes[i].set_ylim(-0.2, 1.2)
+        ax2 = axes[-1]
+        for i in range(self.n):
+            ax2.plot(inputs[:, i], color=colors[i])
+        ax2.set_ylim(-1.2, 1.2)
         ax2.set_xlabel("Time")
         ax2.set_ylabel("Inputs")
-        plt.savefig("sampleTrial.png", dpi=300)
+        plt.tight_layout()
+        plt.show()
+        fig1.savefig("nbitflipflop.pdf")
+
+    def render_3d(self, n_trials=10):
+        if self.n > 2:
+            fig = plt.figure(figsize=(5 * n_trials, 5))
+            # Make colormap for the timestep in a trial
+            for i in range(n_trials):
+
+                ax = fig.add_subplot(1, n_trials, i + 1, projection="3d")
+                inputs, states, _ = self.generate_trial()
+                ax.plot(states[:, 0], states[:, 1], states[:, 2])
+                ax.set_xlabel("Bit 1")
+                ax.set_ylabel("Bit 2")
+                ax.set_zlabel("Bit 3")
+                ax.set_title(f"Trial {i+1}")
+            plt.tight_layout()
+            plt.show()
 
 
 class RandomTargetDelay(Environment):

@@ -130,6 +130,72 @@ class StateTransitionCallback(pl.Callback):
         logger.log({"state_plot": wandb.Image(fig), "global_step": trainer.global_step})
 
 
+class StateTransitionTutorialCallback(pl.Callback):
+    def __init__(self, log_every_n_epochs=100, plot_n_trials=5):
+
+        self.log_every_n_epochs = log_every_n_epochs
+        self.plot_n_trials = plot_n_trials
+
+    def on_fit_end(self, trainer, pl_module):
+
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+        # Get trajectories and model predictions
+        dataloader = trainer.datamodule.val_dataloader()
+        ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        targets = torch.cat([batch[2] for batch in dataloader]).to(pl_module.device)
+        # Pass the data through the model
+        output_dict = pl_module.forward(ics, inputs)
+        controlled = output_dict["controlled"]
+
+        # Create plots for different cases
+        fig, axes = plt.subplots(
+            nrows=3,
+            ncols=self.plot_n_trials,
+            figsize=(8 * self.plot_n_trials, 6),
+            sharex=True,
+        )
+        for trial_num in range(self.plot_n_trials):
+            ax1 = axes[0][trial_num]
+            ax2 = axes[1][trial_num]
+            ax3 = axes[2][trial_num]
+
+            targets = targets.cpu()
+            inputs = inputs.cpu()
+            pred_outputs = controlled.detach().numpy()
+            n_samples, n_timesteps, n_outputs = targets.shape
+            input_labels = trainer.datamodule.input_labels
+            output_labels = trainer.datamodule.output_labels
+
+            for i in range(n_outputs):
+                ax1.plot(targets[trial_num, :, i], label=output_labels[i])
+            ax1.legend(loc="right")
+            ax1.set_ylabel("Actual Outputs")
+
+            ax1.set_title(f"Trial {trial_num}")
+            for i in range(n_outputs):
+                ax2.plot(pred_outputs[trial_num, :, i], label=output_labels[i])
+            ax2.set_ylabel("Predicted Outputs")
+            ax2.legend(loc="right")
+
+            _, _, n_inputs = inputs.shape
+            for i in range(n_inputs):
+                ax3.plot(inputs[trial_num, :, i], label=input_labels[i])
+
+            ax3.legend(loc="right")
+            ax3.set_xlabel("Time")
+            ax3.set_ylabel("Inputs")
+        plt.tight_layout()
+
+        fig.savefig("./png/state_plot.png")
+        # Log the plot to tensorboard
+        im = fig_to_rgb_array(fig)
+        trainer.loggers[0].experiment.add_image(
+            "state_plot", im, trainer.global_step, dataformats="HWC"
+        )
+
+
 class TrajectoryPlotOverTimeCallback(pl.Callback):
     def __init__(self, log_every_n_epochs=100, num_trials_to_plot=5, axis_num=0):
 

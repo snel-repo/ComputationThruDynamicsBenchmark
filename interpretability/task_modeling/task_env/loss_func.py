@@ -40,6 +40,35 @@ class RandomTargetLoss(LossFunc):
         return pos_loss + act_loss
 
 
+class NBFFLoss(LossFunc):
+    def __init__(self, transition_blind):
+        self.transition_blind = transition_blind
+
+    def __call__(self, loss_dict):
+        pred = loss_dict["controlled"]
+        target = loss_dict["targets"]
+        # Find where the change in the target is not zero
+        # Step 1: Find where the transitions occur (change in value)
+        transitions = torch.diff(target, dim=1) != 0
+
+        # Initialize the mask with ones, with one less column (due to diff)
+        mask = torch.ones_like(transitions, dtype=torch.float)
+
+        # Step 2: Propagate the effect of transitions for 'transition_blind' steps
+        for i in range(1, self.transition_blind + 1):
+            # Shift the transition marks to the right to affect subsequent values
+            shifted_transitions = torch.cat(
+                (torch.zeros_like(transitions[:, :i]), transitions[:, :-i]), dim=1
+            )
+            mask = mask * (1 - shifted_transitions.float())
+
+        # Step 3: Adjust mask size to match the original target tensor
+        # Adding a column of ones at the beginning because diff reduces the size by 1
+        final_mask = torch.cat((torch.ones_like(mask[:, :1]), mask), dim=1)
+        loss = nn.MSELoss(reduction="none")(pred, target) * final_mask
+        return loss.mean()
+
+
 class MatchTargetLossMSE(LossFunc):
     def __init__(self):
         pass

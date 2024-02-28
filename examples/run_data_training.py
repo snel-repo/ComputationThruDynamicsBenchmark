@@ -27,14 +27,14 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_GRU_test"
+RUN_DESC = "NBFF_GRU_DT"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
 MODEL = "GRU_RNN"
 DATA = "NBFF"
 INFER_INPUTS = False
 
-prefix = "20240223_NBFF_GRU_Test2"
+prefix = "20240225_NBFF_GRU_Tutorial"
 
 # -------------------------------------
 SEARCH_SPACE = dict(
@@ -100,7 +100,7 @@ RUNS_HOME = Path(HOME_DIR)
 RUN_DIR = HOME_DIR / "content" / "runs" / "data-trained" / RUN_TAG
 path_dict = dict(
     dt_datasets=HOME_DIR / "content" / "datasets" / "dt",
-    trained_models=HOME_DIR / "content" / "trained_models" / "data-trained",
+    trained_models=HOME_DIR / "content" / "trained_models" / "task-trained" / prefix,
 )
 
 

@@ -764,7 +764,7 @@ class MultiTask:
 
     def plot_trial(self):
         inputs, outputs, phase_dict, task_name, true_inputs = self.generate_trial()
-        fig = plt.figure(figsize=(10, 10))
+        fig = plt.figure(figsize=(5, 10))
 
         ax1 = fig.add_subplot(7, 1, 1)
         for phase in phase_dict:
@@ -840,14 +840,15 @@ class MultiTask:
         ax2.set_ylim(-1.5, 1.5)
 
         plt.suptitle(f"Trial: {self.task_name}")
-        plt.savefig(f"{self.task_name}_state_diag.png")
+        # plt.savefig(f"{self.task_name}_state_diag.png")
 
-        fig = plt.figure()
+        fig1 = plt.figure()
         # Plot stim1, stim2 and response as a scatter plot
-        ax_input1 = fig.add_subplot(1, 4, 1)
-        ax_input2 = fig.add_subplot(1, 4, 2)
-        ax_output = fig.add_subplot(1, 4, 3)
-        ax_labels = fig.add_subplot(1, 4, 4)
+        ax_input1 = fig1.add_subplot(1, 4, 1)
+        ax_input2 = fig1.add_subplot(1, 4, 2)
+        ax_output = fig1.add_subplot(1, 4, 3)
+        ax_labels = fig1.add_subplot(1, 4, 4)
+
         color_dict = {
             "context": "k",
             "stim1": "r",
@@ -904,8 +905,11 @@ class MultiTask:
         ax_output.set_aspect("equal", adjustable="box")
         ax_labels.set_aspect("equal", adjustable="box")
 
+        plt.tight_layout()
         plt.suptitle(f"Trial: {self.task_name}")
-        plt.savefig(f"{self.task_name}_radial.png")
+        # plt.savefig(f"{self.task_name}_radial.png")
+
+        plt.show()
 
     def reset(self):
         return super().reset()
