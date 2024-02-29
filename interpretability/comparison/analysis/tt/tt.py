@@ -51,6 +51,9 @@ class Analysis_TT(Analysis):
         tt_inputs = torch.Tensor(all_data["inputs"])
         return tt_inputs
 
+    def get_inputs_to_env(self):
+        return torch.Tensor(self.datamodule.all_data["inputs_to_env"])
+
     def get_model_inputs(self):
         all_data = self.datamodule.all_data
         tt_ics = torch.Tensor(all_data["ics"])

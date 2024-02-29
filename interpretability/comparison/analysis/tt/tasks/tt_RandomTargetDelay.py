@@ -19,12 +19,13 @@ class TT_RandomTargetDelay(Analysis_TT):
             f"interpretability/comparison/plots/{self.run_name}/"
         )
 
-    def plotTrial(self, trial_num):
+    def plot_trial(self, trial_num):
         # plot the trial
         # get the trial
-        tt_ics, tt_inputs, tt_targets = self.get_model_input()
-        tt_extra = self.get_extra_input()
-        out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+        inputs_to_env = self.get_inputs_to_env()
+        tt_extra = self.get_extra_inputs()
+        out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env=inputs_to_env)
         controlled = out_dict["controlled"]
         states = out_dict["states"]
 
@@ -61,10 +62,10 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax.set_xlabel("X Position (cm)")
         ax.set_ylabel("Y Position (cm)")
         ax.set_title(f"Trial {trial_num}")
-        ax.set_xlim([-1, 1])
-        ax.set_ylim([-1, 1])
+        ax.set_xlim([-1.2, 1.2])
+        ax.set_ylim([-0.2, 1.2])
         ax.set_xticks([-1, 0, 1])
-        ax.set_yticks([-1, 0, 1])
+        ax.set_yticks([0, 1])
         # Tight layout
 
         ax = fig.add_subplot(312)
@@ -74,6 +75,7 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax.legend()
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Velocity (cm/bin)")
+        ax.set_ylim([-0.05, 0.05])
 
         # Plot the muscle activations over the trial
         ax = fig.add_subplot(313)
@@ -81,10 +83,11 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Muscle Activation (AU)")
         ax.set_xlim([0, 300])
+        ax.set_ylim([-0.2, 0.8])
         plt.tight_layout()
 
         fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(211)
+        ax = fig.add_subplot(311)
         ax.plot(states[trial_num, :, 0].detach().numpy(), "g", label="Vision")
         ax.plot(states[trial_num, :, 1].detach().numpy(), "g")
 
@@ -113,7 +116,7 @@ class TT_RandomTargetDelay(Analysis_TT):
 
         ax.legend(loc="upper right")
 
-        ax = fig.add_subplot(212)
+        ax = fig.add_subplot(312)
 
         ax.plot(tt_inputs[trial_num, :, 0].detach().numpy(), "k", label="Target onset")
         ax.plot(tt_inputs[trial_num, :, 1].detach().numpy(), "k")
@@ -126,10 +129,17 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax.axvline(target_on_ind, color="k", linestyle="--")
         ax.axvline(go_cue_ind, color="g", linestyle="--")
 
-        ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Goal Inputs")
         ax.set_xlim([0, 300])
         ax.legend(loc="lower right")
+
+        ax = fig.add_subplot(313)
+        ax.plot(
+            inputs_to_env[trial_num, :, 0].detach().numpy(), "k", label="Bump onset"
+        )
+        ax.plot(inputs_to_env[trial_num, :, 1].detach().numpy(), "k")
+        ax.set_xlabel("Time (bins)")
+        ax.set_ylabel("Environment Inputs")
 
     def generate_latent_video(
         self,
@@ -141,8 +151,8 @@ class TT_RandomTargetDelay(Analysis_TT):
         fps=10,
     ):
         # Get model inputs
-        tt_ics, tt_inputs, tt_targets = self.get_model_input()
-        extra = self.get_extra_input()
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+        extra = self.get_extra_inputs()
 
         # Get model outputs
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
