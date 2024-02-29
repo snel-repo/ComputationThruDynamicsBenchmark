@@ -26,15 +26,15 @@ class Analysis_TT_MultiTask(Analysis_TT):
         phase_task = [d for d, t in zip(phase_dict, task_flag) if t]
         return task_flag, phase_task
 
-    def get_model_input_noiseless(self):
+    def get_model_inputs_noiseless(self):
         all_data = self.datamodule.all_data
         tt_ics = torch.Tensor(all_data["ics"])
         tt_inputs = torch.Tensor(all_data["true_inputs"])
         tt_targets = torch.Tensor(all_data["targets"])
         return tt_ics, tt_inputs, tt_targets
 
-    def get_model_output_noiseless(self):
-        tt_ics, tt_inputs, tt_targets = self.get_model_input_noiseless()
+    def get_model_outputs_noiseless(self):
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless()
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
         return out_dict
 
@@ -46,7 +46,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
             data_phase.append(data[i, start_idx:end_idx, :])
         return data_phase
 
-    def compute_fp_phase(
+    def compute_fps_phase(
         self,
         phases,
         task_to_analyze,
@@ -58,7 +58,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
     ):
         # Compute latent activity from task trained model
         task_flag, phase_task = self.get_task_flag(task_to_analyze)
-        tt_ics, tt_inputs, tt_targets = self.get_model_input()
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
         true_inputs = torch.Tensor(self.datamodule.all_data["true_inputs"])
 
         tt_ics = tt_ics[task_flag]
@@ -107,7 +107,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
 
         return fps
 
-    def compute_fp_phase_interpolation(
+    def plot_fps_phase_interpolation(
         self,
         task,
         phase1,
@@ -122,7 +122,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
     ):
         task_flag, phase_task = self.get_task_flag(task)
 
-        tt_ics, tt_inputs, tt_targets = self.get_model_input()
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
         true_inputs = torch.Tensor(self.datamodule.all_data["true_inputs"])
 
         tt_ics = tt_ics[task_flag]
@@ -209,7 +209,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
         print(len(interp_fps))
         return interp_fps
 
-    def compute_fp_task_interpolation(
+    def compute_fps_task_interpolation(
         self,
         task1,
         task2,
@@ -225,7 +225,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
         task_flag_1, phase_task_1 = self.get_task_flag(task1)
         task_flag_2, phase_task_2 = self.get_task_flag(task2)
 
-        tt_ics, tt_inputs, tt_targets = self.get_model_input()
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
         true_inputs = torch.Tensor(self.datamodule.all_data["true_inputs"])
 
         ics_1 = tt_ics[task_flag_1]
@@ -392,3 +392,86 @@ class Analysis_TT_MultiTask(Analysis_TT):
         plt.savefig(
             self.plot_path + f"LatentTraj_{task_to_analyze}_{phase}.png", dpi=300
         )
+
+    def plot_task_trial(self, task, num_trials):
+        task_flag_1, phase_task_1 = self.get_task_flag(task)
+
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+        true_inputs = torch.Tensor(self.datamodule.all_data["true_inputs"])
+
+        ics = tt_ics[task_flag_1]
+        inputs = tt_inputs[task_flag_1]
+        targets = tt_targets[task_flag_1]
+        true_inputs = true_inputs[task_flag_1]
+
+        ics = ics[:num_trials]
+        inputs = inputs[:num_trials]
+        targets = targets[:num_trials]
+        true_inputs = true_inputs[:num_trials]
+
+        trials_phase = phase_task_1[:num_trials]
+
+        out_dict = self.wrapper(ics, inputs, targets)
+
+        controlled = out_dict["controlled"].detach().numpy()
+        inputs = inputs.detach().numpy()
+        targets = targets.detach().numpy()
+        true_inputs = true_inputs.detach().numpy()
+
+        fig = plt.figure(figsize=(3 * num_trials, 6))
+        for i in range(num_trials):
+            end_ind = trials_phase[i]["response"][1]
+            ax2 = fig.add_subplot(4, num_trials, i + 1)
+            ax3 = fig.add_subplot(4, num_trials, i + num_trials + 1)
+            ax4 = fig.add_subplot(4, num_trials, i + 2 * num_trials + 1)
+            ax5 = fig.add_subplot(4, num_trials, i + 3 * num_trials + 1)
+
+            for phase in trials_phase[i].keys():
+                start_ind = trials_phase[i][phase][0]
+                end_ind = trials_phase[i][phase][1]
+                ax2.axvline(start_ind, c="k", linestyle="--")
+                ax2.axvline(end_ind, c="k", linestyle="--")
+                ax3.axvline(start_ind, c="k", linestyle="--")
+                ax3.axvline(end_ind, c="k", linestyle="--")
+                ax4.axvline(start_ind, c="k", linestyle="--")
+                ax4.axvline(end_ind, c="k", linestyle="--")
+                ax5.axvline(start_ind, c="k", linestyle="--")
+                ax5.axvline(end_ind, c="k", linestyle="--")
+
+            for j in range(controlled.shape[-1]):
+                ax2.plot(controlled[i, :end_ind, j])
+
+            for j in range(targets.shape[-1]):
+                ax3.plot(targets[i, :end_ind, j])
+
+            for j in range(inputs.shape[-1]):
+                ax4.plot(inputs[i, :end_ind, j])
+
+            for j in range(true_inputs.shape[-1]):
+                ax5.plot(true_inputs[i, :end_ind, j])
+
+            ax2.set_xlim([0, end_ind])
+            ax3.set_xlim([0, end_ind])
+            ax4.set_xlim([0, end_ind])
+            ax5.set_xlim([0, end_ind])
+
+            if i == 0:
+                ax2.set_ylabel("Controlled")
+                ax3.set_ylabel("Targets")
+                ax4.set_ylabel("Inputs")
+                ax5.set_ylabel("True Inputs")
+            if i == 3:
+                ax2.set_xlabel("Time")
+                ax3.set_xlabel("Time")
+                ax4.set_xlabel("Time")
+                ax5.set_xlabel("Time")
+            else:
+                ax2.set_xlabel("")
+                ax3.set_xlabel("")
+                ax4.set_xlabel("")
+                ax2.set_xticks([])
+                ax3.set_xticks([])
+                ax4.set_xticks([])
+
+        plt.suptitle(f"TT Multitask {task} Trials")
+        plt.show()

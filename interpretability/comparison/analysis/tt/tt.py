@@ -97,7 +97,25 @@ class Analysis_TT(Analysis):
         latents_pca = latents.reshape(B, T, num_PCs)
         return latents_pca, pca
 
-    def plot_trial(self, num_trials=10, scatterPlot=True):
+    def plot_trial_latents(self, num_trials=10):
+        out_dict = self.get_model_outputs()
+        latents = out_dict["latents"].detach().numpy()
+        pca = PCA(n_components=3)
+        lats_pca = pca.fit_transform(latents.reshape(-1, latents.shape[-1]))
+        lats_pca = lats_pca.reshape(latents.shape[0], latents.shape[1], 3)
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        for i in range(num_trials):
+            ax.plot(
+                lats_pca[i, :, 0],
+                lats_pca[i, :, 1],
+                lats_pca[i, :, 2],
+            )
+        ax.set_title("Task-trained Latent Activity")
+        plt.show()
+
+    def plot_trial_io(self, num_trials):
         ics, inputs, targets = self.get_model_inputs()
         out_dict = self.get_model_outputs()
         latents = out_dict["latents"].detach().numpy()
@@ -105,58 +123,46 @@ class Analysis_TT(Analysis):
         pca = PCA(n_components=3)
         lats_pca = pca.fit_transform(latents.reshape(-1, latents.shape[-1]))
         lats_pca = lats_pca.reshape(latents.shape[0], latents.shape[1], 3)
-        if scatterPlot:
-            fig = plt.figure(figsize=(10, 10))
-            ax = fig.add_subplot(111, projection="3d")
-            for i in range(num_trials):
-                ax.plot(
-                    lats_pca[i, :, 0],
-                    lats_pca[i, :, 1],
-                    lats_pca[i, :, 2],
-                )
-            ax.set_title("Task-trained Latent Activity")
-            plt.show()
-        else:
-            fig = plt.figure(figsize=(3 * num_trials, 6))
-            for i in range(num_trials):
-                ax1 = fig.add_subplot(4, num_trials, i + 1)
-                ax1.plot(lats_pca[i, :, 0])
-                ax1.plot(lats_pca[i, :, 1])
-                ax1.plot(lats_pca[i, :, 2])
-                ax1.set_title(f"Trial {i}")
-                ax2 = fig.add_subplot(4, num_trials, i + num_trials + 1)
-                for j in range(controlled.shape[-1]):
-                    ax2.plot(controlled[i, :, j])
+        fig = plt.figure(figsize=(3 * num_trials, 6))
+        for i in range(num_trials):
+            ax1 = fig.add_subplot(4, num_trials, i + 1)
+            ax1.plot(lats_pca[i, :, 0])
+            ax1.plot(lats_pca[i, :, 1])
+            ax1.plot(lats_pca[i, :, 2])
+            ax1.set_title(f"Trial {i}")
+            ax2 = fig.add_subplot(4, num_trials, i + num_trials + 1)
+            for j in range(controlled.shape[-1]):
+                ax2.plot(controlled[i, :, j])
 
-                ax3 = fig.add_subplot(4, num_trials, i + 2 * num_trials + 1)
-                for j in range(targets.shape[-1]):
-                    ax3.plot(targets[i, :, j])
+            ax3 = fig.add_subplot(4, num_trials, i + 2 * num_trials + 1)
+            for j in range(targets.shape[-1]):
+                ax3.plot(targets[i, :, j])
 
-                ax4 = fig.add_subplot(4, num_trials, i + 3 * num_trials + 1)
-                for j in range(inputs.shape[-1]):
-                    ax4.plot(inputs[i, :, j])
-                if i == 0:
-                    ax1.set_ylabel("Latent Activity")
-                    ax2.set_ylabel("Controlled")
-                    ax3.set_ylabel("Targets")
-                    ax4.set_ylabel("Inputs")
-                if i == 4:
-                    ax1.set_xlabel("Time")
-                    ax2.set_xlabel("Time")
-                    ax3.set_xlabel("Time")
-                    ax4.set_xlabel("Time")
-                else:
-                    ax1.set_xlabel("")
-                    ax2.set_xlabel("")
-                    ax3.set_xlabel("")
-                    ax4.set_xlabel("")
-                    ax1.set_xticks([])
-                    ax2.set_xticks([])
-                    ax3.set_xticks([])
-                    ax4.set_xticks([])
+            ax4 = fig.add_subplot(4, num_trials, i + 3 * num_trials + 1)
+            for j in range(inputs.shape[-1]):
+                ax4.plot(inputs[i, :, j])
+            if i == 0:
+                ax1.set_ylabel("Latent Activity")
+                ax2.set_ylabel("Controlled")
+                ax3.set_ylabel("Targets")
+                ax4.set_ylabel("Inputs")
+            if i == 4:
+                ax1.set_xlabel("Time")
+                ax2.set_xlabel("Time")
+                ax3.set_xlabel("Time")
+                ax4.set_xlabel("Time")
+            else:
+                ax1.set_xlabel("")
+                ax2.set_xlabel("")
+                ax3.set_xlabel("")
+                ax4.set_xlabel("")
+                ax1.set_xticks([])
+                ax2.set_xticks([])
+                ax3.set_xticks([])
+                ax4.set_xticks([])
 
-            plt.suptitle("Task-trained Latent Activity")
-            plt.show()
+        plt.suptitle("Task-trained Latent Activity")
+        plt.show()
 
     def compute_FPs(
         self,
