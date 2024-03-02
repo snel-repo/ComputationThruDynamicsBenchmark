@@ -1,10 +1,31 @@
-from interpretability.comparison.analysis.tt.tt import Analysis_TT
+import os
+import pickle
 
-# Create the analysis object:
-analysis_tt = Analysis_TT(
-    run_name="tt_3BFF_pretrained",
-    filepath="/home/csverst/Github/InterpretabilityBenchmark/examples/pretrained/tt/",
+from interpretability.task_modeling.datamodule.task_datamodule import TaskDataModule
+from interpretability.task_modeling.task_env.multi_task_env import MultiTaskWrapper
+
+SAVE_PATH = (
+    "/home/csverst/Github/InterpretabilityBenchmark/pretrained/tt/MultiTaskSmall"
+)
+multitask = MultiTaskWrapper(
+    task_list=[
+        "MemoryPro",
+        "MemoryAnti",
+    ],
+    noise=0.3,
+    num_targets=32,
+    bin_size=20,
+    n_timesteps=640,
 )
 
-analysis_tt.print_hyperparams()
-analysis_tt.plot_trial(num_trials=2, scatterPlot=False)
+mt_dm = TaskDataModule(
+    multitask,
+    n_samples=50,
+    batch_size=32,
+    num_workers=0,
+    seed=0,
+)
+
+path3 = os.path.join(SAVE_PATH, "datamodule_sim.pkl")
+with open(path3, "wb") as f:
+    pickle.dump(mt_dm, f)
