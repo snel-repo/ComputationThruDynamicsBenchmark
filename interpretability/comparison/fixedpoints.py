@@ -62,12 +62,8 @@ def find_fixed_points(
     # Run the optimization
     iter_count = 1
     q_prev = torch.full((n_inits,), float("nan"), device=device)
-    x_store = np.zeros((n_inits, max_iters, state_dim))
-    q_store = np.zeros((n_inits, max_iters))
     while True:
         # Compute q and dq for the current states
-        x_store[:, iter_count - 1, :] = states.cpu().detach().numpy()
-        q_store[:, iter_count - 1] = q_prev.cpu().detach().numpy()
         F = model(inputs, states)
         q = 0.5 * torch.sum((F.squeeze() - states.squeeze()) ** 2, dim=1)
         dq = torch.abs(q - q_prev)
@@ -94,7 +90,6 @@ def find_fixed_points(
             print("Maximum iteration count reached. Terminating.")
             break
         q_prev = q
-        q_store[:, iter_count - 1] = q_prev.cpu().detach().numpy()
         iter_count += 1
     # Collect fixed points
 
