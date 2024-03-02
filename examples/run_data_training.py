@@ -27,14 +27,14 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_GRU_DT"
+RUN_DESC = "NBFF_LFADS_DT_test"
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"
 DATA = "NBFF"
 INFER_INPUTS = False
 
-prefix = "20240225_NBFF_GRU_Tutorial"
+prefix = "20240229_3BFF_GRU_Tutorial"
 
 # -------------------------------------
 SEARCH_SPACE = dict(

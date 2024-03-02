@@ -1,7 +1,6 @@
 import pickle
 import types
 
-import numpy as np
 import torch
 from jax import random
 from matplotlib import pyplot as plt
@@ -207,10 +206,23 @@ class Analysis_DT(Analysis):
         fig = plt.figure(figsize=(10, 10))
         ax = fig.add_subplot(111, projection="3d")
         # Make a color vector based on stability
-        colors = np.zeros((xstar.shape[0], 3))
-        colors[is_stable, 0] = 1
-        colors[~is_stable, 2] = 1
-        ax.scatter(xstar_pca[q_flag, 0], xstar_pca[q_flag, 1], xstar_pca[q_flag, 2])
+
+        xstar_pca = xstar_pca[q_flag]
+        is_stable = is_stable[q_flag]
+
+        ax.scatter(
+            xstar_pca[is_stable, 0],
+            xstar_pca[is_stable, 1],
+            xstar_pca[is_stable, 2],
+            c="g",
+        )
+        ax.scatter(
+            xstar_pca[~is_stable, 0],
+            xstar_pca[~is_stable, 1],
+            xstar_pca[~is_stable, 2],
+            c="r",
+        )
+
         for i in range(num_traj):
             ax.plot(
                 lats_pca[i, :, 0],
@@ -219,7 +231,6 @@ class Analysis_DT(Analysis):
             )
         ax.set_title(f"{self.model_type}_Fixed Points")
         plt.show()
-        plt.savefig(self.run_name + f"_{self.model_type}_fps.png")
 
     def plot_trial(self, num_trials=10, scatterPlot=True):
         latents = self.get_latents().detach().numpy()
@@ -238,8 +249,6 @@ class Analysis_DT(Analysis):
                     lats_pca[i, :, 2],
                 )
             ax.set_title(f"{self.model_type}_Trial Latent Activity")
-            plt.show()
-            plt.savefig(self.run_name + f"_{self.model_type}_trial_latents.png")
         else:
             fig = plt.figure(figsize=(10, 4 * num_trials))
             for i in range(num_trials):
@@ -247,9 +256,9 @@ class Analysis_DT(Analysis):
                 ax.plot(lats_pca[i, :, 0])
                 ax.plot(lats_pca[i, :, 1])
                 ax.plot(lats_pca[i, :, 2])
-            plt.title(f"{self.model_type}_Trial Latent Activity")
-            plt.show()
-            plt.savefig(self.run_name + f"_{self.model_type}_trial_latents_time.png")
+            ax.set_title(f"{self.model_type}_Trial Latent Activity")
+
+        plt.show()
 
     def get_inputs(self):
         _, inputs = self.get_model_inputs()

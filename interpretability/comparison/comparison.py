@@ -142,7 +142,7 @@ class Comparison:
         n_delays=20,
         rank=50,
         delay_interval=1,
-        device="cpu",
+        device="cuda",
         percent_data=0.01,
     ):
         latent_list = []
@@ -162,13 +162,13 @@ class Comparison:
             lr=0.005,
         )
         similarities = dsa.fit_score()
-
+        cmap_r = plt.cm.get_cmap("viridis_r")
         fit_mat = similarities
         ij_figure = plt.figure()
         ij_ax = ij_figure.add_subplot(111)
         # Plot it as an image
-        ij_ax.imshow(fit_mat)
-        ij_ax.set_title("R2 from i to j")
+        ij_ax.imshow(fit_mat, cmap=cmap_r)
+        ij_ax.set_title("Dynamical Similarity (DSA)")
         ij_ax.set_xticks(np.arange(self.num_analyses))
         ij_ax.set_yticks(np.arange(self.num_analyses))
         ij_ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
@@ -178,8 +178,12 @@ class Comparison:
             ij_ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
         )
 
-        # Colorbar
-        ij_figure.colorbar(plt.imshow(fit_mat), ax=ij_ax)
+        # INvert the colorbar
+
+        ij_figure.colorbar(
+            plt.imshow(fit_mat, cmap=cmap_r),
+            ax=ij_ax,
+        )
         return similarities
 
     def plot_trials(self, num_trials, num_pcs=3):

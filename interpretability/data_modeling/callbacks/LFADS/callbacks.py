@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 
 from interpretability.data_modeling.extensions.LFADS.utils import send_batch_to_device
 
-plt.switch_backend("Agg")
+# plt.switch_backend("Agg")
 
 
 def has_image_loggers(loggers):

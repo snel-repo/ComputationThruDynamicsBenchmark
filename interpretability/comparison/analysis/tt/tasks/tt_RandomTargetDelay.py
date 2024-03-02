@@ -83,7 +83,7 @@ class TT_RandomTargetDelay(Analysis_TT):
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Muscle Activation (AU)")
         ax.set_xlim([0, 300])
-        ax.set_ylim([-0.2, 0.8])
+        ax.set_ylim([-0.0, 0.5])
         plt.tight_layout()
 
         fig = plt.figure(figsize=(5, 5))

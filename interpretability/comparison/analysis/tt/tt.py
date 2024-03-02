@@ -270,12 +270,13 @@ class Analysis_TT(Analysis):
         plt.show()
         return fps
 
-    def simulate_neural_data(self):
+    def simulate_neural_data(self, subfolder, dataset_path):
         self.simulator.simulate_neural_data(
             self.wrapper,
             self.datamodule,
             self.run_name,
-            coupled=False,
+            subfolder,
+            dataset_path,
             seed=0,
         )
 

@@ -161,6 +161,7 @@ class BasicDataModule(pl.LightningDataModule):
             )
         else:
             filename = dirs[file_index]
+            self.name = filename
 
         self.fpath = os.path.join(fpath, filename)
         self.save_hyperparameters()
