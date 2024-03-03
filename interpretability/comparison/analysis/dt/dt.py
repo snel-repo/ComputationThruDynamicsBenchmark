@@ -134,6 +134,10 @@ class Analysis_DT(Analysis):
         with open(filepath + "datamodule.pkl", "rb") as f:
             self.datamodule = pickle.load(f)
 
+    def to_device(self, device):
+        self.model.to(device)
+        self.datamodule.to(device)
+
     def compute_FPs(
         self,
         noiseless=True,
