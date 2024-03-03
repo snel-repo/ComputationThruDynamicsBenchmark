@@ -130,6 +130,7 @@ def train_PTL(
     model_path = os.path.join(save_path, "model.pkl")
     datamodule_path = os.path.join(save_path, "datamodule.pkl")
 
+    model = model.to("cpu")
     with open(model_path, "wb") as f:
         pickle.dump(model, f)
 

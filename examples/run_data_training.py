@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_LFADS_DT_test"
+RUN_DESC = "NBFF_GRU_RNN_DT_test"
 NUM_SAMPLES = 1
-MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
-MODEL = "LFADS"
+MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
+MODEL = "GRU_RNN"
 DATA = "NBFF"
 INFER_INPUTS = False
 
@@ -48,6 +48,9 @@ SEARCH_SPACE = dict(
     ),
     params=dict(
         seed=tune.grid_search([0]),
+    ),
+    trainer=dict(
+        max_epochs=tune.grid_search([1]),
     ),
 )
 

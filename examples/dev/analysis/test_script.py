@@ -1,40 +1,30 @@
+import io
 import os
 import pickle
 
-from interpretability.data_modeling.datamodules.LFADS.datamodule import BasicDataModule
+import torch
 
-SAVE_PATH = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
-    "pretrained/dt/20240302_NBFF_LFADS_DT/"
+from interpretability.comparison.analysis.dt.dt import Analysis_DT
+
+
+class CPU_Unpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == "torch.storage" and name == "_load_from_bytes":
+            return lambda b: torch.load(io.BytesIO(b), map_location="cpu")
+        else:
+            return super().find_class(module, name)
+
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+HOME_DIR = "/home/csverst/Github/InterpretabilityBenchmark"
+fpath_3bff_LFADS_2_DT = (
+    HOME_DIR + "/content/trained_models/task-trained/20240229_3BFF_GRU_Tutorial/"
+    "n=3 weight_decay=1e-08 max_epochs=1500 seed=2/20240303_NBFF_LFADS_DT_CPU/"
 )
 
-
-path3 = os.path.join(SAVE_PATH, "model.pkl")
-# model = pickle.load(open(path3, "rb"))
-# path4 = os.path.join(SAVE_PATH, "datamodule_gpu.pkl")
-# datamodule = pickle.load(open(path4, "rb"))
-
-# path5 = os.path.join(SAVE_PATH, "model_cpu.pkl")
-dm = BasicDataModule(
-    prefix="20240229_3BFF_GRU_Tutorial",
-    system="3BFF",
-    gen_model="GRU_RNN",
-    n_neurons=50,
-    nonlin_embed=True,
-    obs_noise="poisson",
-    seed=0,
+dt_analysis = Analysis_DT(
+    run_name="temp",
+    filepath=fpath_3bff_LFADS_2_DT,
+    model_type="LFADS",
 )
-
-model = pickle.load(open(path3, "rb"))
-dm.prepare_data()
-dm.setup()
-model = model.to("cpu")
-path6 = os.path.join(SAVE_PATH, "datamodule.pkl")
-# Save the datamodule
-with open(path6, "wb") as f:
-    pickle.dump(dm, f)
-
-# Save the model
-path7 = os.path.join(SAVE_PATH, "model.pkl")
-with open(path7, "wb") as f:
-    pickle.dump(model, f)

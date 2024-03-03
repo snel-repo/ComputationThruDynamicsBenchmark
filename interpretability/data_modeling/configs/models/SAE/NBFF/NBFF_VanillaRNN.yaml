@@ -1,4 +1,4 @@
-_target_: interpretability.data_modeling.models.dyn_models_RNN.RNNLatentSAE
+_target_: interpretability.data_modeling.models.SAE.dyn_models_RNN.RNNLatentSAE
 dataset: NBFF
 
 encoder_size: 100

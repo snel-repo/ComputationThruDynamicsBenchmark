@@ -1,3 +1,4 @@
+import io
 import pickle
 import types
 
@@ -8,6 +9,14 @@ from sklearn.decomposition import PCA
 
 from interpretability.comparison.analysis.analysis import Analysis
 from interpretability.comparison.fixedpoints import find_fixed_points
+
+
+class CPU_Unpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == "torch.storage" and name == "_load_from_bytes":
+            return lambda b: torch.load(io.BytesIO(b), map_location="cpu")
+        else:
+            return super().find_class(module, name)
 
 
 def get_model_inputs_LDS(self):
@@ -129,10 +138,16 @@ class Analysis_DT(Analysis):
             self.get_dynamics_model = None
 
     def load_wrapper(self, filepath):
-        with open(filepath + "model.pkl", "rb") as f:
-            self.model = pickle.load(f)
-        with open(filepath + "datamodule.pkl", "rb") as f:
-            self.datamodule = pickle.load(f)
+        if torch.cuda.is_available():
+            with open(filepath + "model.pkl", "rb") as f:
+                self.model = pickle.load(f)
+            with open(filepath + "datamodule.pkl", "rb") as f:
+                self.datamodule = pickle.load(f)
+        else:
+            with open(filepath + "model.pkl", "rb") as f:
+                self.model = CPU_Unpickler(f).load()
+            with open(filepath + "datamodule.pkl", "rb") as f:
+                self.datamodule = CPU_Unpickler(f).load()
 
     def to_device(self, device):
         self.model.to(device)

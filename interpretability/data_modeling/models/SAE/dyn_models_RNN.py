@@ -1,7 +1,8 @@
 import pytorch_lightning as pl
 import torch
-import torch.nn.functional as F
 from torch import nn
+
+from .loss_func import LossFunc, PoissonLossFunc
 
 
 class RNN(nn.Module):
@@ -32,6 +33,7 @@ class RNNLatentSAE(pl.LightningModule):
         weight_decay: float,
         dropout: float,
         input_size: int,
+        loss_func: LossFunc = PoissonLossFunc(),
     ):
         super().__init__()
         # Instantiate bidirectional GRU encoder
@@ -49,6 +51,7 @@ class RNNLatentSAE(pl.LightningModule):
         self.weight_decay = weight_decay
         self.lr = lr
         self.decoder = RNN(nn.RNNCell(input_size, latent_size))
+        self.loss_func = loss_func
 
     def forward(self, data, inputs):
         # Pass data through the model
@@ -77,22 +80,32 @@ class RNNLatentSAE(pl.LightningModule):
         return optimizer
 
     def training_step(self, batch, batch_ix):
-        spikes, recon_spikes, inputs, *_ = batch
+        spikes, recon_spikes, inputs, extra, *_ = batch
         # Pass data through the model
         pred_logrates, pred_latents = self.forward(spikes, inputs)
         # Compute the weighted loss
-        loss_nll = F.poisson_nll_loss(pred_logrates, recon_spikes, reduction="none")
+        loss_dict = dict(
+            controlled=pred_logrates,
+            targets=recon_spikes,
+            extra=extra,
+        )
+        loss = self.loss_func(loss_dict)
 
-        loss_all_train = torch.mean(loss_nll)
-        self.log("train/loss_all_train", loss_all_train)
+        self.log("train/loss_all", loss)
 
-        return loss_all_train
+        return loss
 
     def validation_step(self, batch, batch_ix):
-        spikes, recon_spikes, inputs, *_ = batch
+        spikes, recon_spikes, inputs, extra, *_ = batch
         # Pass data through the model
         pred_logrates, latents = self.forward(spikes, inputs)
-        loss_nll = F.poisson_nll_loss(pred_logrates, recon_spikes, reduction="none")
-        loss_all_train = torch.mean(loss_nll)
-        self.log("valid/loss_all", loss_all_train)
-        return loss_all_train
+        loss_dict = dict(
+            controlled=pred_logrates,
+            targets=recon_spikes,
+            extra=extra,
+        )
+
+        loss = self.loss_func(loss_dict)
+
+        self.log("valid/loss_all", loss)
+        return loss
