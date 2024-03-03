@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 
 from interpretability.comparison.analysis.analysis import Analysis
 from interpretability.comparison.fixedpoints import find_fixed_points
+from interpretability.data_modeling.extensions.LFADS.utils import send_batch_to_device
 
 
 class CPU_Unpickler(pickle.Unpickler):
@@ -48,16 +49,24 @@ def get_true_rates_SAE(self):
 
 
 def get_model_inputs_LFADS(self):
-    dt_train_ds = self.datamodule.train_data
-    dt_val_ds = self.datamodule.valid_data
-
-    spiking_train = dt_train_ds[0][0]
-    inputs_train = dt_train_ds[0][2]
-    spiking_val = dt_val_ds[0][0]
-    inputs_val = dt_val_ds[0][2]
-
-    dt_spiking = torch.cat((spiking_train, spiking_val), dim=0)
-    dt_inputs = torch.cat((inputs_train, inputs_val), dim=0)
+    train_ds = self.datamodule.train_dataloader(shuffle=False)
+    val_dataloader = self.datamodule.val_dataloader()
+    dt_spiking = []
+    dt_inputs = []
+    for batch in train_ds:
+        # Move data to the right device
+        spiking_train = batch[0][0]
+        inputs_train = batch[0][2]
+        dt_spiking.append(spiking_train)
+        dt_inputs.append(inputs_train)
+    for batch in val_dataloader:
+        # Move data to the right device
+        spiking_val = batch[0][0]
+        inputs_val = batch[0][2]
+        dt_spiking.append(spiking_val)
+        dt_inputs.append(inputs_val)
+    dt_spiking = torch.cat(dt_spiking, dim=0)
+    dt_inputs = torch.cat(dt_inputs, dim=0)
     return dt_spiking, dt_inputs
 
 
@@ -76,17 +85,38 @@ def get_model_outputs_SAE(self):
 
 
 def get_model_outputs_LFADS(self):
-    t_data = self.datamodule.train_data
-    v_data = self.datamodule.valid_data
-    output_dict = self.model(t_data[0])
-    output_dict_val = self.model(v_data[0])
-    rates_train = output_dict[0]
-    latents_train = output_dict[6]
-    rates_val = output_dict_val[0]
-    latents_val = output_dict_val[6]
-    rates = torch.cat((rates_train, rates_val), dim=0)
-    latents = torch.cat((latents_train, latents_val), dim=0)
-    return rates, latents
+    train_ds = self.datamodule.train_dataloader(shuffle=False)
+    val_dataloader = self.datamodule.val_dataloader()
+    dt_rates = []
+    dt_latents = []
+
+    for batch in train_ds:
+        # Move data to the right device
+        batch = send_batch_to_device(batch, self.model.device)
+        # Compute model output
+        output = self.model.predict_step(
+            batch=batch,
+            batch_ix=None,
+            sample_posteriors=False,
+        )
+        dt_rates.append(output[0])
+        dt_latents.append(output[6])
+
+    for batch in val_dataloader:
+        # Move data to the right device
+        batch = send_batch_to_device(batch, self.model.device)
+        # Compute model output
+        output = self.model.predict_step(
+            batch=batch,
+            batch_ix=None,
+            sample_posteriors=False,
+        )
+        dt_rates.append(output[0])
+        dt_latents.append(output[6])
+    dt_rates = torch.cat(dt_rates, dim=0)
+    dt_latents = torch.cat(dt_latents, dim=0)
+
+    return dt_rates, dt_latents
 
 
 def get_latents_LDS(self):
