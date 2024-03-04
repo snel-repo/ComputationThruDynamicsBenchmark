@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import explained_variance_score
+from sklearn.metrics import explained_variance_score, r2_score
 
 
 # TODO Make metrics agnostic to the analysis class
@@ -15,9 +15,8 @@ def get_rate_r2(rates_source, rates_targ):
     n_b_targ, n_t_targ, n_d_targ = rates_targ.shape
     rates_targ_flat = rates_targ.reshape(n_b_targ * n_t_targ, n_d_targ).detach().numpy()
 
-    reg = LinearRegression().fit(rates_source_flat, rates_targ_flat)
-    r2 = reg.score(rates_source_flat, rates_targ_flat)
-    return r2
+    r2_rates = r2_score(rates_targ_flat, rates_source_flat)
+    return r2_rates
 
 
 def get_state_r2(lats_source, lats_targ, num_pcs=3):

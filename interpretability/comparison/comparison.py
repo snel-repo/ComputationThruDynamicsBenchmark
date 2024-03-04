@@ -28,21 +28,33 @@ class Comparison:
 
     def compare_rate_r2(self):
         # Function to compare the rate-reconstruction of the different models
+        dt_inds = []
         rate_r2_mat = np.zeros(self.num_analyses)
         for i in range(self.num_analyses):
             if self.analyses[i].tt_or_dt == "dt":
+                dt_inds.append(i)
                 rate_r2_mat[i] = get_rate_r2(
                     self.analyses[i].get_rates(), self.analyses[i].get_true_rates()
                 )
+        dt_inds = np.array(dt_inds).astype(int)
         fig = plt.figure()
         ax = fig.add_subplot(111)
         # Plot it as an image
-        ax.bar(np.arange(self.num_analyses), rate_r2_mat)
+        ax.bar(np.arange(len(dt_inds)), rate_r2_mat[dt_inds])
         ax.set_title("Rate R2 for data-trained model")
         # Set ticks
-        ax.set_xticks(np.arange(self.num_analyses))
-        ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
+        ax.set_xticks(np.arange(len(dt_inds)))
+        ax.set_xticklabels(
+            [
+                analysis.run_name
+                for analysis in self.analyses
+                if analysis.tt_or_dt == "dt"
+            ]
+        )
         ax.set_ylabel("Rate R2")
+        min_rate_r2 = np.min(rate_r2_mat[dt_inds])
+        max_rate_r2 = np.max(rate_r2_mat[dt_inds])
+        ax.set_ylim([min_rate_r2 - 0.05, max_rate_r2 + 0.05])
         # Rotate the tick labels and set their alignment.
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
@@ -50,12 +62,16 @@ class Comparison:
         # Function to compare the latent activity
         state_r2_mat = np.zeros((self.num_analyses, self.num_analyses))
         for i in range(self.num_analyses):
+
             for j in range(self.num_analyses):
-                state_r2_mat[i, j] = get_state_r2(
-                    self.analyses[i].get_latents(),
-                    self.analyses[j].get_latents(),
-                    num_pcs=num_pcs,
-                )
+                if i == j:
+                    state_r2_mat[i, j] = 1
+                else:
+                    state_r2_mat[i, j] = get_state_r2(
+                        self.analyses[i].get_latents(),
+                        self.analyses[j].get_latents(),
+                        num_pcs=num_pcs,
+                    )
 
         ij_figure = plt.figure()
         ij_ax = ij_figure.add_subplot(111)
@@ -266,3 +282,71 @@ class Comparison:
                     axes[i, j].set_xticks([])
 
             axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
+
+    def plot_trials_3d(self, num_trials):
+        # Function to plot one trial from each analysis
+        fig = plt.figure()
+        # One subplot row per analysis
+        # One subplot column per trial
+        axes = fig.subplots(1, self.num_analyses, subplot_kw={"projection": "3d"})
+        for i in range(self.num_analyses):
+            latents = self.analyses[i].get_latents().detach().numpy()
+            pca = PCA()
+            latents_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            latents_pca_flat = pca.fit_transform(latents_flat)
+            latents_pca = latents_pca_flat.reshape(latents.shape)
+            for j in range(num_trials):
+                axes[i].plot(
+                    latents_pca[j, :, 0],
+                    latents_pca[j, :, 1],
+                    latents_pca[j, :, 2],
+                )
+
+            axes[i].set_title(f"{self.analyses[i].run_name}")
+            axes[i].set_xlabel("PC1")
+            axes[i].set_ylabel("PC2")
+            axes[i].set_zlabel("PC3")
+            axes[i].set_xticks([])
+            axes[i].set_yticks([])
+            axes[i].set_zticks([])
+
+    def plot_trials_3d_reference(self, num_trials, ref_ind=None):
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        ref_lats = self.analyses[ref_ind].get_latents().detach().numpy()
+        pca = PCA()
+        ref_lats_flat = ref_lats.reshape(
+            ref_lats.shape[0] * ref_lats.shape[1], ref_lats.shape[2]
+        )
+        ref_lats_pca_flat = pca.fit_transform(ref_lats_flat)
+        ref_lats_pca = ref_lats_pca_flat.reshape(ref_lats.shape)
+
+        fig = plt.figure()
+        axes = fig.subplots(1, self.num_analyses, subplot_kw={"projection": "3d"})
+        for i in range(self.num_analyses):
+            latents = self.analyses[i].get_latents().detach().numpy()
+            lats_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            reg = LinearRegression().fit(lats_flat, ref_lats_pca_flat)
+            latents_pca_flat = reg.predict(lats_flat)
+            latents_pca = latents_pca_flat.reshape(ref_lats_pca.shape)
+            for j in range(num_trials):
+                axes[i].plot(
+                    latents_pca[j, :, 0],
+                    latents_pca[j, :, 1],
+                    latents_pca[j, :, 2],
+                )
+
+            axes[i].set_title(f"{self.analyses[i].run_name}")
+            axes[i].set_xlabel("PC1")
+            axes[i].set_ylabel("PC2")
+            axes[i].set_zlabel("PC3")
+            axes[i].set_xticks([])
+            axes[i].set_yticks([])
+            axes[i].set_zticks([])

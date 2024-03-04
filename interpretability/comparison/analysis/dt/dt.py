@@ -48,6 +48,11 @@ def get_true_rates_SAE(self):
     return true_rates
 
 
+def get_rates_SAE(self):
+    rates, _ = self.get_model_outputs()
+    return torch.exp(rates)
+
+
 def get_model_inputs_LFADS(self):
     train_ds = self.datamodule.train_dataloader(shuffle=False)
     val_dataloader = self.datamodule.val_dataloader()
@@ -154,6 +159,7 @@ class Analysis_DT(Analysis):
             self.get_latents = types.MethodType(get_latents_SAE, self)
             self.get_dynamics_model = types.MethodType(get_dynamics_model_SAE, self)
             self.get_true_rates = types.MethodType(get_true_rates_SAE, self)
+            self.get_rates = types.MethodType(get_rates_SAE, self)
         elif self.model_type == "LFADS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LFADS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LFADS, self)
