@@ -294,10 +294,21 @@ class MultiTaskPerformanceCallback(pl.Callback):
         self.plot_n_trials = plot_n_trials
 
     def on_validation_epoch_end(self, trainer, pl_module):
+        """Computes the performance of the models based on the
+        angle difference between the output and the target.
 
+        For each task, the angle difference is computed for the
+        last 1/4 of the response period.
+
+        The percent success is computed as the percentage of
+        trials where the angle difference is less than pi/10.
+
+        The percent success is logged to wandb.
+
+        """
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
-        # Get trajectories and model predictions
+        #
 
         # Get the data from the datamodule
         data_dict = trainer.datamodule.all_data

@@ -2,6 +2,17 @@ import torch
 from torch import nn
 from torch.nn import GRUCell, RNNCell
 
+"""
+All models must meet a few requirements
+    1. They must have an init_model method that takes
+    input_size and output_size as arguments
+    2. They must have a forward method that takes inputs and hidden
+    as arguments and returns output and hidden for one time step
+    3. They must have a cell attribute that is the recurrent cell
+    4. They must have a readout attribute that is the output layer
+    (mapping from latent to output)
+"""
+
 
 class GRU_RNN(nn.Module):
     def __init__(self, latent_size, input_size=None, output_size=None):

@@ -1,4 +1,4 @@
-_target_: interpretability.task_modeling.task_env.task_env.RandomTargetDelay
+_target_: interpretability.task_modeling.task_env.task_env.RandomTarget
 effector:
   _target_: motornet.effector.RigidTendonArm26
   muscle:

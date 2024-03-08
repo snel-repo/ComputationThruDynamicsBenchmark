@@ -38,14 +38,22 @@ class NeuralDataSimulator:
         self,
         n_neurons=50,
         nonlin_embed=False,
+        fr_scaling=2.0,
     ):
+
+        """Initialize the neural data simulator
+        Args:
+            n_neurons (int): The number of neurons to simulate
+            nonlin_embed (bool): Use a nonlinearity to embed latents?
+            fr_scaling (float): Factor to scale firing rates (rel std. dev.)
+                        Higher values lower the firing rates. Default is 2.0"""
         self.n_neurons = n_neurons
         self.nonlin_embed = nonlin_embed
+        self.fr_scaling = fr_scaling
         self.obs_noise = "poisson"
         self.readout = None
         self.orig_mean = None
         self.orig_std = None
-        self.use_neurons = True
 
     def simulate_neural_data(
         self, task_trained_model, datamodule, run_tag, subfolder, dataset_path, seed=0
@@ -79,52 +87,39 @@ class NeuralDataSimulator:
         )
 
         fpath = os.path.join(dataset_path, filename)
+
         # Make the directory if it doesn't exist
         if not os.path.exists(fpath):
             os.mkdir(fpath)
-
         fpath = os.path.join(fpath, subfolder + ".h5")
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
-        if self.use_neurons:
-            # Make random permutation of latents
-            rng = np.random.default_rng(seed)
-            # get random permutation indices
-            num_stacks = np.ceil(self.n_neurons / n_lat_dim)
-            for i in range(int(num_stacks)):
-                perm_inds_stack = rng.permutation(n_lat_dim)
-                if i == 0:
-                    perm_inds = perm_inds_stack
-                else:
-                    perm_inds = np.concatenate((perm_inds, perm_inds_stack))
-            perm_inds = perm_inds[: self.n_neurons]
-            latents_perm = latents[:, :, perm_inds]
-            activity = latents_perm[:, :, : self.n_neurons]
-            perm_neurons = perm_inds[: self.n_neurons]
-            # get the readout matrix
-            # should have a shape of (n_lat_dim, n_neurons)
-            readout = np.zeros((n_lat_dim, self.n_neurons))
-            for i in range(self.n_neurons):
-                readout[perm_inds[i], i] = 1
-        else:
-            if self.n_neurons is not None:
-                rng = np.random.default_rng(seed)
-                # Randomly sample, normalize, and sort readout
-                readout = rng.uniform(-2, 2, (n_lat_dim, self.n_neurons))
-                if not self.nonlin_embed:
-                    readout = readout / np.linalg.norm(readout, ord=1, axis=0)
 
-                readout = readout[:, np.argsort(readout[0])]
+        # Make random permutation of latents
+        rng = np.random.default_rng(seed)
+        num_stacks = np.ceil(self.n_neurons / n_lat_dim)
+        for i in range(int(num_stacks)):
+            perm_inds_stack = rng.permutation(n_lat_dim)
+            if i == 0:
+                perm_inds = perm_inds_stack
             else:
-                # Use an identity readout
-                readout = np.eye(n_lat_dim)
-            self.readout = readout
-            activity = latents @ readout
+                perm_inds = np.concatenate((perm_inds, perm_inds_stack))
+
+        # Get the first n_neurons indices and permute the latents
+        perm_inds = perm_inds[: self.n_neurons]
+        latents_perm = latents[:, :, perm_inds]
+        activity = latents_perm[:, :, : self.n_neurons]
+        perm_neurons = perm_inds[: self.n_neurons]
+
+        # Make the readout matrix
+        readout = np.zeros((n_lat_dim, self.n_neurons))
+        for i in range(self.n_neurons):
+            readout[perm_inds[i], i] = 1
 
         # Standardize and record original mean and standard deviations
         orig_mean = np.mean(activity, keepdims=True)
         orig_std = np.std(activity, keepdims=True)
-        activity = (activity - orig_mean) / (2 * orig_std)
+        activity = (activity - orig_mean) / (self.fr_scaling * orig_std)
 
         self.orig_mean = orig_mean
         self.orig_std = orig_std
@@ -133,6 +128,7 @@ class NeuralDataSimulator:
             rng = np.random.default_rng(seed)
             scaling_matrix = np.logspace(0.2, 1, (self.n_neurons))
             activity = activity * scaling_matrix[None, :]
+
         # Add noise to the observations
         if self.obs_noise is not None:
             if self.nonlin_embed:
@@ -158,30 +154,24 @@ class NeuralDataSimulator:
         with h5py.File(fpath, "w") as h5file:
             h5file.create_dataset("train_encod_data", data=data[train_inds])
             h5file.create_dataset("valid_encod_data", data=data[valid_inds])
-            # h5file.create_dataset("test_encod_data", data=data[test_inds])
 
             h5file.create_dataset("train_recon_data", data=data[train_inds])
             h5file.create_dataset("valid_recon_data", data=data[valid_inds])
-            # h5file.create_dataset("test_recon_data", data=data[test_inds])
 
             h5file.create_dataset("train_inputs", data=inputs[train_inds])
             h5file.create_dataset("valid_inputs", data=inputs[valid_inds])
-            # h5file.create_dataset("test_inputs", data=inputs[test_inds])
 
             h5file.create_dataset("train_activity", data=activity[train_inds])
             h5file.create_dataset("valid_activity", data=activity[valid_inds])
-            # h5file.create_dataset("test_activity", data=activity[test_inds])
 
             h5file.create_dataset("train_latents", data=latents[train_inds])
             h5file.create_dataset("valid_latents", data=latents[valid_inds])
 
             h5file.create_dataset("train_extra", data=extra[train_inds])
             h5file.create_dataset("valid_extra", data=extra[valid_inds])
-            # h5file.create_dataset("test_latents", data=latents[test_inds])
 
             h5file.create_dataset("train_inds", data=train_inds)
             h5file.create_dataset("valid_inds", data=valid_inds)
-            # h5file.create_dataset("test_inds", data=test_inds)
 
             h5file.create_dataset("readout", data=readout)
             h5file.create_dataset("orig_mean", data=orig_mean)

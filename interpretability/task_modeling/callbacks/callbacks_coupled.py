@@ -10,6 +10,8 @@ import torch
 import wandb
 from sklearn.decomposition import PCA
 
+# Helper functions for the MotorNetVideoGenerationArm callback
+
 
 def calculate_arm_positions(
     shoulder_angle, elbow_angle, upper_arm_length=1, forearm_length=1
@@ -17,6 +19,9 @@ def calculate_arm_positions(
     """
     Calculate the positions of the shoulder, elbow, and hand
     given the angles of the shoulder and elbow.
+
+    This function assumes that the shoulder is at the origin (0, 0) and the
+    geometry of the arm is the standard 2-segment model.
     """
     # Calculate elbow position relative to shoulder
     elbow_x = np.cos(shoulder_angle) * upper_arm_length

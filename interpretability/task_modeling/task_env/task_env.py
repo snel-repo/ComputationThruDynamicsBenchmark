@@ -186,7 +186,7 @@ class NBitFlipFlop(DecoupledEnvironment):
             plt.show()
 
 
-class RandomTargetDelay(Environment):
+class RandomTarget(Environment):
     """A reach to a random target from a random starting position with a delay period.
 
     Args:
@@ -207,7 +207,7 @@ class RandomTargetDelay(Environment):
             0.0
         ] * self.skeleton.space_dim  # target info is noiseless
 
-        self.dataset_name = "RandomTargetDelay"
+        self.dataset_name = "RandomTarget"
         self.n_timesteps = np.floor(self.max_ep_duration / self.effector.dt).astype(int)
         self.input_labels = ["TargetX", "TargetY", "GoCue"]
         self.output_labels = ["Pec", "Delt", "Brad", "TriLong", "Biceps", "TriLat"]
