@@ -4,9 +4,9 @@ import os
 
 import dotenv
 
-from interpretability.comparison.analysis.dt.dt import Analysis_DT
-from interpretability.comparison.analysis.tt.tt import Analysis_TT
-from interpretability.comparison.comparison import Comparison
+from ctd.comparison.analysis.dt.dt import Analysis_DT
+from ctd.comparison.analysis.tt.tt import Analysis_TT
+from ctd.comparison.comparison import Comparison
 
 dotenv.load_dotenv(override=True)
 TRAINED_MODEL_PATH = os.environ.get("HOME_DIR") + "content/trained_models/"

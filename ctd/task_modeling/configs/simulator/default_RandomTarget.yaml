@@ -1,0 +1,3 @@
+_target_: ctd.task_modeling.simulator.neural_simulator.NeuralDataSimulator
+n_neurons: 50
+nonlin_embed: False

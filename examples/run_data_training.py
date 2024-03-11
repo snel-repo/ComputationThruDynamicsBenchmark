@@ -12,9 +12,9 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
-from interpretability.data_modeling.extensions.SAE.utils import make_data_tag
-from interpretability.data_modeling.train_JAX import train_JAX
-from interpretability.data_modeling.train_PTL import train_PTL
+from ctd.data_modeling.extensions.SAE.utils import make_data_tag
+from ctd.data_modeling.train_JAX import train_JAX
+from ctd.data_modeling.train_PTL import train_PTL
 
 dotenv.load_dotenv(override=True)
 HOME_DIR = Path(os.environ.get("HOME_DIR"))

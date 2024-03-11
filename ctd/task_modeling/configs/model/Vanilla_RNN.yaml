@@ -1,0 +1,2 @@
+_target_: ctd.task_modeling.model.rnn.Vanilla_RNN
+latent_size: 128

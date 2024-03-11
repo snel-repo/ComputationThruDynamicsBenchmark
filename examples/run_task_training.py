@@ -12,7 +12,7 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
-from interpretability.task_modeling.task_train_prep import train
+from ctd.task_modeling.task_train_prep import train
 from utils import make_data_tag, trial_function
 
 # Add custom resolver to create the data_tag so it can be used for run dir

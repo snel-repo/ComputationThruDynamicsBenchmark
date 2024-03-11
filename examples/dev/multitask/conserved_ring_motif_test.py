@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 
-from interpretability.comparison.analysis.tt.tasks.tt_MultiTask import (
-    Analysis_TT_MultiTask,
-)
+from ctd.comparison.analysis.tt.tasks.tt_MultiTask import Analysis_TT_MultiTask
 
 # suffix = "MultiTaskGRU_LowLR"
 # filepath1 = (

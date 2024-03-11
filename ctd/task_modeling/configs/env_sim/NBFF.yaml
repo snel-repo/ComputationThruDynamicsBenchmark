@@ -1,0 +1,8 @@
+_target_: ctd.task_modeling.task_env.task_env.NBitFlipFlop
+
+n: 3
+n_timesteps: 500
+noise: 0.15
+switch_prob: 0.01
+
+transition_blind: 4

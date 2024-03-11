@@ -1,0 +1,22 @@
+model_checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: "."
+  monitor: valid/loss
+  save_last: True
+
+tune_report_callback:
+  _target_: ray.tune.integration.pytorch_lightning.TuneReportCallback
+  metrics:
+    loss: valid/loss
+
+state_transition_callback:
+  _target_: ctd.task_modeling.callbacks.callbacks_multitask.StateTransitionCallback
+  log_every_n_epochs: 50
+
+state_transition_scatter_callback:
+  _target_: ctd.task_modeling.callbacks.callbacks_multitask.StateTransitionScatterCallback
+  log_every_n_epochs: 50
+
+performance_callback:
+  _target_: ctd.task_modeling.callbacks.callbacks_multitask.MultiTaskPerformanceCallback
+  log_every_n_epochs: 50
