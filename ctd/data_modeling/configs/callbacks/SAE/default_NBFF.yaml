@@ -10,21 +10,21 @@ tune_report_callback:
     loss: valid/loss_all
 
 raster_plot_callback:
-  _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.RasterPlot
+  _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.RasterPlot
   log_every_n_epochs: 100
 
 trajectory_plot_callback:
-  _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.TrajectoryPlot
+  _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.TrajectoryPlot
   log_every_n_epochs: 100
 
 trajectory_callback:
-  _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.TrajectoryPlotOverTimeCallback
+  _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.TrajectoryPlotOverTimeCallback
   log_every_n_epochs: 100
 
 avg_firing_rate_callback:
-  _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.AvgFiringRateCallback
+  _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.AvgFiringRateCallback
   log_every_n_epochs: 100
 
 inputs_plot:
-  _target_: interpretability.data_modeling.callbacks.SAE.sim_callbacks.InputsPlot
+  _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.InputsPlot
   log_every_n_epochs: 100

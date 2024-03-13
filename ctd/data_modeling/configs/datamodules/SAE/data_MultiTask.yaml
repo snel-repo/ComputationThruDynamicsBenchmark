@@ -1,4 +1,4 @@
-_target_: interpretability.data_modeling.datamodules.SAE.task_trained_data.TaskTrainedRNNDataModule
+_target_: ctd.data_modeling.datamodules.SAE.task_trained_data.TaskTrainedRNNDataModule
 system: MultiTask
 prefix: 20240122_NBFF_GRU
 gen_model: GRU_RNN

@@ -1,4 +1,4 @@
-_target_: interpretability.data_modeling.datamodules.SAE.task_trained_data.TaskTrainedRNNDataModule
+_target_: ctd.data_modeling.datamodules.SAE.task_trained_data.TaskTrainedRNNDataModule
 system: 3BFF
 prefix: 20240202_NBFF_Comparison
 gen_model: GRU_RNN

@@ -1,4 +1,4 @@
-_target_: interpretability.data_modeling.models.SAE.dyn_models_GRU.GRULatentSAE
+_target_: ctd.data_modeling.models.SAE.dyn_models_GRU.GRULatentSAE
 dataset: NBFF
 
 encoder_size: 100
@@ -15,4 +15,4 @@ lr: 5e-3
 dropout: 0.05
 
 loss_func:
-  _target_: interpretability.data_modeling.models.SAE.loss_func.MultiTaskPoissonLossFunc
+  _target_: ctd.data_modeling.models.SAE.loss_func.MultiTaskPoissonLossFunc
