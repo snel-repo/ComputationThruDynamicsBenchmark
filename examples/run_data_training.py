@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_GRU_RNN_DT_test"
+RUN_DESC = "NBFF_ResLFADS_SuppInp"
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "ResLFADS"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"
 INFER_INPUTS = False
 
@@ -38,9 +38,10 @@ prefix = "20240229_3BFF_GRU_Tutorial"
 
 # -------------------------------------
 SEARCH_SPACE = dict(
-    # model=dict(
-    #     num_batches=tune.grid_search([200]),
-    # ),
+    model=dict(
+        lr_init=tune.grid_search([5e-3, 3e-3]),
+        lr_stop=tune.grid_search([1e-7]),
+    ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
@@ -50,7 +51,7 @@ SEARCH_SPACE = dict(
         seed=tune.grid_search([0]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([1]),
+        max_epochs=tune.grid_search([500]),
     ),
 )
 

@@ -5,6 +5,7 @@ from torch.distributions import (
     Independent,
     Laplace,
     Normal,
+    RelaxedOneHotCategorical,
     StudentT,
     kl_divergence,
 )
@@ -149,6 +150,41 @@ class SparseMultivariateNormal(nn.Module):
         # Compute KL analytically
         kl_batch = kl_divergence(posterior, prior)
         return torch.mean(kl_batch)
+
+
+class SparseMultivariateGumbelSoftmax(nn.Module):
+    def __init__(self, shape: int, temperature: float):
+        super().__init__()
+        # Initialize logits for a 3-state distribution: [-1, 0, 1]
+        self.logits = nn.Parameter(torch.zeros(shape, 3))  # [batch_size, 3]
+        self.temperature = temperature
+
+    def make_posterior(self, logits, _=None):
+        # Create a RelaxedOneHotCategorical distribution logits and temperature
+        return RelaxedOneHotCategorical(temperature=self.temperature, logits=logits)
+
+    def forward(self, logits, _=None):
+        # Create the posterior distribution with the given logits
+        posterior = self.make_posterior(logits)
+        # For the prior, we use the initial logits parameter
+        prior = self.make_posterior(self.logits)
+        # Compute KL divergence
+        kl_batch = kl_divergence(posterior, prior)
+        return torch.mean(kl_batch), posterior.rsample()
+
+    def sample(self, logits):
+        # Sample from the posterior using Gumbel-Softmax approximation
+        posterior = self.make_posterior(logits)
+        return posterior.rsample()  # Differentiable sampling
+
+    def hard_sample(self, logits):
+        # Get a hard sample from Gumbel-Softmax distribution
+        soft_samples = self.sample(logits)
+        _, max_indices = soft_samples.max(dim=-1)
+        hard_samples = torch.zeros_like(soft_samples).scatter_(
+            -1, max_indices.unsqueeze(-1), 1.0
+        )
+        return hard_samples - soft_samples.detach() + soft_samples
 
 
 class SparseBernoulli(nn.Module):

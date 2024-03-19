@@ -22,12 +22,18 @@ class GRU_RNN(nn.Module):
         self.output_size = output_size
         self.cell = None
         self.readout = None
+        self.latent_ics = torch.nn.Parameter(
+            torch.zeros(latent_size), requires_grad=True
+        )
 
     def init_model(self, input_size, output_size):
         self.input_size = input_size
         self.output_size = output_size
         self.cell = GRUCell(input_size, self.latent_size)
         self.readout = nn.Linear(self.latent_size, output_size, bias=True)
+
+    def init_hidden(self, batch_size):
+        return self.latent_ics.unsqueeze(0).expand(batch_size, -1)
 
     def forward(self, inputs, hidden):
         hidden = self.cell(inputs, hidden)

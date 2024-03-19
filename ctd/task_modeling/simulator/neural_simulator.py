@@ -85,7 +85,8 @@ class NeuralDataSimulator:
             f"n_neurons_{self.n_neurons}_"
             f"seed_{seed}"
         )
-
+        if self.nonlin_embed:
+            filename += "_nonlin_embed"
         fpath = os.path.join(dataset_path, filename)
 
         # Make the directory if it doesn't exist
@@ -176,5 +177,5 @@ class NeuralDataSimulator:
             h5file.create_dataset("readout", data=readout)
             h5file.create_dataset("orig_mean", data=orig_mean)
             h5file.create_dataset("orig_std", data=orig_std)
-            if self.use_neurons:
-                h5file.create_dataset("perm_neurons", data=perm_neurons)
+
+            h5file.create_dataset("perm_neurons", data=perm_neurons)
