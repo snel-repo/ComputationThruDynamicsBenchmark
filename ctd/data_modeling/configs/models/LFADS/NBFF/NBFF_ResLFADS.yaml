@@ -4,8 +4,8 @@ _target_: ctd.data_modeling.models.LFADS.lfads.LFADS
 gen_type: NODE
 inv_encoder: False
 encod_data_dim: 50
-encod_seq_len: 500
-recon_seq_len: 500
+encod_seq_len: 100
+recon_seq_len: 100
 ext_input_dim: 3 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 128 # Encoder for latent ICs hidden units

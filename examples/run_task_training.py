@@ -39,7 +39,7 @@ SEARCH_SPACE = dict(
     ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1000]),
+        max_epochs=tune.choice([1500]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

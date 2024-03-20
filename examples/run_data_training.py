@@ -27,21 +27,17 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_ResLFADS_SuppInp"
+RUN_DESC = "NBFF_ODIN_SuppInp_short_inf_inputs"
 NUM_SAMPLES = 1
 MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
-MODEL = "ResLFADS"  # "ResLFADS" or "LFADS"
+MODEL = "ODIN"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"
-INFER_INPUTS = False
+INFER_INPUTS = True
 
-prefix = "20240229_3BFF_GRU_Tutorial"
+prefix = "20240319_NBFF_Trainable_ICs_short"
 
 # -------------------------------------
 SEARCH_SPACE = dict(
-    model=dict(
-        lr_init=tune.grid_search([5e-3, 3e-3]),
-        lr_stop=tune.grid_search([1e-7]),
-    ),
     datamodule=dict(
         gen_model=tune.grid_search(["GRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
