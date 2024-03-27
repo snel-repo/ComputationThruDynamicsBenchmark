@@ -47,17 +47,18 @@ There are three tasks implemented, ranging from simple to complex:
 3. RandomTargetDelay: A musculoskeletal modeling and control engine (MotorNet) that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
 
 ## Quick-Start:
-To get an overview of the major components of the code-base, you should only need to run three scripts:
+To get an overview of the major components of the code-base, only three scripts are necessary:
 1. examples/run_task_training.py
 2. examples/run_data_training.py
 3. examples/compare_tt_dt_models.py
 
 Before running these scripts, you will need to modify the HOME_DIR variable in your .env file to a location where you'd like to save the outputs of the runs (datasets, logging info, trained models).
 
-Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/tt/ Modify "prefix" in run_data_training to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
-If there is more than one simulated dataset (i.e., if you did a hyperparameter sweep of task-trained models), the code currently just takes the first folder in the directory unless you pass in a "file_index" parameter into the datamodule to select a different simulated dataset.
+run_task_training trains a simple GRU to perform a 3-Bit Flip-Flop task. The default parameters can be seen in the task_modeling/configs/ folder. Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/tt/. To train a data-trained model on those simulated data, you just need to modify "prefix" in run_data_training.py to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
 
-Once run_data_training.py is complete, it will save a trained model and the datamodule as .pkl files. These pickle files will be loaded into analysis objects that have automated functions to compare models, perform fixed-point analyses, etc.
+If there is more than one simulated dataset (i.e., if you did a hyperparameter sweep of task-trained models), data_training just takes the first folder in the directory unless you pass in a "file_index" parameter into the datamodule to select a different simulated dataset.
+
+Once run_data_training.py is complete, it will save a trained model and the datamodule as .pkl files. These pickle files can be loaded into analysis objects that have automated functions to compare models, perform fixed-point analyses, etc.
 
 After both task-trained and data-trained models have been run, modify the dt_path and tt_path in compare_tt_dt_models.py to plot some basic comparisons and fixed-point analyses on the trained models!
 
@@ -82,7 +83,7 @@ The simulator's instance variables contains the parameters for the neural data s
 The main method for this object is "simulate_neural_data", which takes in a trained model, a datamodule with the trials to simulate neural activity from, the run tag, path variables, and a random seed. This method saves an h5 file of spiking activity (along with other variables that might be needed for training, e.g., inputs etc.) in the "content/datasets/dt/" folder.
 
 ### Data-Training:
-Runs with either a generic SAE or LFADS models (currently). Whether to use a generic SAE or LFADS is controlled by the MODEL_CLASS variable, which for now is either SAE or LFADS.
+Runs with either a generic SAE or LFADS models (currently). Whether to use a generic SAE or LFADS is controlled by the MODEL_CLASS variable.
 
 ### Comparisons:
 Comparator object takes in Analysis objects with specific return structures.
@@ -115,4 +116,20 @@ There are three major items that are saved by these scripts, following this dire
 chrissversteeg@gmail.com for questions/concerns!
 
 ## Acknowledgments
-Thanks to a lot of people, will populate before release
+Thanks to a lot of people, including:
+Advisory members:
+- David Sussillo
+- Srdjan Ostojic
+- Scott Linderman
+- Chethan Pandarinath
+
+For help with code:
+- Laura Driscoll
+- Sophie Liebkind
+- David Zoltowski
+- Felix Pei
+- Andrew Sedler
+- Jonathan Michaels
+- Oli Codol
+- Clay Washington
+- Domenick Mifsud
