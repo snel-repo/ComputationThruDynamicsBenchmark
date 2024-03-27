@@ -48,6 +48,7 @@ content/*
 old/*
 
 !/examples/png/*.png
+!/pretrained/**.pkl
 interpretability/comparison/plots/*
 # PyInstaller
 #  Usually these files are written by a python script from a template
