@@ -1,2 +1,6 @@
 pretrained/*.pkl filter=lfs diff=lfs merge=lfs -text
 pretrained/20240327_NBFF_GRU_Final filter=lfs diff=lfs merge=lfs -text
+pretrained/20240327_RandomTarget_GRU_Final/ filter=lfs diff=lfs merge=lfs -text
+pretrained/20240327_MultiTask_GRU_Final/ filter=lfs diff=lfs merge=lfs -text
+pretrained/20240327_MultiTask_GRU_Final/**.pkl filter=lfs diff=lfs merge=lfs -text
+pretrained/20240327_RandomTarget_GRU_Final/**.pkl filter=lfs diff=lfs merge=lfs -text
