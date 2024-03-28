@@ -24,7 +24,7 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "MultiTask_GRU_Final"  # For WandB and run dir
+RUN_DESC = "MultiTask_GRU_Final2"  # For WandB and run dir
 TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
