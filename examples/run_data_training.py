@@ -23,18 +23,18 @@ OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = True
+LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Test"
+RUN_DESC = "GRU_RNN_DT_Final"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
 MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
-DATA = "MultiTask"
+DATA = "NBFF"
 INFER_INPUTS = False
 
-prefix = "20240319_NBFF_Trainable_ICs_short"
+prefix = "20240328_NBFF_GRU_Final"
 # prefix = "20240216_RandomTargetDelay_GRU_RNN_Final"
 # prefix  = "20240220_MultiTask_GRU_WeightDecay"
 
