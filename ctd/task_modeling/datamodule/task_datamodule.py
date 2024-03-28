@@ -124,7 +124,9 @@ class TaskDataModule(pl.LightningDataModule):
             sub_dir = "sim"
         else:
             sub_dir = "tt"
-
+        fdir = os.path.join(HOME_DIR, "content", "datasets", sub_dir)
+        if not os.path.exists(fdir):
+            os.makedirs(fdir, exist_ok=True)
         fpath = os.path.join(
             HOME_DIR, "content", "datasets", sub_dir, f"{self.name}.h5"
         )
