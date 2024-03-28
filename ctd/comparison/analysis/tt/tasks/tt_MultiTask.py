@@ -14,8 +14,8 @@ class Analysis_TT_MultiTask(Analysis_TT):
         self.tt_or_dt = "tt"
         self.load_wrapper(filepath)
         self.plot_path = (
-            "/home/csverst/Github/InterpretabilityBenchmark/"
-            f"interpretability/comparison/plots/{self.run_name}/"
+            "/home/csverst/Github/CtDBenchmark/"
+            f"ctd/comparison/plots/{self.run_name}/"
         )
 
     def get_task_flag(self, task_to_analyze):

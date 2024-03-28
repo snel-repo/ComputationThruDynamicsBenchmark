@@ -18,21 +18,26 @@ from utils import make_data_tag, trial_function
 # Add custom resolver to create the data_tag so it can be used for run dir
 OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 log = logging.getLogger(__name__)
+dotenv.load_dotenv(override=True)
 
 # ---------------Options---------------
 LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "MultiTask_GRU_Final2"  # For WandB and run dir
-TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "NBFF_Test2"  # For WandB and run dir
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
+    env_params=dict(
+        # Environment Parameters -----------------------------------
+        n=tune.grid_search([3]),
+    ),
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([500]),
+        max_epochs=tune.choice([10]),
     ),
     # Data Parameters -----------------------------------
     params=dict(
@@ -43,8 +48,8 @@ SEARCH_SPACE = dict(
 
 # ------------------Data Management Variables --------------------------------
 
-dotenv.load_dotenv()
 HOME_DIR = Path(os.environ.get("HOME_DIR"))
+print(f"Saving files to {HOME_DIR}")
 
 path_dict = dict(
     tt_datasets=HOME_DIR / "content" / "datasets" / "tt",
