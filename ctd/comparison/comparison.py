@@ -3,24 +3,41 @@ import numpy as np
 from DSA import DSA
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 
-from ctd.comparison.metrics import get_latents_vaf, get_rate_r2, get_state_r2
+from ctd.comparison.metrics import (
+    get_latents_vaf,
+    get_rate_r2,
+    get_state_r2,
+    get_state_r2_vaf,
+)
 
 
 class Comparison:
-    def __init__(self):
+    def __init__(self, comparison_tag=None):
+        self.comparison_tag = comparison_tag
         self.num_analyses = 0
         self.analyses = []
         self.ref_ind = None
+        self.groups = []
 
-    def load_analysis(self, analysis, reference_analysis=False):
+    def load_analysis(self, analysis, group="None", reference_analysis=False):
         self.analyses.append(analysis)
+        self.groups.append(group)
         self.num_analyses += 1
         if self.ref_ind is None and reference_analysis:
             self.ref_ind = self.num_analyses - 1
         elif self.ref_ind is not None and reference_analysis:
             # Throw an error
             raise ValueError("There is already a reference analysis")
+
+    def regroup(self):
+        groups = np.array(self.groups)
+        # Sort analyses by group
+        sorted_inds = np.argsort(groups)
+        self.analyses = [self.analyses[i] for i in sorted_inds]
+        self.groups = groups[sorted_inds]
+        self.ref_ind = np.where(sorted_inds == self.ref_ind)[0][0]
 
     def compare_rate_r2(self):
         # Function to compare the rate-reconstruction of the different models
@@ -91,7 +108,81 @@ class Comparison:
         )
         return state_r2_mat
 
-    def compare_to_reference_affine(self, ref_ind=None):
+    def compare_state_rate_r2(
+        self,
+        num_pcs=4,
+        ref_ind=None,
+        label_runs=False,
+        label_groups=True,
+    ):
+        # Function to compare the latent activity
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        reference_analysis = self.analyses[ref_ind]
+        rate_state_mat = np.zeros((self.num_analyses, 2))
+        ref_lats = reference_analysis.get_latents(phase="val")
+        for i in range(self.num_analyses):
+            print(f"Working on {i+1} of {self.num_analyses}")
+            if i == ref_ind:
+                continue
+            rates, latents = self.analyses[i].get_model_outputs(phase="val")
+            true_rates = self.analyses[i].get_true_rates(phase="val")
+            rate_state_mat[i, 1] = get_state_r2_vaf(
+                latents,
+                ref_lats,
+            )
+            rate_state_mat[i, 0] = get_rate_r2(
+                rates,
+                true_rates,
+            )
+        num_groups = len(np.unique(self.groups))
+        colors = plt.cm.get_cmap("tab10", num_groups)
+        color_inds = np.array(
+            [np.where(np.unique(self.groups) == group)[0][0] for group in self.groups]
+        )
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for i in range(self.num_analyses):
+            if i != ref_ind:
+                ax.scatter(
+                    rate_state_mat[i, 0],
+                    rate_state_mat[i, 1],
+                    color=colors(color_inds[i]),
+                )
+                if label_runs:
+                    ax.text(
+                        rate_state_mat[i, 0],
+                        rate_state_mat[i, 1],
+                        self.analyses[i].run_name,
+                    )
+        if label_groups:
+            for i in range(num_groups):
+                ax.scatter(
+                    [],
+                    [],
+                    color=colors(i),
+                    label=np.unique(self.groups)[i],
+                )
+            ax.legend()
+        bool_idx = np.arange(self.num_analyses) != ref_ind
+        min_val = np.min(rate_state_mat[bool_idx]) - 0.2
+        max_val = np.max(rate_state_mat[bool_idx]) + 0.2
+        max_val = np.min([max_val, 1.05])
+        min_val = np.max([min_val, -0.05])
+        ax.set_xlim([min_val, max_val])
+        ax.set_ylim([min_val, max_val])
+        ax.plot([min_val, max_val], [min_val, max_val], "k--")
+        # Square axis
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlabel("Rate R2 ")
+        ax.set_ylabel("State R2 ")
+        plt.savefig(f"{self.comparison_tag}_rate_state_r2.pdf")
+
+    def compare_to_reference_affine(self, ref_ind=None, num_pcs=4):
         # Function to compare the latent activity
         if ref_ind is None:
             ref_ind = self.ref_ind
@@ -103,8 +194,16 @@ class Comparison:
         for i in range(self.num_analyses):
             if i == ref_ind:
                 continue
-            rate_state_mat[i, 0] = get_state_r2(self.analyses[i], reference_analysis)
-            rate_state_mat[i, 1] = get_state_r2(reference_analysis, self.analyses[i])
+            rate_state_mat[i, 0] = get_state_r2(
+                self.analyses[i].get_latents(phase="val"),
+                reference_analysis.get_latents(phase="val"),
+                num_pcs=num_pcs,
+            )
+            rate_state_mat[i, 1] = get_state_r2(
+                reference_analysis.get_latents(),
+                self.analyses[i].get_latents(),
+                num_pcs=num_pcs,
+            )
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -114,7 +213,7 @@ class Comparison:
                 ax.text(
                     rate_state_mat[i, 0],
                     rate_state_mat[i, 1],
-                    str(i),
+                    self.analyses[i].run_name,
                 )
 
         ax.set_xlim([-0.05, 1.05])
@@ -196,6 +295,8 @@ class Comparison:
             plt.imshow(fit_mat, cmap=cmap_r),
             ax=ij_ax,
         )
+        # Save as pdf in a different
+        plt.savefig(f"{self.comparison_tag}_dsa.pdf")
         return similarities
 
     def plot_trials(self, num_trials, num_pcs=3):
@@ -346,3 +447,38 @@ class Comparison:
             axes[i].set_xticks([])
             axes[i].set_yticks([])
             axes[i].set_zticks([])
+
+    def compare_performance(self):
+        _, _, targets = self.analyses[self.ref_ind].get_model_inputs(phase="val")
+        mean_r2 = []
+        for i in range(self.num_analyses):
+            print(f"Working on {i+1} of {self.num_analyses}")
+            latents = self.analyses[i].get_latents(phase="val").detach().numpy()
+            lats_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            targets_flat = targets.reshape(
+                targets.shape[0] * targets.shape[1], targets.shape[2]
+            )
+            reg = LinearRegression().fit(lats_flat, targets_flat)
+            pred = reg.predict(lats_flat)
+            r2_perf = r2_score(targets_flat, pred, multioutput="raw_values")
+            print(f"Performance R2s for {self.analyses[i].run_name} is {r2_perf}")
+            mean_r2.append(np.mean(r2_perf))
+
+        # Find the mean in each group
+        mean_in_group = []
+        for group in np.unique(self.groups):
+            group_inds = np.where(self.groups == group)[0]
+            mean_in_group.append(np.mean([mean_r2[i] for i in group_inds]))
+
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(111)
+        ax.bar(np.arange(len(np.unique(self.groups))), mean_in_group)
+        ax.set_xticks(np.arange(len(np.unique(self.groups))))
+        ax.set_xticklabels(np.unique(self.groups))
+        minVal = np.min(mean_in_group) - 0.05
+        maxVal = np.max(mean_in_group) + 0.05
+        ax.set_ylim([minVal, maxVal])
+        ax.set_ylabel("Mean R2 of Performance in group")
+        ax.set_title("Performance of data-trained models at task (R2)")

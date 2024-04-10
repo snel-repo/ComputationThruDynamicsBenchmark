@@ -20,6 +20,12 @@ class NODE(nn.Module):
         self.input_size = input_size
         self.generator = None
         self.readout = None
+        self.latent_ics = torch.nn.Parameter(
+            torch.zeros(latent_size), requires_grad=True
+        )
+
+    def init_hidden(self, batch_size):
+        return self.latent_ics.unsqueeze(0).expand(batch_size, -1)
 
     def init_model(self, input_size, output_size):
         self.input_size = input_size

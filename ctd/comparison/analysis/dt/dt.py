@@ -30,49 +30,113 @@ def get_model_inputs_LDS(self):
     return dt_spiking, dt_inputs
 
 
-def get_model_inputs_SAE(self):
-    dt_train_ds = self.datamodule.train_ds
-    dt_val_ds = self.datamodule.valid_ds
-    dt_spiking = torch.cat((dt_train_ds.tensors[0], dt_val_ds.tensors[0]), dim=0)
-    dt_inputs = torch.cat((dt_train_ds.tensors[2], dt_val_ds.tensors[2]), dim=0)
+def get_model_inputs_SAE(self, phase="all"):
+    if phase == "all":
+        dt_train_ds = self.datamodule.train_ds
+        dt_val_ds = self.datamodule.valid_ds
+        dt_spiking = torch.cat((dt_train_ds.tensors[0], dt_val_ds.tensors[0]), dim=0)
+        dt_inputs = torch.cat((dt_train_ds.tensors[2], dt_val_ds.tensors[2]), dim=0)
+    elif phase == "train":
+        dt_spiking = self.datamodule.train_ds.tensors[0]
+        dt_inputs = self.datamodule.train_ds.tensors[2]
+    elif phase == "val":
+        dt_spiking = self.datamodule.valid_ds.tensors[0]
+        dt_inputs = self.datamodule.valid_ds.tensors[2]
 
     return dt_spiking, dt_inputs
 
 
-def get_true_rates_SAE(self):
-    dt_train_ds = self.datamodule.train_ds
-    dt_val_ds = self.datamodule.valid_ds
-    rates_train = dt_train_ds.tensors[6]
-    rates_val = dt_val_ds.tensors[6]
-    true_rates = torch.cat((rates_train, rates_val), dim=0)
+def get_true_rates_SAE(self, phase="all"):
+    if phase == "all":
+        dt_train_ds = self.datamodule.train_ds
+        dt_val_ds = self.datamodule.valid_ds
+        rates_train = dt_train_ds.tensors[6]
+        rates_val = dt_val_ds.tensors[6]
+        true_rates = torch.cat((rates_train, rates_val), dim=0)
+    elif phase == "train":
+        true_rates = self.datamodule.train_ds.tensors[6]
+    elif phase == "val":
+        true_rates = self.datamodule.valid_ds.tensors[6]
     return true_rates
 
 
-def get_rates_SAE(self):
-    rates, _ = self.get_model_outputs()
-    return torch.exp(rates)
+def get_rates_SAE(self, phase="all"):
+    rates, _ = self.get_model_outputs(phase=phase)
+    return rates
 
 
-def get_model_inputs_LFADS(self):
-    train_ds = self.datamodule.train_dataloader(shuffle=False)
-    val_dataloader = self.datamodule.val_dataloader()
-    dt_spiking = []
-    dt_inputs = []
-    for batch in train_ds:
-        # Move data to the right device
-        spiking_train = batch[0][0]
-        inputs_train = batch[0][2]
-        dt_spiking.append(spiking_train)
-        dt_inputs.append(inputs_train)
-    for batch in val_dataloader:
-        # Move data to the right device
-        spiking_val = batch[0][0]
-        inputs_val = batch[0][2]
-        dt_spiking.append(spiking_val)
-        dt_inputs.append(inputs_val)
+def get_model_inputs_LFADS(self, phase="all"):
+    if phase == "all":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        val_dataloader = self.datamodule.val_dataloader()
+        dt_spiking = []
+        dt_inputs = []
+        for batch in train_ds:
+            # Move data to the right device
+            spiking_train = batch[0][0]
+            inputs_train = batch[0][2]
+            dt_spiking.append(spiking_train)
+            dt_inputs.append(inputs_train)
+        for batch in val_dataloader:
+            # Move data to the right device
+            spiking_val = batch[0][0]
+            inputs_val = batch[0][2]
+            dt_spiking.append(spiking_val)
+            dt_inputs.append(inputs_val)
+    elif phase == "train":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        dt_spiking = []
+        dt_inputs = []
+        for batch in train_ds:
+            # Move data to the right device
+            spiking_train = batch[0][0]
+            inputs_train = batch[0][2]
+            dt_spiking.append(spiking_train)
+            dt_inputs.append(inputs_train)
+    elif phase == "val":
+        val_dataloader = self.datamodule.val_dataloader()
+        dt_spiking = []
+        dt_inputs = []
+        for batch in val_dataloader:
+            # Move data to the right device
+            spiking_val = batch[0][0]
+            inputs_val = batch[0][2]
+            dt_spiking.append(spiking_val)
+            dt_inputs.append(inputs_val)
     dt_spiking = torch.cat(dt_spiking, dim=0)
     dt_inputs = torch.cat(dt_inputs, dim=0)
     return dt_spiking, dt_inputs
+
+
+def get_true_rates_LFADS(self, phase="all"):
+    if phase == "all":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        val_dataloader = self.datamodule.val_dataloader()
+        dt_rates = []
+        for batch in train_ds:
+            # Move data to the right device
+            rates_train = batch[1][2]
+            dt_rates.append(rates_train)
+        for batch in val_dataloader:
+            # Move data to the right device
+            rates_val = batch[1][2]
+            dt_rates.append(rates_val)
+    elif phase == "train":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        dt_rates = []
+        for batch in train_ds:
+            # Move data to the right device
+            rates_train = batch[1][2]
+            dt_rates.append(rates_train)
+    elif phase == "val":
+        val_dataloader = self.datamodule.val_dataloader()
+        dt_rates = []
+        for batch in val_dataloader:
+            # Move data to the right device
+            rates_val = batch[1][2]
+            dt_rates.append(rates_val)
+    dt_rates = torch.cat(dt_rates, dim=0)
+    return dt_rates
 
 
 def get_model_outputs_LDS(self):
@@ -83,45 +147,81 @@ def get_model_outputs_LDS(self):
     return out_dict["lograte_t"], out_dict["gen_t"]
 
 
-def get_model_outputs_SAE(self):
-    dt_spiking, dt_inputs = self.get_model_inputs()
+def get_model_outputs_SAE(self, phase="all"):
+    dt_spiking, dt_inputs = self.get_model_inputs(phase=phase)
     rates, latents = self.model(dt_spiking, dt_inputs)
-    return rates, latents
+    return torch.exp(rates), latents
 
 
-def get_model_outputs_LFADS(self):
-    train_ds = self.datamodule.train_dataloader(shuffle=False)
-    val_dataloader = self.datamodule.val_dataloader()
-    dt_rates = []
-    dt_latents = []
+def get_model_outputs_LFADS(self, phase="all"):
+    if phase == "all":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        val_dataloader = self.datamodule.val_dataloader()
+        dt_rates = []
+        dt_latents = []
 
-    for batch in train_ds:
-        # Move data to the right device
-        batch = send_batch_to_device(batch, self.model.device)
-        # Compute model output
-        output = self.model.predict_step(
-            batch=batch,
-            batch_ix=None,
-            sample_posteriors=False,
-        )
-        dt_rates.append(output[0])
-        dt_latents.append(output[6])
+        for batch in train_ds:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_rates.append(output[0])
+            dt_latents.append(output[6])
 
-    for batch in val_dataloader:
-        # Move data to the right device
-        batch = send_batch_to_device(batch, self.model.device)
-        # Compute model output
-        output = self.model.predict_step(
-            batch=batch,
-            batch_ix=None,
-            sample_posteriors=False,
-        )
-        dt_rates.append(output[0])
-        dt_latents.append(output[6])
+        for batch in val_dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_rates.append(output[0])
+            dt_latents.append(output[6])
+    elif phase == "train":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        dt_rates = []
+        dt_latents = []
+        for batch in train_ds:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_rates.append(output[0])
+            dt_latents.append(output[6])
+    elif phase == "val":
+        val_dataloader = self.datamodule.val_dataloader()
+        dt_rates = []
+        dt_latents = []
+        for batch in val_dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_rates.append(output[0])
+            dt_latents.append(output[6])
     dt_rates = torch.cat(dt_rates, dim=0)
     dt_latents = torch.cat(dt_latents, dim=0)
 
     return dt_rates, dt_latents
+
+
+def get_rates_LFADS(self, phase="all"):
+    rates, _ = self.get_model_outputs(phase=phase)
+    return torch.exp(rates)
 
 
 def get_latents_LDS(self):
@@ -129,13 +229,13 @@ def get_latents_LDS(self):
     return latents
 
 
-def get_latents_SAE(self):
-    _, latents = self.get_model_outputs()
+def get_latents_SAE(self, phase="all"):
+    _, latents = self.get_model_outputs(phase=phase)
     return latents
 
 
-def get_latents_LFADS(self):
-    rates, latents = self.get_model_outputs()
+def get_latents_LFADS(self, phase="all"):
+    rates, latents = self.get_model_outputs(phase=phase)
     return latents
 
 
@@ -165,13 +265,16 @@ class Analysis_DT(Analysis):
             self.get_model_outputs = types.MethodType(get_model_outputs_LFADS, self)
             self.get_latents = types.MethodType(get_latents_LFADS, self)
             self.get_dynamics_model = types.MethodType(get_dynamics_model_LFADS, self)
-            self.get_true_rates = None
+            self.get_true_rates = types.MethodType(get_true_rates_LFADS, self)
+            self.get_rates = types.MethodType(get_rates_LFADS, self)
         elif self.model_type == "LDS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LDS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LDS, self)
             self.get_latents = types.MethodType(get_latents_LDS, self)
             self.get_tru_rates = None
             self.get_dynamics_model = None
+        else:
+            raise ValueError("Invalid model type! Use 'SAE', 'LFADS', or 'LDS'")
 
     def load_wrapper(self, filepath):
         if torch.cuda.is_available():

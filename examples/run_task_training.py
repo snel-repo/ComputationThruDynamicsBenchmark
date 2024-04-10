@@ -25,7 +25,7 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_GRU_Final_64D"  # For WandB and run dir
+RUN_DESC = "NBFF_NODE_Test"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
@@ -33,10 +33,10 @@ MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 SEARCH_SPACE = dict(
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1000]),
+        max_epochs=tune.choice([500]),
     ),
     model=dict(
-        latent_size=tune.choice([64]),
+        latent_size=tune.choice([128]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

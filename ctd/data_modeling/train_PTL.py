@@ -24,14 +24,26 @@ def train_PTL(
     compose_list = config_dict.keys()
     # Format the overrides so they can be used by hydra
     override_keys = overrides.keys()
+
+    # Format the overrides so they can be used by hydra
+    override_keys = overrides.keys()
     overrides_flat = {}
+    subfolder = ""
     for key in override_keys:
         if type(overrides[key]) == dict:
             overrides_flat[key] = [
                 f"{k}={v}" for k, v in flatten(overrides[key]).items()
             ]
+            temp = [f"{k}={v}" for k, v in flatten(overrides[key]).items()]
+            # join the list of strings
+            subfolder += " ".join(temp)
+            subfolder += " "
         else:
             overrides_flat[key] = f"{key}={overrides[key]}"
+            subfolder += f"_{key}={overrides[key]}_"
+
+    # Compose the configs for all components
+    subfolder = subfolder[:-1]
 
     # Compose the configs for all components
     config_all = {}
@@ -49,8 +61,6 @@ def train_PTL(
     # Set seed for pytorch, numpy, and python.random
     if "params" in overrides:
         pl.seed_everything(overrides["params"]["seed"], workers=True)
-        if "seed" in config_all["datamodule"]:
-            config_all["datamodule"]["seed"] = overrides["params"]["seed"]
         if "obs_dim" in overrides["params"]:
             config_all["datamodule"]["obs_dim"] = overrides["params"]["obs_dim"]
             config_all["model"]["heldin_size"] = overrides["params"]["obs_dim"]
@@ -124,7 +134,7 @@ def train_PTL(
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
     save_path = path_dict["trained_models"]
-    save_path = os.path.join(save_path, tt_name, run_tag)
+    save_path = os.path.join(save_path, tt_name, run_tag, subfolder)
 
     Path(save_path).mkdir(parents=True, exist_ok=True)
     model_path = os.path.join(save_path, "model.pkl")

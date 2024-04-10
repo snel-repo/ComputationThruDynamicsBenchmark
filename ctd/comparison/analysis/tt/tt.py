@@ -46,49 +46,100 @@ class Analysis_TT(Analysis):
             with open(filepath + "simulator.pkl", "rb") as f:
                 self.simulator = pickle.load(f)
 
-    def get_inputs(self):
+        self.n_trials = len(self.datamodule.all_data["inputs"])
+        self.train_inds = range(0, int(0.8 * self.n_trials))
+        self.valid_inds = range(int(0.8 * self.n_trials), self.n_trials)
+
+    def get_inputs(self, phase="all"):
         all_data = self.datamodule.all_data
         tt_inputs = torch.Tensor(all_data["inputs"])
-        return tt_inputs
+        if phase == "all":
+            return tt_inputs
+        elif phase == "train":
+            return tt_inputs[self.train_inds]
+        elif phase == "val":
+            return tt_inputs[self.valid_inds]
 
-    def get_inputs_to_env(self):
-        return torch.Tensor(self.datamodule.all_data["inputs_to_env"])
+    def get_inputs_to_env(self, phase="all"):
+        if phase == "all":
+            return torch.Tensor(self.datamodule.all_data["inputs_to_env"])
+        elif phase == "train":
+            return torch.Tensor(
+                self.datamodule.all_data["inputs_to_env"][self.train_inds]
+            )
+        elif phase == "val":
+            return torch.Tensor(
+                self.datamodule.all_data["inputs_to_env"][self.valid_inds]
+            )
 
-    def get_model_inputs(self):
+    def get_model_inputs(self, phase="all"):
+
         all_data = self.datamodule.all_data
+
         tt_ics = torch.Tensor(all_data["ics"])
         tt_inputs = torch.Tensor(all_data["inputs"])
         tt_targets = torch.Tensor(all_data["targets"])
-        return tt_ics, tt_inputs, tt_targets
+        if phase == "all":
+            return tt_ics, tt_inputs, tt_targets
+        elif phase == "train":
+            return (
+                tt_ics[self.train_inds],
+                tt_inputs[self.train_inds],
+                tt_targets[self.train_inds],
+            )
+        elif phase == "val":
+            return (
+                tt_ics[self.valid_inds],
+                tt_inputs[self.valid_inds],
+                tt_targets[self.valid_inds],
+            )
 
-    def get_extra_inputs(self):
+    def get_extra_inputs(self, phase="all"):
         all_data = self.datamodule.all_data
         tt_extra = torch.Tensor(all_data["extra"])
-        return tt_extra
+        if phase == "all":
+            return tt_extra
+        elif phase == "train":
+            return tt_extra[self.train_inds]
+        elif phase == "val":
+            return tt_extra[self.valid_inds]
 
-    def get_model_inputs_noiseless(self):
+    def get_model_inputs_noiseless(self, phase="all"):
         all_data = self.datamodule.all_data
         tt_ics = torch.Tensor(all_data["ics"])
         tt_inputs = torch.Tensor(all_data["true_inputs"])
         tt_targets = torch.Tensor(all_data["targets"])
-        return tt_ics, tt_inputs, tt_targets
+        if phase == "all":
+            return tt_ics, tt_inputs, tt_targets
+        elif phase == "train":
+            return (
+                tt_ics[self.train_inds],
+                tt_inputs[self.train_inds],
+                tt_targets[self.train_inds],
+            )
+        elif phase == "val":
+            return (
+                tt_ics[self.valid_inds],
+                tt_inputs[self.valid_inds],
+                tt_targets[self.valid_inds],
+            )
 
-    def get_model_outputs(self):
-        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+    def get_model_outputs(self, phase="all"):
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs(phase=phase)
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
         return out_dict
 
-    def get_model_outputs_noiseless(self):
-        tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless()
+    def get_model_outputs_noiseless(self, phase="all"):
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless(phase=phase)
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
         return out_dict
 
-    def get_latents(self):
-        out_dict = self.get_model_outputs()
+    def get_latents(self, phase="all"):
+        out_dict = self.get_model_outputs(phase=phase)
         return out_dict["latents"]
 
-    def get_latents_noiseless(self):
-        out_dict = self.get_model_outputs_noiseless()
+    def get_latents_noiseless(self, phase="all"):
+        out_dict = self.get_model_outputs_noiseless(phase=phase)
         return out_dict["latents"]
 
     def get_latents_pca(self, num_PCs=3):
@@ -337,11 +388,23 @@ class Analysis_TT(Analysis):
         latents = latents.reshape(-1, latents.shape[-1])
         pca = PCA(n_components=max_pcs)
         pca.fit(latents)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(121)
         ax.plot(range(1, max_pcs + 1), pca.explained_variance_ratio_ * 100, marker="o")
         ax.set_xlabel("PC #")
         ax.set_title("Scree Plot")
         ax.set_ylabel("Explained Variance (%)")
+        ax2 = fig.add_subplot(122)
+        ax2.plot(range(1, max_pcs + 1), np.cumsum(pca.explained_variance_ratio_) * 100)
+        ax2.set_xlabel("PC #")
+        ax2.set_title("Cumulative Explained Variance")
+        ax2.set_ylabel("Explained Variance (%)")
+        # Add horiz lines at 50, 90, 95, 99%
+        ax2.axhline(y=50, color="r", linestyle="--")
+        ax2.axhline(y=90, color="r", linestyle="--")
+        ax2.axhline(y=95, color="r", linestyle="--")
+        ax2.axhline(y=99, color="r", linestyle="--")
+        # Add y ticks
+        ax2.set_yticks([50, 90, 95, 99])
         plt.savefig(f"{HOME_DIR}/scree_plot.png")
         return pca.explained_variance_ratio_

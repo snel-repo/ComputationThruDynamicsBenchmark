@@ -26,6 +26,17 @@ def get_state_r2(lats_source, lats_targ, num_pcs=3):
         lats_source.reshape(n_b_source * n_t_source, n_d_source).detach().numpy()
     )
     pca = PCA(n_components=num_pcs)
+    if lats_source_flat.shape[1] < num_pcs:
+        # append zeros to the latent activity
+        lats_source_flat = np.concatenate(
+            [
+                lats_source_flat,
+                np.zeros(
+                    (lats_source_flat.shape[0], num_pcs - lats_source_flat.shape[1])
+                ),
+            ],
+            axis=1,
+        )
     lats_source_flat_pca = pca.fit_transform(lats_source_flat)
     lats_source = lats_source_flat_pca.reshape((n_b_source, n_t_source, num_pcs))
 
@@ -43,6 +54,23 @@ def get_state_r2(lats_source, lats_targ, num_pcs=3):
 
     state_r2 = np.array(state_r2)
     return np.mean(state_r2)
+
+
+def get_state_r2_vaf(lats_source, lats_targ):
+    # Function to compare the latent activity821
+    n_b_source, n_t_source, n_d_source = lats_source.shape
+    lats_source_flat = (
+        lats_source.reshape(n_b_source * n_t_source, n_d_source).detach().numpy()
+    )
+
+    n_b_targ, n_t_targ, n_d_targ = lats_targ.shape
+    lats_targ_flat = lats_targ.reshape(n_b_targ * n_t_targ, n_d_targ).detach().numpy()
+
+    # Compare the latent activity
+    reg = LinearRegression().fit(lats_source_flat, lats_targ_flat)
+    preds = reg.predict(lats_source_flat)
+    state_r2 = r2_score(lats_targ_flat, preds, multioutput="variance_weighted")
+    return state_r2
 
 
 def get_latents_vaf(lats1, lats2, num_pcs=3):

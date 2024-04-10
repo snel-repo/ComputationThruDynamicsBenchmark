@@ -22,3 +22,4 @@ noise: 0.3
 num_targets: 32
 bin_size: 20
 grouped_sampler: True
+latent_l2_wt: 0.0

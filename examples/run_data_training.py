@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "GRU_RNN_DT_Final"
+RUN_DESC = "NBFF_NODE_DT_LatentSweep_new"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
+MODEL = "NODE"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"
 INFER_INPUTS = False
 
@@ -47,10 +47,13 @@ SEARCH_SPACE = dict(
         prefix=tune.grid_search([prefix]),
     ),
     params=dict(
-        seed=tune.grid_search([0]),
+        seed=tune.grid_search([0, 1, 2, 3, 4]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([500]),
+        max_epochs=tune.grid_search([1500]),
+    ),
+    model=dict(
+        latent_size=tune.grid_search([3, 5, 8, 10]),
     ),
 )
 
@@ -130,7 +133,7 @@ def main(
             train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=10, gpu=1),
+        resources_per_trial=dict(cpu=4, gpu=0.5),
         num_samples=NUM_SAMPLES,
         local_dir=run_dir,
         search_alg=BasicVariantGenerator(),
