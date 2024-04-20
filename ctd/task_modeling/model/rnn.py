@@ -15,7 +15,9 @@ All models must meet a few requirements
 
 
 class GRU_RNN(nn.Module):
-    def __init__(self, latent_size, input_size=None, output_size=None):
+    def __init__(
+        self, latent_size, input_size=None, output_size=None, latent_ic_var=0.05
+    ):
         super().__init__()
         self.input_size = input_size
         self.latent_size = latent_size
@@ -25,6 +27,7 @@ class GRU_RNN(nn.Module):
         self.latent_ics = torch.nn.Parameter(
             torch.zeros(latent_size), requires_grad=True
         )
+        self.latent_ic_var = latent_ic_var
 
     def init_model(self, input_size, output_size):
         self.input_size = input_size
@@ -33,7 +36,9 @@ class GRU_RNN(nn.Module):
         self.readout = nn.Linear(self.latent_size, output_size, bias=True)
 
     def init_hidden(self, batch_size):
-        return self.latent_ics.unsqueeze(0).expand(batch_size, -1)
+        init_h = self.latent_ics.unsqueeze(0).expand(batch_size, -1)
+        ic_noise = torch.randn_like(init_h) * self.latent_ic_var
+        return init_h + ic_noise
 
     def forward(self, inputs, hidden):
         hidden = self.cell(inputs, hidden)
@@ -43,7 +48,12 @@ class GRU_RNN(nn.Module):
 
 class NoisyGRU_RNN(nn.Module):
     def __init__(
-        self, latent_size, input_size=None, output_size=None, noise_level=0.05
+        self,
+        latent_size,
+        input_size=None,
+        output_size=None,
+        noise_level=0.05,
+        latent_ic_var=0.05,
     ):
         super().__init__()
         self.input_size = input_size
@@ -52,6 +62,15 @@ class NoisyGRU_RNN(nn.Module):
         self.cell = None
         self.readout = None
         self.noise_level = noise_level
+        self.latent_ics = torch.nn.Parameter(
+            torch.zeros(latent_size), requires_grad=True
+        )
+        self.latent_ic_var = latent_ic_var
+
+    def init_hidden(self, batch_size):
+        init_h = self.latent_ics.unsqueeze(0).expand(batch_size, -1)
+        ic_noise = torch.randn_like(init_h) * self.latent_ic_var
+        return init_h + ic_noise
 
     def init_model(self, input_size, output_size):
         self.input_size = input_size

@@ -61,12 +61,24 @@ class StateTransitionCallback(pl.Callback):
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
         # Get trajectories and model predictions
-        data_dict = trainer.datamodule.all_data
-        ics = data_dict["ics"]
-        phase_dict = data_dict["phase_dict"]
-        task_names = data_dict["task_names"]
-        targets = data_dict["targets"]
-        inputs = data_dict["inputs"]
+
+        dataloader = trainer.datamodule.val_dataloader()
+        ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        targets = torch.cat([batch[2] for batch in dataloader]).to(pl_module.device)
+        inds = (
+            torch.cat([batch[3] for batch in dataloader])
+            .to(pl_module.device)
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(int)
+        )
+        output_dict = pl_module.forward(ics, inputs)
+
+        extra_dict = trainer.datamodule.extra_data
+        phase_dict = [extra_dict["phase_dict"][ind] for ind in inds]
+        task_names = [extra_dict["task_names"][ind] for ind in inds]
 
         # Get the first indices for each task
         included_tasks = trainer.datamodule.data_env.task_list_str
@@ -88,7 +100,7 @@ class StateTransitionCallback(pl.Callback):
             figsize=(6 * len(included_tasks), 6),
             sharex=False,
         )
-
+        targets = targets.detach().cpu().numpy()
         input_labels = trainer.datamodule.input_labels
         output_labels = trainer.datamodule.output_labels
         for trial_count, trial_type in enumerate(plot_dict.keys()):
@@ -149,7 +161,7 @@ class StateTransitionCallback(pl.Callback):
         logger.log({"state_plot": wandb.Image(fig), "global_step": trainer.global_step})
 
 
-class StateTransitionScatterCallback(pl.Callback):
+class SharedSubspaceCallback(pl.Callback):
     def __init__(self, log_every_n_epochs=100, plot_n_trials=20):
 
         self.log_every_n_epochs = log_every_n_epochs
@@ -164,8 +176,122 @@ class StateTransitionScatterCallback(pl.Callback):
         ics = data_dict["ics"]
         phase_dict = data_dict["phase_dict"]
         task_names = data_dict["task_names"]
-        targets = data_dict["targets"]
         inputs = data_dict["inputs"]
+
+        # Get the first indices for each task
+        task1 = "MemoryPro"
+        task1_inds = [i for i, task in enumerate(task_names) if task == task1]
+        # make an int array
+        task1_inds = np.array(task1_inds).astype(int).squeeze()
+
+        task2 = "MemoryAnti"
+        task2_inds = [i for i, task in enumerate(task_names) if task == task2]
+        # make an int array
+        task2_inds = np.array(task2_inds).astype(int).squeeze()
+
+        loggers_all = trainer.loggers
+        logger = get_wandb_logger(loggers_all)
+
+        # Pass the data through the model
+        ics1 = ics[task1_inds]
+        inputs1 = inputs[task1_inds]
+        ics2 = ics[task2_inds]
+        inputs2 = inputs[task2_inds]
+
+        outputs1 = pl_module.forward(
+            torch.Tensor(ics1).to(pl_module.device),
+            torch.Tensor(inputs1).to(pl_module.device),
+        )["latents"]
+
+        outputs2 = pl_module.forward(
+            torch.Tensor(ics2).to(pl_module.device),
+            torch.Tensor(inputs2).to(pl_module.device),
+        )["latents"]
+        memInds1 = np.array([phase_dict[i]["mem1"] for i in task1_inds])
+        memInds2 = np.array([phase_dict[i]["mem1"] for i in task2_inds])
+
+        mem1_1 = []
+        mem1_2 = []
+        for i in range(len(memInds1)):
+            mem1_1.append(outputs1[i, memInds1[i, 0] : memInds1[i, 1], :])
+        for i in range(len(memInds2)):
+            mem1_2.append(outputs2[i, memInds2[i, 0] : memInds2[i, 1], :])
+
+        mem1_1 = torch.cat(mem1_1)
+        mem1_2 = torch.cat(mem1_2)
+
+        mem1_1 = mem1_1.detach().cpu().numpy()
+        mem1_2 = mem1_2.detach().cpu().numpy()
+
+        pca1 = PCA(n_components=3)
+        pca2 = PCA(n_components=3)
+        mem1_1_pca = pca1.fit_transform(mem1_1)
+        mem1_2_pca = pca2.fit_transform(mem1_2)
+        mem1_1_in_2 = pca2.transform(mem1_1)
+        mem1_2_in_1 = pca1.transform(mem1_2)
+
+        # Create plots for different cases
+        fig = plt.figure()
+        ax1 = fig.add_subplot(221, projection="3d")
+        ax2 = fig.add_subplot(222, projection="3d")
+        ax3 = fig.add_subplot(223, projection="3d")
+        ax4 = fig.add_subplot(224, projection="3d")
+
+        ax1.scatter(*mem1_1_pca.T)
+        ax4.scatter(*mem1_2_pca.T)
+        ax2.scatter(*mem1_1_in_2.T)
+        ax3.scatter(*mem1_2_in_1.T)
+
+        ax1.set_title("MemoryPro in MemoryPro")
+        ax2.set_title("MemoryPro in MemoryAnti")
+        ax3.set_title("MemoryAnti in MemoryPro")
+        ax4.set_title("MemoryAnti in MemoryAnti")
+
+        # Log the plot to tensorboard
+        im = fig_to_rgb_array(fig)
+        trainer.loggers[0].experiment.add_image(
+            "state_plot_scatter", im, trainer.global_step, dataformats="HWC"
+        )
+        logger.log(
+            {
+                "shared_memory_subspace": wandb.Image(fig),
+                "global_step": trainer.global_step,
+            }
+        )
+
+
+class StateTransitionScatterCallback(pl.Callback):
+    def __init__(self, log_every_n_epochs=100, plot_n_trials=20):
+
+        self.log_every_n_epochs = log_every_n_epochs
+        self.plot_n_trials = plot_n_trials
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+        # Get trajectories and model predictions
+        dataloader = trainer.datamodule.val_dataloader()
+        ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        targets = (
+            torch.cat([batch[2] for batch in dataloader])
+            .to(pl_module.device)
+            .cpu()
+            .numpy()
+        )
+        inds = (
+            torch.cat([batch[3] for batch in dataloader])
+            .to(pl_module.device)
+            .cpu()
+            .numpy()
+            .astype(int)
+        )
+        output_dict = pl_module.forward(ics, inputs)
+
+        extra_dict = trainer.datamodule.extra_data
+        phase_dict = [extra_dict["phase_dict"][ind] for ind in inds]
+        task_names = [extra_dict["task_names"][ind] for ind in inds]
 
         # Get the first indices for each task
         included_tasks = trainer.datamodule.data_env.task_list_str
@@ -311,12 +437,29 @@ class MultiTaskPerformanceCallback(pl.Callback):
         #
 
         # Get the data from the datamodule
-        data_dict = trainer.datamodule.all_data
-        ics = data_dict["ics"]
-        phase_dict = data_dict["phase_dict"]
-        task_names = data_dict["task_names"]
-        targets = data_dict["targets"]
-        inputs = data_dict["inputs"]
+        dataloader = trainer.datamodule.val_dataloader()
+        ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        targets = (
+            torch.cat([batch[2] for batch in dataloader])
+            .to(pl_module.device)
+            .detach()
+            .cpu()
+            .numpy()
+        )
+        inds = (
+            torch.cat([batch[3] for batch in dataloader])
+            .to(pl_module.device)
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(int)
+        )
+        output_dict = pl_module.forward(ics, inputs)
+
+        extra_dict = trainer.datamodule.extra_data
+        phase_dict = [extra_dict["phase_dict"][ind] for ind in inds]
+        task_names = [extra_dict["task_names"][ind] for ind in inds]
 
         logger = get_wandb_logger(trainer.loggers)
         percent_success = np.zeros(len(trainer.datamodule.data_env.task_list_str))

@@ -12,15 +12,13 @@ from ctd.comparison.analysis.tt.tasks.tt_MultiTask import Analysis_TT_MultiTask
 # "trained_models/task-trained/20240116_MultiTask_GRU_lowLR/"
 # )
 
-suffix = "MultiTaskGRU_Final1"
+suffix = "MultiTaskGRU_Final3"
 filepath1 = (
-    "/home/csverst/Github/InterpretabilityBenchmark/old/trained_models/task-trained/"
-    "20240220_MultiTask_GRU_WeightDecay/max_epochs=200 seed=0/"
+    "/home/csverst/Github/CtDBenchmark/content/trained_models/"
+    + "task-trained/20240418_MultiTask_NoisyGRU_Final/"
+    + "max_epochs=500 latent_size=64 seed=0/"
 )
-plot_path = (
-    "/home/csverst/Github/InterpretabilityBenchmark/"
-    f"interpretability/comparison/plots/{suffix}/"
-)
+plot_path = "/home/csverst/Github/CtDBenchmark/examples/dev/multitask"
 os.makedirs(plot_path, exist_ok=True)
 
 
@@ -31,9 +29,9 @@ comp = Analysis_TT_MultiTask(run_name=suffix, filepath=filepath1)
 task1 = "MemoryPro"
 task2 = "MemoryAnti"
 
-ics, inputs, targets = comp.get_model_input()
+ics, inputs, targets = comp.get_model_inputs()
 
-out_dict = comp.get_model_output()
+out_dict = comp.get_model_outputs()
 lats = out_dict["latents"]
 outputs = out_dict["controlled"]
 
@@ -49,10 +47,10 @@ lats_anti = lats[flag_anti].detach().numpy()
 outputs_pro = outputs[flag_pro].detach().numpy()
 outputs_anti = outputs[flag_anti].detach().numpy()
 
-lats_phase_pro = comp.get_data_from_phase(phase_task_pro, "stim1", lats_pro)
+lats_phase_pro = comp.get_data_from_phase(phase_task_pro, "mem1", lats_pro)
 lats_phase_pro_flat = np.concatenate(lats_phase_pro)
 
-lats_phase_anti = comp.get_data_from_phase(phase_task_anti, "stim1", lats_anti)
+lats_phase_anti = comp.get_data_from_phase(phase_task_anti, "mem1", lats_anti)
 lats_phase_anti_flat = np.concatenate(lats_phase_anti)
 
 # Get PCA for both tasks
@@ -98,7 +96,7 @@ for i, phase in enumerate(phases):
         )
     ax1.set_xlim([-3, 3])
     ax1.set_ylim([-3, 3])
-    ax1.set_zlim([-3, 3])
+    ax1.set_zlim([-1.5, 1.5])
     ax1.set_ylabel(phase)
 
     ax2 = fig.add_subplot(4, 4, 4 * i + 2, projection="3d")
@@ -114,7 +112,7 @@ for i, phase in enumerate(phases):
         )
     ax2.set_xlim([-3, 3])
     ax2.set_ylim([-3, 3])
-    ax2.set_zlim([-3, 3])
+    ax2.set_zlim([-1.5, 1.5])
 
     start_ind = phase_task_pro[0][phase][0]
     end_ind = phase_task_pro[0][phase][1]
@@ -131,7 +129,7 @@ for i, phase in enumerate(phases):
         )
     ax3.set_xlim([-3, 3])
     ax3.set_ylim([-3, 3])
-    ax3.set_zlim([-3, 3])
+    ax3.set_zlim([-1.5, 1.5])
 
     ax4 = fig.add_subplot(4, 4, 4 * i + 4, projection="3d")
     for j in range(n_anti_trials):
@@ -146,7 +144,7 @@ for i, phase in enumerate(phases):
         )
     ax4.set_xlim([-3, 3])
     ax4.set_ylim([-3, 3])
-    ax4.set_zlim([-3, 3])
+    ax4.set_zlim([-1.5, 1.5])
 
     if i == 0:
         ax1.set_title("Pro")

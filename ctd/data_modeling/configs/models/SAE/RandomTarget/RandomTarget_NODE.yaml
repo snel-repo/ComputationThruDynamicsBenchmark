@@ -1,0 +1,33 @@
+_target_: ctd.data_modeling.models.SAE.dyn_models.NODELatentSAE
+dataset: RandomTarget
+
+encoder_size: 100
+encoder_window: -1
+
+heldin_size: 50
+heldout_size: 50
+latent_size: 15
+input_size: 17
+
+dropout: 0.05
+
+vf_hidden_size: 128
+vf_num_layers: 6
+
+inv_encoder: False
+flow_num_steps: 20
+readout_vf_hidden: 128
+readout_num_layers: 3
+
+lr_readout: 2e-3
+lr_encoder: 2e-3
+lr_decoder: 2e-3
+
+decay_readout: 0
+decay_encoder: 1e-7
+decay_decoder: 1e-7
+
+readout_type: Linear
+increment_trial: True
+points_per_group: 20
+epochs_per_group: 10

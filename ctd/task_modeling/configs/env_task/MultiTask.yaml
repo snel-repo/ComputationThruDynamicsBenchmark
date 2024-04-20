@@ -2,10 +2,10 @@ _target_: ctd.task_modeling.task_env.multi_task_env.MultiTaskWrapper
 dataset_name: MultiTask
 task_list:
   - DelayPro
-  - DelayAnti
   - MemoryPro
-  - MemoryAnti
   - ReactPro
+  - DelayAnti
+  - MemoryAnti
   - ReactAnti
   - IntMod1
   - IntMod2

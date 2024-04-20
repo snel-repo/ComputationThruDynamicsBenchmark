@@ -149,7 +149,8 @@ class NBitFlipFlop(DecoupledEnvironment):
             # No extra info for this task, so just fill with zeros
             "extra": np.zeros(shape=(n_samples, 1)),
         }
-        return dataset_dict
+        extra_dict = {}
+        return dataset_dict, extra_dict
 
     def render(self):
         inputs, states, _ = self.generate_trial()
@@ -296,8 +297,10 @@ class RandomTarget(Environment):
             "targets": goal_list,
             "conds": conds,
             "extra": extra,
+            "true_inputs": inputs,
         }
-        return dataset_dict
+        extra_dict = {}
+        return dataset_dict, extra_dict
 
     def generate_trial_info(self):
         """

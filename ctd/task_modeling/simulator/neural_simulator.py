@@ -64,11 +64,20 @@ class NeuralDataSimulator:
         # and the seed
         coupled = task_trained_model.task_env.coupled_env
         # Get trajectories and model predictions
-        all_data = datamodule.all_data
+        train_ds = datamodule.train_ds
+        valid_ds = datamodule.valid_ds
 
-        ics = torch.Tensor(all_data["ics"])
-        inputs = torch.Tensor(all_data["inputs"])
-        extra = torch.Tensor(all_data["extra"])
+        ics = train_ds.tensors[0]
+        inputs = train_ds.tensors[1]
+        extra = train_ds.tensors[5]
+
+        ics_val = valid_ds.tensors[0]
+        inputs_val = valid_ds.tensors[1]
+        extra_val = valid_ds.tensors[5]
+
+        ics = torch.cat((ics, ics_val), dim=0)
+        inputs = torch.cat((inputs, inputs_val), dim=0)
+        extra = torch.cat((extra, extra_val), dim=0)
 
         output_dict = task_trained_model(ics, inputs)
 

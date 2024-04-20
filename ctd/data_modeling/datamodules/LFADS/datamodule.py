@@ -69,7 +69,6 @@ def attach_tensors(datamodule, data_dict: dict, extra_keys: list[str] = []):
             tuple(other),
         )
 
-    # import pdb; pdb.set_trace()
     # Store the datasets on the datamodule
     datamodule.train_data = create_session_batch("train")
     datamodule.train_ds = SessionDataset(*datamodule.train_data)

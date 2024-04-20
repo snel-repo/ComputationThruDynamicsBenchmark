@@ -126,11 +126,10 @@ class NODELatentSAE(pl.LightningModule):
         h_n = torch.cat([*h_n], -1)
         h_n_drop = self.dropout(h_n)
         ic = self.ic_linear(h_n_drop)
-        ic_drop = self.dropout(ic)
         if self.inv_encoder:
-            ic_drop = self.readout(ic_drop, reverse=True)
+            ic = self.readout(ic, reverse=True)
         # Evaluate the NeuralODE
-        latents, _ = self.decoder(inputs, ic_drop)
+        latents, _ = self.decoder(inputs, ic)
         B, T, N = latents.shape
         # Map decoder state to data dimension
         rates = self.readout(latents)

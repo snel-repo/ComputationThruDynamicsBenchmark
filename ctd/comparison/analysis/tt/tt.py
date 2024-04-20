@@ -40,19 +40,32 @@ class Analysis_TT(Analysis):
                 self.datamodule = pickle.load(f)
                 self.datamodule.prepare_data()
                 self.datamodule.setup()
-        self.task_name = self.datamodule.data_env.dataset_name
+        self.env = self.datamodule.data_env.dataset_name
         # if the simulator exists
         if Path(filepath + "simulator.pkl").exists():
             with open(filepath + "simulator.pkl", "rb") as f:
                 self.simulator = pickle.load(f)
-
-        self.n_trials = len(self.datamodule.all_data["inputs"])
+        n_train = len(self.datamodule.train_ds)
+        n_val = len(self.datamodule.valid_ds)
+        self.n_trials = n_train + n_val
         self.train_inds = range(0, int(0.8 * self.n_trials))
         self.valid_inds = range(int(0.8 * self.n_trials), self.n_trials)
 
     def get_inputs(self, phase="all"):
-        all_data = self.datamodule.all_data
-        tt_inputs = torch.Tensor(all_data["inputs"])
+        train_ds = self.datamodule.train_ds
+        valid_ds = self.datamodule.valid_ds
+        tt_inputs = torch.cat([train_ds.tensors[1], valid_ds.tensors[1]], dim=0)
+        if phase == "all":
+            return tt_inputs
+        elif phase == "train":
+            return tt_inputs[self.train_inds]
+        elif phase == "val":
+            return tt_inputs[self.valid_inds]
+
+    def get_true_inputs(self, phase="all"):
+        train_ds = self.datamodule.train_ds
+        valid_ds = self.datamodule.valid_ds
+        tt_inputs = torch.cat([train_ds.tensors[7], valid_ds.tensors[7]], dim=0)
         if phase == "all":
             return tt_inputs
         elif phase == "train":
@@ -62,67 +75,66 @@ class Analysis_TT(Analysis):
 
     def get_inputs_to_env(self, phase="all"):
         if phase == "all":
-            return torch.Tensor(self.datamodule.all_data["inputs_to_env"])
+            train_inputs_to_env = self.datamodule.train_ds.tensors[5]
+            valid_inputs_to_env = self.datamodule.valid_ds.tensors[5]
+            return torch.cat([train_inputs_to_env, valid_inputs_to_env], dim=0)
         elif phase == "train":
-            return torch.Tensor(
-                self.datamodule.all_data["inputs_to_env"][self.train_inds]
-            )
+            return self.datamodule.train_ds.tensors[5]
         elif phase == "val":
-            return torch.Tensor(
-                self.datamodule.all_data["inputs_to_env"][self.valid_inds]
-            )
+            return self.datamodule.valid_ds.tensors[5]
 
     def get_model_inputs(self, phase="all"):
 
-        all_data = self.datamodule.all_data
-
-        tt_ics = torch.Tensor(all_data["ics"])
-        tt_inputs = torch.Tensor(all_data["inputs"])
-        tt_targets = torch.Tensor(all_data["targets"])
         if phase == "all":
+            train_ics = self.datamodule.train_ds.tensors[0]
+            train_inputs = self.datamodule.train_ds.tensors[1]
+            train_targets = self.datamodule.train_ds.tensors[2]
+            valid_ics = self.datamodule.valid_ds.tensors[0]
+            valid_inputs = self.datamodule.valid_ds.tensors[1]
+            valid_targets = self.datamodule.valid_ds.tensors[2]
+            tt_ics = torch.cat([train_ics, valid_ics], dim=0)
+            tt_inputs = torch.cat([train_inputs, valid_inputs], dim=0)
+            tt_targets = torch.cat([train_targets, valid_targets], dim=0)
             return tt_ics, tt_inputs, tt_targets
         elif phase == "train":
             return (
-                tt_ics[self.train_inds],
-                tt_inputs[self.train_inds],
-                tt_targets[self.train_inds],
+                self.datamodule.train_ds.tensors[0],
+                self.datamodule.train_ds.tensors[1],
+                self.datamodule.train_ds.tensors[2],
             )
         elif phase == "val":
             return (
-                tt_ics[self.valid_inds],
-                tt_inputs[self.valid_inds],
-                tt_targets[self.valid_inds],
+                self.datamodule.valid_ds.tensors[0],
+                self.datamodule.valid_ds.tensors[1],
+                self.datamodule.valid_ds.tensors[2],
             )
 
     def get_extra_inputs(self, phase="all"):
-        all_data = self.datamodule.all_data
-        tt_extra = torch.Tensor(all_data["extra"])
         if phase == "all":
+            train_extra = self.datamodule.train_ds.tensors[5]
+            valid_extra = self.datamodule.valid_ds.tensors[5]
+            tt_extra = torch.cat([train_extra, valid_extra], dim=0)
             return tt_extra
         elif phase == "train":
-            return tt_extra[self.train_inds]
+            return self.datamodule.train_ds.tensors[5]
         elif phase == "val":
-            return tt_extra[self.valid_inds]
+            return self.datamodule.valid_ds.tensors[5]
 
     def get_model_inputs_noiseless(self, phase="all"):
-        all_data = self.datamodule.all_data
-        tt_ics = torch.Tensor(all_data["ics"])
-        tt_inputs = torch.Tensor(all_data["true_inputs"])
-        tt_targets = torch.Tensor(all_data["targets"])
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs(phase=phase)
+
+        train_noiseless_inputs = self.datamodule.train_ds.tensors[7]
+        valid_noiseless_inputs = self.datamodule.valid_ds.tensors[7]
+        tt_noiseless_inputs = torch.cat(
+            [train_noiseless_inputs, valid_noiseless_inputs], dim=0
+        )
+
         if phase == "all":
-            return tt_ics, tt_inputs, tt_targets
+            return tt_ics, tt_noiseless_inputs, tt_targets
         elif phase == "train":
-            return (
-                tt_ics[self.train_inds],
-                tt_inputs[self.train_inds],
-                tt_targets[self.train_inds],
-            )
+            return tt_ics, train_noiseless_inputs, tt_targets
         elif phase == "val":
-            return (
-                tt_ics[self.valid_inds],
-                tt_inputs[self.valid_inds],
-                tt_targets[self.valid_inds],
-            )
+            return tt_ics, valid_noiseless_inputs, tt_targets
 
     def get_model_outputs(self, phase="all"):
         tt_ics, tt_inputs, tt_targets = self.get_model_inputs(phase=phase)
@@ -268,7 +280,7 @@ class Analysis_TT(Analysis):
         q_thresh=1e-5,
     ):
 
-        latents = self.get_latents().detach().numpy()
+        latents = self.get_latents(phase="val").detach().numpy()
         fps = self.compute_FPs(
             inputs=inputs,
             n_inits=n_inits,

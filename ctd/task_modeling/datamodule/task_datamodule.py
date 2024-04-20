@@ -141,7 +141,9 @@ class TaskDataModule(pl.LightningDataModule):
         logger.info(f"Generating dataset {self.name}")
 
         # Simulate the task
-        dataset_dict = self.data_env.generate_dataset(self.hparams.n_samples)
+        dataset_dict, extra_dict = self.data_env.generate_dataset(
+            self.hparams.n_samples
+        )
 
         # Extract the inputs, outputs, and initial conditions
         inputs_ds = dataset_dict["inputs"]
@@ -150,12 +152,7 @@ class TaskDataModule(pl.LightningDataModule):
         ics_ds = dataset_dict["ics"]
         conds_ds = dataset_dict["conds"]
         extra_ds = dataset_dict["extra"]
-
-        keys = list(dataset_dict.keys())
-        keys.remove("inputs")
-        keys.remove("targets")
-        keys.remove("ics")
-        keys.remove("conds")
+        true_inputs_ds = dataset_dict["true_inputs"]
 
         # Perform data splits
         num_trials = ics_ds.shape[0]
@@ -164,7 +161,7 @@ class TaskDataModule(pl.LightningDataModule):
             inds, test_size=0.2, random_state=hps.seed
         )
 
-        # Save the trajectories
+        # Save the data used to train the model
         with h5py.File(fpath, "w") as h5file:
             h5file.create_dataset("train_ics", data=ics_ds[train_inds])
             h5file.create_dataset("valid_ics", data=ics_ds[valid_inds])
@@ -191,8 +188,11 @@ class TaskDataModule(pl.LightningDataModule):
             h5file.create_dataset("train_extra", data=extra_ds[train_inds])
             h5file.create_dataset("valid_extra", data=extra_ds[valid_inds])
 
-        # Save the dataset dictionary as a pickle file for debugging, etc.
-        save_dict_to_pickle(dataset_dict, fpath_pkl)
+            h5file.create_dataset("train_true_inputs", data=true_inputs_ds[train_inds])
+            h5file.create_dataset("valid_true_inputs", data=true_inputs_ds[valid_inds])
+
+        # Save extra information for plotting, offline analyses etc.
+        save_dict_to_pickle(extra_dict, fpath_pkl)
 
     def setup(self, stage=None):
         # Load data arrays from file
@@ -235,7 +235,10 @@ class TaskDataModule(pl.LightningDataModule):
             train_extra = to_tensor(h5file["train_extra"][()])
             valid_extra = to_tensor(h5file["valid_extra"][()])
 
-        self.all_data = load_dict_from_pickle(data_path_pkl)
+            train_true_inputs = to_tensor(h5file["train_true_inputs"][()])
+            valid_true_inputs = to_tensor(h5file["valid_true_inputs"][()])
+
+        self.extra_data = load_dict_from_pickle(data_path_pkl)
 
         # Store datasets
         self.train_ds = TensorDataset(
@@ -246,6 +249,7 @@ class TaskDataModule(pl.LightningDataModule):
             train_conds,
             train_extra,
             train_inputs_to_env,
+            train_true_inputs,
         )
 
         self.valid_ds = TensorDataset(
@@ -256,6 +260,7 @@ class TaskDataModule(pl.LightningDataModule):
             valid_conds,
             valid_extra,
             valid_inputs_to_env,
+            valid_true_inputs,
         )
 
         self.train_sampler = self.sampler_func(

@@ -76,6 +76,8 @@ class NBFFLoss(LossFunc):
         # Step 3: Adjust mask size to match the original target tensor
         # Adding a column of ones at the beginning because diff reduces the size by 1
         final_mask = torch.cat((torch.ones_like(mask[:, :1]), mask), dim=1)
+        final_mask[:, 0:5, :] = 0.0
+
         loss = nn.MSELoss(reduction="none")(pred, target) * final_mask
         return loss.mean()
 

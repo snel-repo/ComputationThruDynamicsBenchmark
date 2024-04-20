@@ -1,0 +1,15 @@
+_target_: ctd.data_modeling.models.SAE.dyn_models_RNN.RNNLatentSAE
+dataset: RandomTargetDelay
+
+encoder_size: 100
+encoder_window: -1
+
+heldin_size: 50
+heldout_size: 50
+latent_size: 128
+input_size: 17
+
+weight_decay: 0
+lr: 5e-3
+
+dropout: 0.05

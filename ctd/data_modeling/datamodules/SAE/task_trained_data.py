@@ -54,6 +54,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
         self.name = os.path.join(filename)
         self.fpath = filedir
+        self.system = system
 
     def prepare_data(self):
         filename = self.name

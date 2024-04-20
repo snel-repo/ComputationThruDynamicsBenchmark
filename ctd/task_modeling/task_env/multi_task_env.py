@@ -168,6 +168,7 @@ class MultiTaskWrapper(DecoupledEnvironment):
             "inputs": inputs_ds,
             "targets": outputs_ds,
             "ics": ics_ds,
+            "true_inputs": true_inputs_ds,
             "conds": conds_ds,
             # Extra is anything that is needed for the training
             # that isn't an input, target, or ic
@@ -175,12 +176,12 @@ class MultiTaskWrapper(DecoupledEnvironment):
             #   the response phase (for loss weighting)
             "inputs_to_env": np.zeros((n_samples * len(self.task_list), 0)),
             "extra": extra_ds,
-            # ----------Optional------------------
+        }
+        extra_dict = {
             "phase_dict": phase_list,
             "task_names": task_names,
-            "true_inputs": true_inputs_ds,
         }
-        return dataset_dict
+        return dataset_dict, extra_dict
 
     def plot_tasks(self):
         for task in self.task_list:

@@ -20,6 +20,49 @@ class CPU_Unpickler(pickle.Unpickler):
             return super().find_class(module, name)
 
 
+def get_trial_lens_SAE(self, phase="all"):
+    if phase == "all":
+        dt_train_ds = self.datamodule.train_ds
+        dt_val_ds = self.datamodule.valid_ds
+        trial_lens = torch.cat(
+            (dt_train_ds.tensors[3][:, -1], dt_val_ds.tensors[3][:, -1]), dim=0
+        )
+    elif phase == "train":
+        trial_lens = self.datamodule.train_ds.tensors[3][:, -1]
+    elif phase == "val":
+        trial_lens = self.datamodule.valid_ds.tensors[3][:, -1]
+    return trial_lens
+
+
+def get_trial_lens_LFADS(self, phase="all"):
+    dt_extra = []
+    if phase == "all":
+        train_dl = self.datamodule.train_dataloader(shuffle=False)
+        val_dl = self.datamodule.val_dataloader()
+        for batch in train_dl:
+            # Move data to the right device
+            train_extra = batch[1][3][:, -1]
+            dt_extra.append(train_extra)
+        for batch in val_dl:
+            # Move data to the right device
+            val_extra = batch[1][3][:, -1]
+            dt_extra.append(val_extra)
+    elif phase == "train":
+        train_dl = self.datamodule.train_dataloader(shuffle=False)
+        for batch in train_dl:
+            # Move data to the right device
+            train_extra = batch[1][3][:, -1]
+            dt_extra.append(train_extra)
+    elif phase == "val":
+        val_dl = self.datamodule.val_dataloader()
+        for batch in val_dl:
+            # Move data to the right device
+            val_extra = batch[1][3][:, -1]
+            dt_extra.append(val_extra)
+    dt_extra = torch.cat(dt_extra, dim=0)
+    return dt_extra
+
+
 def get_model_inputs_LDS(self):
     train_ds = torch.tensor(self.datamodule.train_data)
     val_ds = torch.tensor(self.datamodule.eval_data)
@@ -149,8 +192,8 @@ def get_model_outputs_LDS(self):
 
 def get_model_outputs_SAE(self, phase="all"):
     dt_spiking, dt_inputs = self.get_model_inputs(phase=phase)
-    rates, latents = self.model(dt_spiking, dt_inputs)
-    return torch.exp(rates), latents
+    log_rates, latents = self.model(dt_spiking, dt_inputs)
+    return torch.exp(log_rates), latents
 
 
 def get_model_outputs_LFADS(self, phase="all"):
@@ -221,7 +264,7 @@ def get_model_outputs_LFADS(self, phase="all"):
 
 def get_rates_LFADS(self, phase="all"):
     rates, _ = self.get_model_outputs(phase=phase)
-    return torch.exp(rates)
+    return rates
 
 
 def get_latents_LDS(self):
@@ -260,6 +303,7 @@ class Analysis_DT(Analysis):
             self.get_dynamics_model = types.MethodType(get_dynamics_model_SAE, self)
             self.get_true_rates = types.MethodType(get_true_rates_SAE, self)
             self.get_rates = types.MethodType(get_rates_SAE, self)
+            self.get_trial_lens = types.MethodType(get_trial_lens_SAE, self)
         elif self.model_type == "LFADS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LFADS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LFADS, self)
@@ -267,6 +311,7 @@ class Analysis_DT(Analysis):
             self.get_dynamics_model = types.MethodType(get_dynamics_model_LFADS, self)
             self.get_true_rates = types.MethodType(get_true_rates_LFADS, self)
             self.get_rates = types.MethodType(get_rates_LFADS, self)
+            self.get_trial_lens = types.MethodType(get_trial_lens_LFADS, self)
         elif self.model_type == "LDS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LDS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LDS, self)
@@ -420,4 +465,42 @@ class Analysis_DT(Analysis):
 
     def get_inputs(self):
         _, inputs = self.get_model_inputs()
+
         return inputs
+
+    def plot_rates(self, phase="val", neurons=[0], n_trials=5):
+        gru_rates = self.get_rates(phase=phase)
+        true_rates = self.get_true_rates(phase=phase)
+        trial_lens = self.get_trial_lens(phase=phase)
+        rates_stack = []
+        true_rates_stack = []
+        for i in range(len(trial_lens)):
+            rates_stack.append(gru_rates[i][:].detach().cpu().numpy())
+            true_rates_stack.append(true_rates[i][:].detach().cpu().numpy())
+
+        fig, ax = plt.subplots(n_trials, len(neurons), figsize=(10, 10))
+        for i in range(n_trials):
+            for j in range(len(neurons)):
+                neuron = neurons[j]
+                if i == 0 and j == 0:
+                    ax[i, j].plot(
+                        rates_stack[i][:, neuron],
+                        color="black",
+                        label="Estimated Rates",
+                    )
+                    ax[i, j].plot(
+                        true_rates_stack[i][:, neuron],
+                        color="black",
+                        linestyle="--",
+                        label="True Rates",
+                    )
+                else:
+                    ax[i, j].plot(rates_stack[i][:, neuron], color="black")
+                    # Restart the color order
+                    ax[i, j].plot(
+                        true_rates_stack[i][:, neuron], color="black", linestyle="--"
+                    )
+                if i == 0:
+                    ax[i, j].set_title(f"Neuron {neuron}")
+        ax[0, 0].legend()
+        plt.show()

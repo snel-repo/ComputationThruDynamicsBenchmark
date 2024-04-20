@@ -4,18 +4,18 @@ _target_: ctd.data_modeling.data_training.models.lfads.LFADS
 gen_type: NODE
 inv_encoder: False
 encod_data_dim: 50
-encod_seq_len: 200
-recon_seq_len: 200
-ext_input_dim: 0 # Ext. Inputs
+encod_seq_len: 300
+recon_seq_len: 300
+ext_input_dim: 3 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 256 # Encoder for latent ICs hidden units
 ci_enc_dim: 0 # Controller encoder dimensionality
 ci_lag: 1
 con_dim: 0 # Hidden size of controller
 co_dim: 0 # # of controller inputs
-ic_dim: 50 # # neurons if Flow_inv, gen_dim if not
-gen_dim: 10
-fac_dim: 10
+ic_dim: 128 # # neurons if Flow_inv, gen_dim if not
+gen_dim: 128
+fac_dim: 20
 
 # gen_type: RNN
 # inv_encoder: False

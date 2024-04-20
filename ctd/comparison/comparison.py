@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from DSA import DSA
+from scipy.spatial import procrustes
+from sklearn.cross_decomposition import CCA
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
@@ -110,10 +113,10 @@ class Comparison:
 
     def compare_state_rate_r2(
         self,
-        num_pcs=4,
         ref_ind=None,
         label_runs=False,
         label_groups=True,
+        phase="val",
     ):
         # Function to compare the latent activity
         if ref_ind is None:
@@ -123,27 +126,61 @@ class Comparison:
             raise ValueError("No reference index provided")
         reference_analysis = self.analyses[ref_ind]
         rate_state_mat = np.zeros((self.num_analyses, 2))
-        ref_lats = reference_analysis.get_latents(phase="val")
+        true_lats = reference_analysis.get_latents(phase=phase)
+        is_multitask = reference_analysis.env == "MultiTask"
+        if is_multitask:
+            trial_lens = self.analyses[1].get_trial_lens(phase=phase)
+            # Stack the latents to the different trial lengths
+            true_lats_stack = []
+            for i in range(trial_lens.shape[0]):
+                true_lats_stack.append(true_lats[i, : int(trial_lens[i]), :])
+            true_lats = torch.vstack(true_lats_stack)
+
         for i in range(self.num_analyses):
             print(f"Working on {i+1} of {self.num_analyses}")
             if i == ref_ind:
                 continue
-            rates, latents = self.analyses[i].get_model_outputs(phase="val")
-            true_rates = self.analyses[i].get_true_rates(phase="val")
-            rate_state_mat[i, 1] = get_state_r2_vaf(
-                latents,
-                ref_lats,
-            )
+            rates, latents = self.analyses[i].get_model_outputs(phase=phase)
+            true_rates = self.analyses[i].get_true_rates(phase=phase)
+
+            rates_stack = []
+            latents_stack = []
+            true_rates_stack = []
+
+            # If multitask (with different trial lengths)
+            if is_multitask:
+                trial_lens = self.analyses[i].get_trial_lens(phase=phase)
+                # Stack the latents to the different trial lengths
+                for j in range(latents.shape[0]):
+                    latents_stack.append(latents[j, : int(trial_lens[j]), :])
+                    rates_stack.append(rates[j, : int(trial_lens[j]), :])
+                    true_rates_stack.append(true_rates[j, : int(trial_lens[j]), :])
+                rates = torch.vstack(rates_stack)
+                latents = torch.vstack(latents_stack)
+                true_rates = torch.vstack(true_rates_stack)
+
+            # Check that latents arenot NaN
+            if np.isnan(latents.detach().numpy()).any():
+                continue
+
+            # Compute the rate R2 and state R2
             rate_state_mat[i, 0] = get_rate_r2(
-                rates,
-                true_rates,
+                rates_true=true_rates,
+                rates_pred=rates,
             )
+            rate_state_mat[i, 1] = get_state_r2_vaf(
+                lats_true=true_lats,
+                lats_pred=latents,
+            )
+
+        # Sort results by the groups
         num_groups = len(np.unique(self.groups))
         colors = plt.cm.get_cmap("tab10", num_groups)
         color_inds = np.array(
             [np.where(np.unique(self.groups) == group)[0][0] for group in self.groups]
         )
 
+        # Plot the results
         fig = plt.figure()
         ax = fig.add_subplot(111)
         for i in range(self.num_analyses):
@@ -172,7 +209,7 @@ class Comparison:
         min_val = np.min(rate_state_mat[bool_idx]) - 0.2
         max_val = np.max(rate_state_mat[bool_idx]) + 0.2
         max_val = np.min([max_val, 1.05])
-        min_val = np.max([min_val, -0.05])
+        min_val = np.max([min_val, -1.05])
         ax.set_xlim([min_val, max_val])
         ax.set_ylim([min_val, max_val])
         ax.plot([min_val, max_val], [min_val, max_val], "k--")
@@ -180,7 +217,8 @@ class Comparison:
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlabel("Rate R2 ")
         ax.set_ylabel("State R2 ")
-        plt.savefig(f"{self.comparison_tag}_rate_state_r2.pdf")
+        ax.set_title(f"Rate-State R2 ({self.comparison_tag})")
+        return rate_state_mat
 
     def compare_to_reference_affine(self, ref_ind=None, num_pcs=4):
         # Function to compare the latent activity
@@ -195,8 +233,8 @@ class Comparison:
             if i == ref_ind:
                 continue
             rate_state_mat[i, 0] = get_state_r2(
-                self.analyses[i].get_latents(phase="val"),
                 reference_analysis.get_latents(phase="val"),
+                self.analyses[i].get_latents(phase="val"),
                 num_pcs=num_pcs,
             )
             rate_state_mat[i, 1] = get_state_r2(
@@ -447,6 +485,80 @@ class Comparison:
             axes[i].set_xticks([])
             axes[i].set_yticks([])
             axes[i].set_zticks([])
+
+    def compare_procrustes(self, ref_ind=None):
+        # Function to compare the latent activity
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        reference_analysis = self.analyses[ref_ind]
+        pro_mat = np.zeros(self.num_analyses)
+        ref_lats = reference_analysis.get_latents(phase="val").detach().numpy()
+        for i in range(self.num_analyses):
+            print(f"Working on {i+1} of {self.num_analyses}")
+            if i == ref_ind:
+                continue
+            _, latents = self.analyses[i].get_model_outputs(phase="val")
+
+            if ref_lats.shape[-1] != latents.shape[-1]:
+                continue
+            latents = latents.detach().numpy()
+            pro_mat[i] = procrustes(
+                ref_lats.reshape(-1, ref_lats.shape[-1]),
+                latents.reshape(-1, latents.shape[-1]),
+            )[2]
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for group in np.unique(self.groups):
+            group_inds = np.where(self.groups == group)[0]
+            ax.bar(group_inds, pro_mat[group_inds], label=group)
+        # Square axis
+        ax.set_ylabel("M2 (Disparity)")
+        ax.set_title("Procrustes M2")
+        ax.legend()
+        plt.savefig(f"{self.comparison_tag}_procrustes.pdf")
+
+    def compare_CCA(self, ref_ind=None, num_components=10, iters=500):
+        # Function to compare the latent activity
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        reference_analysis = self.analyses[ref_ind]
+        cca_mat = np.zeros((self.num_analyses, num_components))
+        ref_lats = reference_analysis.get_latents(phase="val").detach().numpy()
+        ref_lats = ref_lats.reshape(-1, ref_lats.shape[-1])
+        for i in range(self.num_analyses):
+            print(f"Working on {i+1} of {self.num_analyses}")
+            if i == ref_ind:
+                continue
+            _, latents = self.analyses[i].get_model_outputs(phase="val")
+
+            if ref_lats.shape[-1] != latents.shape[-1]:
+                continue
+            latents = latents.detach().numpy().reshape(-1, latents.shape[-1])
+            cca = CCA(n_components=num_components, max_iter=iters)
+            cca.fit(latents, ref_lats)
+            cca_lats, cca_ref_lats = cca.transform(latents, ref_lats)
+            cca_mat[i, :] = r2_score(cca_lats, cca_ref_lats, multioutput="raw_values")
+
+        group_inds = np.unique(self.groups)
+        colors = plt.cm.get_cmap("tab10", len(group_inds))
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        for i in range(self.num_analyses):
+            ax.plot(
+                np.arange(num_components),
+                cca_mat[i, :],
+                label=self.analyses[i].run_name,
+                color=colors(np.where(group_inds == self.groups[i])[0][0]),
+            )
+        # Square axis
+        plt.savefig(f"{self.comparison_tag}_CCA.pdf")
 
     def compare_performance(self):
         _, _, targets = self.analyses[self.ref_ind].get_model_inputs(phase="val")
