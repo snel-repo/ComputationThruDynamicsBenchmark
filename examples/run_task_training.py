@@ -25,8 +25,8 @@ LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "RandomTarget_NoisyGRU_Final"  # For WandB and run dir
-TASK = "RandomTarget"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "NBFF_NoisyGRU_Final"  # For WandB and run dir
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------

@@ -1,14 +1,14 @@
 # Computation-Through-Dynamics Benchmark
 
 ## Overview
-This git repo contains code that will allow users to perform four basic steps:
+This git repo contains code that will allow users to perform four phases:
 1. Train task-trained models on a range of tasks with different complexities
 2. Simulate synthetic neural spiking from those task-trained networks
 3. Train data-trained models on the synthetic spiking activity
 4. Compare the dynamics of the task-trained and data-trained networks with a variety of quantifications of dynamical accuracy
 
 ## Installation
-We recommend using Conda to run this code. Unfortunately, Ray support for Windows is spotty, so I recommend Linux.
+We recommend using Conda to run this code. Unfortunately, Ray support for Windows is spotty, so I recommend Linux (or Windows Subsystem for Linux).
 To create an environment and install the dependencies of the project, run the following commands:
 
 ```
@@ -17,17 +17,12 @@ conda create --name CtDEnv python=3.10
 conda activate CtDEnv
 cd ComputationThruDynamicsBenchmark
 pip install -e .
-pip install -e libs/DSA/.
-pip install -e libs/lfads-jslds/.
+pip install -U jax[cpu]
 
-# To get GPUs working with jax, you have to use the CUDA 11 version:
-# Here are the commands to get it working for our linux servers; find the correct version for your system.
-pip uninstall jax jaxlib
-conda install cuda -c nvidia/label/cuda-11.8.0
-pip install --upgrade https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.4.4+cuda11.cudnn82-cp310-cp310-manylinux2014_x86_64.whl
-pip install --upgrade jax==0.4.4
-conda install -c conda-forge cudnn=8.2.0.53
 ```
+You also need to install Dynamical Similarity Analysis (DSA).
+Follow the instructions on this git repo:
+https://github.com/mitchellostrow/DSA
 
 lfads-jslds is a JAX model that implements Jacobian-Switching Linear Dynamical Systems, provided by David Zoltowski.
 
@@ -44,7 +39,7 @@ Each uses ray, hydra, and PyTorch Lightning to handle hyperparameter sweeps and 
 There are three tasks implemented, ranging from simple to complex:
 1. NBFF: An extension of the 3-bit Flip-Flop from OTBB, this can be extended into higher dimensions for more complex dynamics.
 2. MultiTask: A version of the task used in recent papers by Yang and Driscoll, this task combines 15 simple cognitive tasks into a single task to look at how dynamical motifs can generalize across tasks.
-3. RandomTargetDelay: A musculoskeletal modeling and control engine (MotorNet) that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
+3. RandomTarget: A musculoskeletal modeling and control engine (MotorNet) that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
 
 ## Quick-Start:
 To get an overview of the major components of the code-base, only three scripts are necessary:
@@ -54,7 +49,7 @@ To get an overview of the major components of the code-base, only three scripts 
 
 Before running these scripts, you will need to modify the HOME_DIR variable in your .env file to a location where you'd like to save the outputs of the runs (datasets, logging info, trained models).
 
-run_task_training trains a simple GRU to perform a 3-Bit Flip-Flop task. The default parameters can be seen in the task_modeling/configs/ folder. Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/tt/. To train a data-trained model on those simulated data, you just need to modify "prefix" in run_data_training.py to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
+run_task_training trains a simple GRU to perform a 3-Bit Flip-Flop task. The default parameters can be seen in the task_modeling/configs/ folder. Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/dt/. To train a data-trained model on those simulated data, you just need to modify "prefix" in run_data_training.py to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
 
 If there is more than one simulated dataset (i.e., if you did a hyperparameter sweep of task-trained models), data_training just takes the first folder in the directory unless you pass in a "file_index" parameter into the datamodule to select a different simulated dataset.
 
@@ -94,22 +89,6 @@ Talk to me!
 
 ## License
 None yet
-
-There are three major items that are saved by these scripts, following this directory structure:
-- runs: The logs of the training runs produced by WandB.
-- datasets: .h5 and .pkl files of the datasets used at different phases of the pipeline:
-- - tt: Data for training the task-trained model
-- - sim: Data passed through the task-trained model to generate simulated spiking activity
-- - dt: Simulated spiking activity for data-trained models
-- trained_models: Where the datamodule and trained models are saved for use by Analysis objects.
-- - task-trained:
-- - - datamodule_train.pkl: Pickled PyTorch Lightning datamodule used to train model
-- - - datamodule_sim.pkl: Pickled PyTorch Lightning datamodule used to simulate neural activity
-- - - model.pkl: Trained PyTorchLightning module
-- - - simulator.pkl: Object used to simulate neural spiking activity
-- - data-trained:
-- - - datamodule.pkl: Pickled datamodule object for data-training
-- - - model.pkl: Trained model object
 
 
 ## Contact
