@@ -6,7 +6,7 @@ encoder_window: -1
 
 heldin_size: 50
 heldout_size: 50
-latent_size: 5
+latent_size: 10
 input_size: 3
 
 dropout: 0.05
@@ -24,8 +24,8 @@ lr_encoder: 2e-3
 lr_decoder: 2e-3
 
 decay_readout: 0
-decay_encoder: 1e-7
-decay_decoder: 1e-7
+decay_encoder: 0
+decay_decoder: 0
 
 readout_type: Linear
 increment_trial: True

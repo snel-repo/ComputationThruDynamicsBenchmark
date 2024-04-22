@@ -75,13 +75,13 @@ class Analysis_TT(Analysis):
 
     def get_inputs_to_env(self, phase="all"):
         if phase == "all":
-            train_inputs_to_env = self.datamodule.train_ds.tensors[5]
-            valid_inputs_to_env = self.datamodule.valid_ds.tensors[5]
+            train_inputs_to_env = self.datamodule.train_ds.tensors[6]
+            valid_inputs_to_env = self.datamodule.valid_ds.tensors[6]
             return torch.cat([train_inputs_to_env, valid_inputs_to_env], dim=0)
         elif phase == "train":
-            return self.datamodule.train_ds.tensors[5]
+            return self.datamodule.train_ds.tensors[6]
         elif phase == "val":
-            return self.datamodule.valid_ds.tensors[5]
+            return self.datamodule.valid_ds.tensors[6]
 
     def get_model_inputs(self, phase="all"):
 

@@ -1,12 +1,1 @@
-pretrained/20240327_NBFF_GRU_Final/max_epochs=1500[[:space:]]seed=0/datamodule_sim.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/20240327_NBFF_GRU_Final/max_epochs=1500[[:space:]]seed=0/model.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/20240327_NBFF_GRU_Final/max_epochs=1500[[:space:]]seed=0/simulator.pkl filter=lfs diff=lfs merge=lfs -text
-
-pretrained/20240327_RandomTarget_GRU_Final/max_epochs=1500[[:space:]]seed=0/datamodule_sim.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/20240327_RandomTarget_GRU_Final/max_epochs=1500[[:space:]]seed=0/model.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/20240327_RandomTarget_GRU_Final/max_epochs=1500[[:space:]]seed=0/simulator.pkl filter=lfs diff=lfs merge=lfs -text
-
-pretrained/20240327_MultiTask_GRU_Final/max_epochs=500[[:space:]]seed=0/datamodule_sim.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/20240327_MultiTask_GRU_Final/max_epochs=500[[:space:]]seed=0/model.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/20240327_MultiTask_GRU_Final/max_epochs=500[[:space:]]seed=0/simulator.pkl filter=lfs diff=lfs merge=lfs -text
-pretrained/tutorial/tt/20240328/**/*.pkl filter=lfs diff=lfs merge=lfs -text
+pretrained/*.pkl filter=lfs diff=lfs merge=lfs -text

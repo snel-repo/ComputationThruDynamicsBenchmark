@@ -27,15 +27,15 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Fig1_RandomTarget_LFADS_Sweep"
+RUN_DESC = "Fig1_NBFF_NODE_Sweep_2"
 NUM_SAMPLES = 1
-MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
-MODEL = "LFADS"  # "ResLFADS" or "LFADS"
-DATA = "RandomTarget"  # "NBFF", "RandomTargetReach" or "MultiTask
+MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
+MODEL = "NODE"  # "ResLFADS" or "LFADS"
+DATA = "NBFF"  # "NBFF", "RandomTargetReach" or "MultiTask
 INFER_INPUTS = False
 
-# prefix = "20240418_NBFF_NoisyGRU_Final4"
-prefix = "20240419_RandomTarget_NoisyGRU_Final"
+prefix = "20240418_NBFF_NoisyGRU_Final4"
+# prefix = "20240419_RandomTarget_NoisyGRU_Final"
 # prefix  = "20240411_MultiTask_GRU_L2Lats"
 
 
