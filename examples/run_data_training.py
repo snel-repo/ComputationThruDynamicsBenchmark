@@ -45,6 +45,7 @@ SEARCH_SPACE = dict(
         gen_model=tune.grid_search(["NoisyGRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
         prefix=tune.grid_search([prefix]),
+        seed=tune.grid_search([4096]),
     ),
     params=dict(
         seed=tune.grid_search([0]),

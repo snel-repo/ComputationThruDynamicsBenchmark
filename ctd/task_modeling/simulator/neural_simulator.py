@@ -100,7 +100,7 @@ class NeuralDataSimulator:
 
         # Make the directory if it doesn't exist
         if not os.path.exists(fpath):
-            os.mkdir(fpath)
+            os.makedirs(fpath)
         fpath = os.path.join(fpath, subfolder + ".h5")
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
