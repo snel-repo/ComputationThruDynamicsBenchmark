@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Fig1_NBFF_NODE_Sweep_2"
+RUN_DESC = "NBFF_GRU_RNN_DT_Tutorial"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "NODE"  # "ResLFADS" or "LFADS"
+MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTargetReach" or "MultiTask
 INFER_INPUTS = False
 
@@ -47,7 +47,7 @@ SEARCH_SPACE = dict(
         prefix=tune.grid_search([prefix]),
     ),
     params=dict(
-        seed=tune.grid_search([0, 1, 2, 3, 4]),
+        seed=tune.grid_search([0]),
     ),
     trainer=dict(
         max_epochs=tune.grid_search([500]),
