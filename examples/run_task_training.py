@@ -25,15 +25,18 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_NoisyGRU_Tutorial"  # For WandB and run dir
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "MultiTask_NoisyGRU_Final"  # For WandB and run dir
+TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
 MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1500]),
+        max_epochs=tune.choice([700]),
+    ),
+    model=dict(
+        latent_size=tune.choice([128]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

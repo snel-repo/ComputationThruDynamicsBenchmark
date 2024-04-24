@@ -27,15 +27,15 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "NBFF_GRU_RNN_DT_Tutorial"
+RUN_DESC = "Fig1_RandomTarget_GRU_RNN"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
 MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
-DATA = "NBFF"  # "NBFF", "RandomTargetReach" or "MultiTask
+DATA = "RandomTarget"  # "NBFF", "RandomTargetReach" or "MultiTask
 INFER_INPUTS = False
 
-prefix = "20240418_NBFF_NoisyGRU_Final4"
-# prefix = "20240419_RandomTarget_NoisyGRU_Final"
+# prefix = "20240418_NBFF_NoisyGRU_Final4"
+prefix = "20240419_RandomTarget_NoisyGRU_Final"
 # prefix  = "20240411_MultiTask_GRU_L2Lats"
 
 
@@ -45,17 +45,16 @@ SEARCH_SPACE = dict(
         gen_model=tune.grid_search(["NoisyGRU_RNN"]),
         # Change the prefix to the correct path for your task-trained network
         prefix=tune.grid_search([prefix]),
-        seed=tune.grid_search([4096]),
     ),
     params=dict(
-        seed=tune.grid_search([0]),
+        seed=tune.grid_search([0, 1, 2, 3, 4]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([500]),
+        max_epochs=tune.grid_search([1500]),
     ),
-    # model = dict(
-    #     weight_decay=tune.grid_search([3e-6]),
-    # ),
+    model=dict(
+        weight_decay=tune.grid_search([5e-6]),
+    ),
 )
 
 # -----------------Default Parameter Sets -----------------------------------
