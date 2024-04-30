@@ -27,11 +27,11 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Fig1_LFADS_RandomTarget"
-NUM_SAMPLES = 100
-MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
-MODEL = "LFADS"  # "ResLFADS" or "LFADS"
-DATA = "RandomTarget"  # "NBFF", "RandomTarget" or "MultiTask
+RUN_DESC = "Fig1_NBFF_NODE"
+NUM_SAMPLES = 1
+MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
+MODEL = "NODE"  # "ResLFADS" or "LFADS"
+DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":
@@ -56,9 +56,7 @@ SEARCH_SPACE = dict(
         max_epochs=tune.grid_search([1000]),
     ),
     model=dict(
-        gen_dim=tune.randint(64, 256),
-        fac_dim=tune.randint(10, 50),
-        kl_ic_scale=tune.loguniform(1e-8, 1e-3),
+        latent_size=tune.grid_search([3]),
     ),
 )
 

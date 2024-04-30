@@ -389,6 +389,44 @@ class Comparison:
 
             axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
 
+    def plot_trials_controlled_reference(self, num_trials=2, ref_ind=None, num_pcs=3):
+
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        out_dict = self.analyses[ref_ind].get_model_outputs()
+        ref_lats = out_dict["latents"].detach().numpy()
+        pca = PCA()
+        ref_lats_flat = ref_lats.reshape(
+            ref_lats.shape[0] * ref_lats.shape[1], ref_lats.shape[2]
+        )
+        ref_lats_pca_flat = pca.fit_transform(ref_lats_flat)
+        ref_lats_pca = ref_lats_pca_flat.reshape(ref_lats.shape)
+
+        fig = plt.figure()
+        axes = fig.subplots(self.num_analyses, num_trials)
+        for i in range(self.num_analyses):
+            latents = self.analyses[i].get_latents().detach().numpy()
+            lats_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            reg = LinearRegression().fit(lats_flat, ref_lats_pca_flat)
+            latents_pca_flat = reg.predict(lats_flat)
+            latents_pca = latents_pca_flat.reshape(ref_lats_pca.shape)
+
+            for j in range(num_trials):
+                axes[i, j].plot(latents_pca[j, :, :num_pcs])
+                if i == 0:
+                    axes[i, j].set_title(f"Trial {j}")
+                if i == self.num_analyses - 1:
+                    axes[i, j].set_xlabel("Time")
+                else:
+                    axes[i, j].set_xticks([])
+
+            axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
+
     def plot_trials_reference(self, num_trials=2, ref_ind=None, num_pcs=3):
 
         if ref_ind is None:

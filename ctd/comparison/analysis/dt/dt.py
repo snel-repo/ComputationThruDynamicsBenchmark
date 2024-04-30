@@ -2,6 +2,7 @@ import io
 import pickle
 import types
 
+import numpy as np
 import torch
 from jax import random
 from matplotlib import pyplot as plt
@@ -192,6 +193,8 @@ def get_model_outputs_LDS(self):
 
 def get_model_outputs_SAE(self, phase="all"):
     dt_spiking, dt_inputs = self.get_model_inputs(phase=phase)
+    dt_spiking = dt_spiking.to(self.model.device)
+    dt_inputs = dt_inputs.to(self.model.device)
     log_rates, latents = self.model(dt_spiking, dt_inputs)
     return torch.exp(log_rates), latents
 
@@ -357,7 +360,7 @@ class Analysis_DT(Analysis):
             latents = self.get_latents()
         latents = latents.to(device)
         inputs = inputs.to(device)
-
+        m_device = self.model.device
         fps = find_fixed_points(
             model=self.get_dynamics_model(),
             state_trajs=latents,
@@ -370,6 +373,7 @@ class Analysis_DT(Analysis):
             seed=seed,
             compute_jacobians=compute_jacobians,
         )
+        self.model.to(m_device)
         return fps
 
     def plot_fps(
@@ -400,6 +404,11 @@ class Analysis_DT(Analysis):
         xstar = fps.xstar
         q_vals = fps.qstar
         is_stable = fps.is_stable
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.hist(np.log10(q_vals), bins=100)
+        ax.set_xlabel("log10(q)")
+        ax.set_ylabel("Count")
         q_flag = q_vals < q_thresh
         pca = PCA(n_components=3)
         xstar_pca = pca.fit_transform(xstar)
