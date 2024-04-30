@@ -42,6 +42,9 @@ SEARCH_SPACE = dict(
     params=dict(
         seed=tune.grid_search([0]),
     ),
+    task_wrapper=dict(
+        learning_rate=tune.grid_search([5e-4]),
+    ),
 )
 
 # ------------------Data Management Variables --------------------------------

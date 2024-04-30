@@ -76,6 +76,22 @@ class TaskTrainedWrapper(pl.LightningModule):
         )
         return optimizer
 
+    def forward_step_coupled(self, env_states, context_inputs, rnn_hidden, joint_state):
+        """Forward step for coupled environment combining the RNN and environment"""
+        # model takes in:
+        # - inputs: composed of env_states and context_inputs
+        # - rnn_hidden: hidden state of the RNN
+        inputs = torch.hstack((env_states, context_inputs))
+        action, rnn_hidden = self.model(inputs, rnn_hidden)
+        self.task_env.reset(
+            batch_size=env_states.shape[0], options={"ic_state": joint_state}
+        )
+        env_states, _, terminated, _, info = self.task_env.step(
+            action=action, inputs=context_inputs
+        )
+        joint_state = info["states"]["joint"]
+        return action, rnn_hidden, env_states, joint_state
+
     def forward(self, ics, inputs, inputs_to_env=None):
         """Pass data through the model
         args:

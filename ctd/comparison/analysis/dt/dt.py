@@ -434,6 +434,7 @@ class Analysis_DT(Analysis):
             )
         ax.set_title(f"{self.model_type}_Fixed Points")
         plt.show()
+        return fps
 
     def plot_trial(self, num_trials=10, scatterPlot=True):
         latents = self.get_latents().detach().numpy()

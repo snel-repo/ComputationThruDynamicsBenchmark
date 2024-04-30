@@ -111,12 +111,13 @@ class Comparison:
         )
         return state_r2_mat
 
-    def compare_state_rate_r2(
+    def compare_rate_state_r2(
         self,
         ref_ind=None,
         label_runs=False,
         label_groups=True,
         phase="val",
+        save_pdf=False,
     ):
         # Function to compare the latent activity
         if ref_ind is None:
@@ -137,7 +138,10 @@ class Comparison:
             true_lats = torch.vstack(true_lats_stack)
 
         for i in range(self.num_analyses):
-            print(f"Working on {i+1} of {self.num_analyses}")
+            print(
+                f"Working on {i+1} of {self.num_analyses}: {self.analyses[i].run_name}"
+            )
+            print(f"Group: {self.groups[i]}")
             if i == ref_ind:
                 continue
             rates, latents = self.analyses[i].get_model_outputs(phase=phase)
@@ -172,6 +176,8 @@ class Comparison:
                 lats_true=true_lats,
                 lats_pred=latents,
             )
+            print(f"Rate R2: {rate_state_mat[i, 0]}")
+            print(f"State R2: {rate_state_mat[i, 1]}")
 
         # Sort results by the groups
         num_groups = len(np.unique(self.groups))
@@ -218,6 +224,8 @@ class Comparison:
         ax.set_xlabel("Rate R2 ")
         ax.set_ylabel("State R2 ")
         ax.set_title(f"Rate-State R2 ({self.comparison_tag})")
+        if save_pdf:
+            plt.savefig(f"{self.comparison_tag}_rate_state_r2.pdf")
         return rate_state_mat
 
     def compare_to_reference_affine(self, ref_ind=None, num_pcs=4):

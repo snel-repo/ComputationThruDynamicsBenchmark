@@ -28,7 +28,7 @@ decay_encoder: 1e-7
 decay_decoder: 1e-7
 
 readout_type: Linear
-increment_trial: True
+increment_trial: False
 points_per_group: 20
 epochs_per_group: 10
 

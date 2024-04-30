@@ -27,16 +27,19 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Fig1_RandomTarget_GRU_RNN"
-NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
-DATA = "RandomTarget"  # "NBFF", "RandomTargetReach" or "MultiTask
+RUN_DESC = "Fig1_LFADS_RandomTarget"
+NUM_SAMPLES = 100
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"  # "ResLFADS" or "LFADS"
+DATA = "RandomTarget"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
-# prefix = "20240418_NBFF_NoisyGRU_Final4"
-prefix = "20240419_RandomTarget_NoisyGRU_Final"
-# prefix  = "20240411_MultiTask_GRU_L2Lats"
+if DATA == "NBFF":
+    prefix = "20240418_NBFF_NoisyGRU_Final4"
+elif DATA == "RandomTarget":
+    prefix = "20240419_RandomTarget_NoisyGRU_Final"
+elif DATA == "MultiTask":
+    prefix = "20240422_MultiTask_NoisyGRU_Final"
 
 
 # -------------------------------------
@@ -47,13 +50,15 @@ SEARCH_SPACE = dict(
         prefix=tune.grid_search([prefix]),
     ),
     params=dict(
-        seed=tune.grid_search([0, 1, 2, 3, 4]),
+        seed=tune.grid_search([0]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([1500]),
+        max_epochs=tune.grid_search([1000]),
     ),
     model=dict(
-        weight_decay=tune.grid_search([5e-6]),
+        gen_dim=tune.randint(64, 256),
+        fac_dim=tune.randint(10, 50),
+        kl_ic_scale=tune.loguniform(1e-8, 1e-3),
     ),
 )
 
