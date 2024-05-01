@@ -406,6 +406,8 @@ class Analysis_DT(Analysis):
         is_stable = fps.is_stable
         fig = plt.figure(figsize=(10, 10))
         ax = fig.add_subplot(111)
+        zero_flag = q_vals == 0
+        q_vals[zero_flag] = 1e-15
         ax.hist(np.log10(q_vals), bins=100)
         ax.set_xlabel("log10(q)")
         ax.set_ylabel("Count")

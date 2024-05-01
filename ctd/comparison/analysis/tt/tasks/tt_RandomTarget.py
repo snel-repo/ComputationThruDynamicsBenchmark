@@ -21,6 +21,113 @@ class TT_RandomTarget(Analysis_TT):
             f"interpretability/comparison/plots/{self.run_name}/"
         )
 
+    def plot_latents_aligned(self, align_to="go_cue", pre_align=20, post_align=20):
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+        inputs_to_env = self.get_inputs_to_env()
+        extra = self.get_extra_inputs()
+        out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env=inputs_to_env)
+        latents = out_dict["latents"]
+
+        go_cue = extra[:, 1]
+        pre_ind = go_cue - pre_align
+        post_ind = post_align + go_cue
+
+        go_trials = go_cue.detach().numpy() > 0
+
+        pre_ind = pre_ind[go_trials]
+        post_ind = post_ind[go_trials]
+
+        lats_flag = np.logical_and(pre_ind > 0, post_ind < latents.shape[1])
+        pre_ind = pre_ind[lats_flag].detach().numpy().astype(int)
+        post_ind = post_ind[lats_flag].detach().numpy().astype(int)
+
+        latents = latents[go_trials, :, :]
+        latents = latents[lats_flag, :, :].detach().numpy()
+        lats_trim = np.zeros(
+            (latents.shape[0], pre_align + post_align, latents.shape[2])
+        )
+        for i in range(latents.shape[0]):
+            lats_trim[i, :, :] = latents[i, pre_ind[i] : post_ind[i], :]
+
+        lat_pca = PCA(n_components=3)
+        lats_trim_pca = lat_pca.fit_transform(lats_trim.reshape(-1, latents.shape[-1]))
+        lats_trim_pca = lats_trim_pca.reshape(lats_trim.shape[0], lats_trim.shape[1], 3)
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        for i in range(lats_trim_pca.shape[0]):
+            ax.plot(
+                lats_trim_pca[i, :, 0],
+                lats_trim_pca[i, :, 1],
+                lats_trim_pca[i, :, 2],
+            )
+        ax.set_title("Latents aligned to go cue")
+        ax.set_xlabel("PC1")
+        ax.set_ylabel("PC2")
+        ax.set_zlabel("PC3")
+        plt.tight_layout()
+
+    def plot_latents_aligned_video(
+        self,
+        align_to="go_cue",
+        pre_align=20,
+        post_align=20,
+        pcs_to_use=[4, 5, 6],
+        fps=10,
+    ):
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+        inputs_to_env = self.get_inputs_to_env()
+        extra = self.get_extra_inputs()
+        out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env=inputs_to_env)
+        latents = out_dict["latents"]
+
+        go_cue = extra[:, 1]
+        pre_ind = go_cue - pre_align
+        post_ind = post_align + go_cue
+
+        go_trials = go_cue.detach().numpy() > 0
+
+        pre_ind = pre_ind[go_trials]
+        post_ind = post_ind[go_trials]
+
+        lats_flag = np.logical_and(pre_ind > 0, post_ind < latents.shape[1])
+        pre_ind = pre_ind[lats_flag].detach().numpy().astype(int)
+        post_ind = post_ind[lats_flag].detach().numpy().astype(int)
+
+        latents = latents[go_trials, :, :]
+        latents = latents[lats_flag, :, :].detach().numpy()
+        lats_trim = np.zeros(
+            (latents.shape[0], pre_align + post_align, latents.shape[2])
+        )
+        for i in range(latents.shape[0]):
+            lats_trim[i, :, :] = latents[i, pre_ind[i] : post_ind[i], :]
+        num_pcs = 10
+        lat_pca = PCA(n_components=num_pcs)
+        lats_trim_pca = lat_pca.fit_transform(lats_trim.reshape(-1, latents.shape[-1]))
+        lats_trim_pca = lats_trim_pca.reshape(
+            lats_trim.shape[0], lats_trim.shape[1], num_pcs
+        )
+        # Make a frame for each time point
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        writer = FFMpegWriter(fps=fps)
+        n_trials_plot = lats_trim_pca.shape[0]
+        # Create a video file and write frames
+        with writer.saving(fig, f"{align_to}_latent_video.mp4", 100):
+            for t in range(pre_align + post_align):
+                print(f"Writing frame {t} of {pre_align + post_align}")
+                ax.clear()
+                for i in range(n_trials_plot):
+                    ax.scatter(
+                        lats_trim_pca[i, t, pcs_to_use[0]],
+                        lats_trim_pca[i, t, pcs_to_use[1]],
+                        lats_trim_pca[i, t, pcs_to_use[2]],
+                    )
+                ax.set_title(f"Time {t-pre_align}")
+                ax.set_xlim([-1, 1])  # Set this according to your data range
+                ax.set_ylim([-1, 1])  # Set this according to your data range
+                ax.set_zlim([-1, 1])
+                writer.grab_frame()
+
     def plot_trial(self, trial_num):
         # plot the trial
         # get the trial
@@ -164,6 +271,7 @@ class TT_RandomTarget(Analysis_TT):
         # Get the target and start locations
         start_location = tt_targets[:, 0, :].detach().numpy()
         target_location = tt_targets[:, -1, :].detach().numpy()
+        tt_targs_temp = tt_targets.detach().numpy()
 
         # Get the go cue and target on times
         target_on = extra[:, 0]
@@ -171,25 +279,13 @@ class TT_RandomTarget(Analysis_TT):
 
         go_trials = go_cue.detach().numpy() > 0
 
-        # Make a hand position decoder
-        lats_flat = latents.reshape(-1, latents.shape[-1]).detach().numpy()
-        hand_pos_flat = hand_pos.reshape(-1, hand_pos.shape[-1]).detach().numpy()
-        hand_pos_decoder = LinearRegression().fit(lats_flat, hand_pos_flat)
-
-        # Make a target location decoder
-        target_location_flat = (
-            tt_targets.reshape(-1, tt_targets.shape[-1]).detach().numpy()
-        )
-        target_location_decoder = LinearRegression().fit(
-            lats_flat, target_location_flat
-        )
-
         # align latents to "align_to" variable
         if align_to == "go_cue":
             # Only use trials where the go cue has been given
             target_on = target_on[go_trials]
             start_location = start_location[go_trials]
             target_location = target_location[go_trials]
+            tt_targs_temp = tt_targs_temp[go_trials]
             latents = latents[go_trials]
             go_cue = go_cue[go_trials]
             hand_pos = hand_pos[go_trials]
@@ -200,6 +296,16 @@ class TT_RandomTarget(Analysis_TT):
         else:
             raise ValueError("align_to must be 'go_cue' or 'target_on'")
 
+        # Make a hand position decoder
+        lats_flat = latents.reshape(-1, latents.shape[-1]).detach().numpy()
+        hand_pos_flat = hand_pos.reshape(-1, hand_pos.shape[-1]).detach().numpy()
+        hand_pos_decoder = LinearRegression().fit(lats_flat, hand_pos_flat)
+
+        # Make a target location decoder
+        target_location_flat = tt_targs_temp.reshape(-1, tt_targs_temp.shape[-1])
+        target_location_decoder = LinearRegression().fit(
+            lats_flat, target_location_flat
+        )
         # Align latents to the align_to variable
         n_trials, n_time, n_lats = latents.shape
         latents_aligned = []
@@ -224,6 +330,14 @@ class TT_RandomTarget(Analysis_TT):
             latents_aligned_pca = latents_aligned_pca.reshape(
                 latents_aligned.shape[0], latents_aligned.shape[1], 3
             )
+            first_pc = latents_aligned_pca[:, :, 0].reshape(
+                latents_aligned.shape[0], latents_aligned.shape[1], 1
+            )
+            latents_aligned_plot = np.concatenate(
+                (latents_aligned_pca, first_pc),
+                axis=2,
+            )
+
         elif dims_by == "hand":
             latents_aligned_plot = hand_pos_decoder.predict(latents_aligned_flat)
             latents_aligned_plot = latents_aligned_plot.reshape(
