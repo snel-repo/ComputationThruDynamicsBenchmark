@@ -67,7 +67,13 @@ class NBitFlipFlop(DecoupledEnvironment):
     """
 
     def __init__(
-        self, n_timesteps: int, noise: float, n=1, switch_prob=0.01, transition_blind=4
+        self,
+        n_timesteps: int,
+        noise: float,
+        n=1,
+        switch_prob=0.01,
+        transition_blind=4,
+        dynamic_noise=0,
     ):
         super().__init__(n_timesteps=n_timesteps, noise=noise)
         self.dataset_name = f"{n}BFF"
@@ -83,6 +89,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.input_labels = [f"Input {i}" for i in range(n)]
         self.output_labels = [f"Output {i}" for i in range(n)]
         self.noise = noise
+        self.dynamic_noise = dynamic_noise
         self.coupled_env = False
         self.switch_prob = switch_prob
         self.transition_blind = transition_blind

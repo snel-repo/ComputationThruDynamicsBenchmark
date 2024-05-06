@@ -61,6 +61,10 @@ class TaskTrainedWrapper(pl.LightningModule):
         self.loss_func = task_env.loss_func
         if hasattr(task_env, "state_label"):
             self.state_label = task_env.state_label
+        if hasattr(task_env, "dynamic_noise"):
+            self.dynamic_noise = task_env.dynamic_noise
+        else:
+            self.dynamic_noise = 0.0
 
     def set_model(self, model: nn.Module):
         """Set the model for the training pipeline"""
@@ -138,6 +142,10 @@ class TaskTrainedWrapper(pl.LightningModule):
             else:
                 model_input = inputs[:, count, :]
 
+            if self.dynamic_noise > 0:
+                model_input = (
+                    model_input + torch.randn_like(model_input) * self.dynamic_noise
+                )
             # Produce an action and a hidden state
             action, hidden = self.model(model_input, hidden)
 

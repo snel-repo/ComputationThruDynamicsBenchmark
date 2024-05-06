@@ -516,3 +516,14 @@ class Analysis_DT(Analysis):
                     ax[i, j].set_title(f"Neuron {neuron}")
         ax[0, 0].legend()
         plt.show()
+
+    def plot_scree(self, n_components=10):
+        latents = self.get_latents().detach().numpy()
+        pca = PCA(n_components=n_components)
+        lats_flat = latents.reshape(-1, latents.shape[-1])
+        pca.fit(lats_flat)
+        fig, ax = plt.subplots()
+        ax.plot(pca.explained_variance_ratio_)
+        ax.set_xlabel("Principal Component")
+        ax.set_ylabel("Explained Variance Ratio")
+        plt.show()

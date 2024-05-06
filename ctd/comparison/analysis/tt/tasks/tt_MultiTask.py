@@ -58,7 +58,10 @@ class Analysis_TT_MultiTask(Analysis_TT):
 
     def get_model_outputs_noiseless(self):
         tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless()
+        dyn_noise = self.wrapper.dynamic_noise
+        self.wrapper.dynamic_noise = 0.0
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
+        self.wrapper.dynamic_noise = dyn_noise
         return out_dict
 
     def get_data_from_phase(self, phase_task, phase, data):
@@ -89,11 +92,9 @@ class Analysis_TT_MultiTask(Analysis_TT):
         tt_targets = tt_targets[task_flag]
         true_inputs = true_inputs[task_flag]
         if use_noisy:
-            inputs_fp = tt_inputs
+            out_dict = self.get_model_outputs()
         else:
-            inputs_fp = true_inputs
-
-        out_dict = self.wrapper(tt_ics, inputs_fp, tt_targets)
+            out_dict = self.get_model_outputs_noiseless()
         latents = out_dict["latents"]
 
         lats_phase = []

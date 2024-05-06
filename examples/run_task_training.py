@@ -25,7 +25,7 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_NODE_Fig1"  # For WandB and run dir
+RUN_DESC = "Fig1_NBFF_NODE"  # For WandB and run dir
 TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "NODE"  # Model to train (see configs/model for options)
 
@@ -35,6 +35,9 @@ SEARCH_SPACE = dict(
         # Trainer Parameters -----------------------------------
         max_epochs=tune.choice([500]),
     ),
+    datamodule_task=dict(
+        n_samples=tune.choice([1000]),
+    ),
     model=dict(
         latent_size=tune.choice([3]),
     ),
@@ -43,7 +46,7 @@ SEARCH_SPACE = dict(
         seed=tune.grid_search([0]),
     ),
     task_wrapper=dict(
-        learning_rate=tune.grid_search([8e-4]),
+        learning_rate=tune.grid_search([1e-3]),
     ),
 )
 

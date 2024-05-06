@@ -22,6 +22,7 @@ class MultiTaskWrapper(DecoupledEnvironment):
         n_timesteps: int,
         num_targets: int,
         noise: float,
+        dynamic_noise: float,
         grouped_sampler: bool = False,
         dataset_name="MultiTask",
         *args,
@@ -98,6 +99,7 @@ class MultiTaskWrapper(DecoupledEnvironment):
             "ResponseSin",
         ]
         self.noise = noise
+        self.dynamic_noise = dynamic_noise
         self.coupled_env = False
         self.extra = "phase_dict"
         self.latent_l2_wt = latent_l2_wt

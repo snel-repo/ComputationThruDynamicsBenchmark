@@ -81,9 +81,9 @@ def get_state_r2_vaf(lats_true, lats_pred):
         lats_true_flat = lats_true.detach().numpy()
 
     # Compare the latent activity
-    reg = LinearRegression().fit(lats_pred_flat, lats_true_flat)
-    preds = reg.predict(lats_pred_flat)
-    state_r2 = r2_score(lats_true_flat, preds, multioutput="variance_weighted")
+    reg = LinearRegression().fit(lats_true_flat, lats_pred_flat)
+    preds = reg.predict(lats_true_flat)
+    state_r2 = r2_score(lats_pred_flat, preds, multioutput="variance_weighted")
     return state_r2
 
 

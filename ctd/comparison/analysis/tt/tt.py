@@ -251,9 +251,12 @@ class Analysis_TT(Analysis):
             latents = self.get_latents()
         else:
             latents = self.get_latents()
-
+        if hasattr(self.wrapper.model, "generator"):
+            cell = self.wrapper.model.generator
+        else:
+            cell = self.wrapper.model.cell
         fps = find_fixed_points(
-            model=self.wrapper.model.cell,
+            model=cell,
             state_trajs=latents,
             inputs=inputs,
             n_inits=n_inits,
@@ -296,6 +299,8 @@ class Analysis_TT(Analysis):
         is_stable = fps.is_stable
         figQs = plt.figure()
         axQs = figQs.add_subplot(111)
+        q_flag_temp = q_vals < 1e-15
+        q_vals[q_flag_temp] = 1e-15
         axQs.hist(np.log10(q_vals), bins=100)
         axQs.set_title("Q* Histogram")
         axQs.set_xlabel("log10(Q*)")
