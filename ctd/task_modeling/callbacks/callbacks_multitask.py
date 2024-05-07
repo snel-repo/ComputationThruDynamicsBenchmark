@@ -81,10 +81,10 @@ class StateTransitionCallback(pl.Callback):
         task_names = [extra_dict["task_names"][ind] for ind in inds]
 
         # Get the first indices for each task
-        included_tasks = trainer.datamodule.data_env.task_list_str
+        unique_tasks = np.unique(task_names)
 
         plot_dict = {}
-        for task1 in included_tasks:
+        for task1 in unique_tasks:
             task1_inds = [i for i, task in enumerate(task_names) if task == task1]
             plot_dict[task1] = task1_inds[0]
 
@@ -96,8 +96,8 @@ class StateTransitionCallback(pl.Callback):
         # Create plots for different cases
         fig, axes = plt.subplots(
             nrows=3,
-            ncols=len(included_tasks),
-            figsize=(6 * len(included_tasks), 6),
+            ncols=len(unique_tasks),
+            figsize=(6 * len(unique_tasks), 6),
             sharex=False,
         )
         targets = targets.detach().cpu().numpy()
@@ -295,9 +295,10 @@ class StateTransitionScatterCallback(pl.Callback):
 
         # Get the first indices for each task
         included_tasks = trainer.datamodule.data_env.task_list_str
+        unique_tasks = np.unique(included_tasks)
 
         plot_dict = {}
-        for task1 in included_tasks:
+        for task1 in unique_tasks:
             task1_inds = [i for i, task in enumerate(task_names) if task == task1]
             plot_dict[task1] = task1_inds[0]
 
@@ -308,9 +309,9 @@ class StateTransitionScatterCallback(pl.Callback):
 
         # Create plots for different cases
         fig, axes = plt.subplots(
-            nrows=len(included_tasks),
+            nrows=len(unique_tasks),
             ncols=4,
-            figsize=(6, 2 * len(included_tasks)),
+            figsize=(6, 2 * len(unique_tasks)),
             sharex=False,
         )
 
@@ -353,12 +354,14 @@ class StateTransitionScatterCallback(pl.Callback):
                     inputs_trial[0, start_ind:end_ind, 2],
                     c=color_dict[phase],
                     label=phase,
+                    marker="o",
                 )
                 ax_inputs2.plot(
                     inputs_trial[0, start_ind:end_ind, 3],
                     inputs_trial[0, start_ind:end_ind, 4],
                     c=color_dict[phase],
                     label=phase,
+                    marker="o",
                 )
                 ax_outputs.plot(
                     controlled[0, start_ind:end_ind, 1],
@@ -464,10 +467,9 @@ class MultiTaskPerformanceCallback(pl.Callback):
         logger = get_wandb_logger(trainer.loggers)
         percent_success = np.zeros(len(trainer.datamodule.data_env.task_list_str))
 
+        unique_tasks = np.unique(task_names)
         # find indices where task_to_analyze is the task
-        for task_num, task_to_analyze in enumerate(
-            trainer.datamodule.data_env.task_list_str
-        ):
+        for task_num, task_to_analyze in enumerate(unique_tasks):
             task_inds = [
                 i for i, task in enumerate(task_names) if task == task_to_analyze
             ]

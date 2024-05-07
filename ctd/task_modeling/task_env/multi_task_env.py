@@ -412,23 +412,27 @@ class MultiTask:
                 inputs[:response_ind, 0] = 1
 
                 # Target
+                stim_meanA = np.random.uniform(0.8, 1.2)
+                stim_meanB = np.random.uniform(0.8, 1.2)
+
+                stim_coh_range = np.array([0.08, 0.16, 0.32])
+                stim_coh_sign = np.random.choice([-1, 1])
+
+                stim_cohA = np.random.choice(stim_coh_range)
+                stim_cohB = np.random.choice(stim_coh_range)
+
                 targ_num_1 = np.random.randint(0, self.num_targets)
                 targ_ang_1 = targ_ang_list[targ_num_1]
 
-                targ_num_2 = np.random.randint(0, self.num_targets)
-                targ_ang_2 = targ_ang_list[targ_num_2]
+                targ_ang_2 = np.mod(
+                    targ_ang_1 + np.deg2rad(np.random.uniform(90, 270)), 2 * np.pi
+                )
 
-                targ_mag_1 = np.random.uniform(0.5, 1.5)
-                targ_mag_2 = np.random.uniform(0.5, 1.5)
+                targ_mag_1 = stim_meanA + stim_cohA * stim_coh_sign
+                targ_mag_2 = stim_meanA - stim_cohA * stim_coh_sign
 
-                targ_num_1B = np.random.randint(0, self.num_targets)
-                targ_ang_1B = targ_ang_list[targ_num_1B]
-
-                targ_num_2B = np.random.randint(0, self.num_targets)
-                targ_ang_2B = targ_ang_list[targ_num_2B]
-
-                targ_mag_1B = np.random.uniform(0.5, 1.5)
-                targ_mag_2B = np.random.uniform(0.5, 1.5)
+                targ_mag_1B = stim_meanB + stim_cohB * stim_coh_sign
+                targ_mag_2B = stim_meanB - stim_cohB * stim_coh_sign
 
                 outputs[:response_ind, 0] = 1
                 if "Context" in self.task_name:
@@ -437,10 +441,10 @@ class MultiTask:
                     inputs[stim2_ind:mem2_ind, 1] = targ_mag_2 * np.cos(targ_ang_2)
                     inputs[stim2_ind:mem2_ind, 2] = targ_mag_2 * np.sin(targ_ang_2)
 
-                    inputs[stim1_ind:mem1_ind, 3] = targ_mag_1B * np.cos(targ_ang_1B)
-                    inputs[stim1_ind:mem1_ind, 4] = targ_mag_1B * np.sin(targ_ang_1B)
-                    inputs[stim2_ind:mem2_ind, 3] = targ_mag_2B * np.cos(targ_ang_2B)
-                    inputs[stim2_ind:mem2_ind, 4] = targ_mag_2B * np.sin(targ_ang_2B)
+                    inputs[stim1_ind:mem1_ind, 3] = targ_mag_1B * np.cos(targ_ang_1)
+                    inputs[stim1_ind:mem1_ind, 4] = targ_mag_1B * np.sin(targ_ang_1)
+                    inputs[stim2_ind:mem2_ind, 3] = targ_mag_2B * np.cos(targ_ang_2)
+                    inputs[stim2_ind:mem2_ind, 4] = targ_mag_2B * np.sin(targ_ang_2)
 
                     if "1" in self.task_name:
                         inputs[:, 13] = 1
@@ -450,14 +454,14 @@ class MultiTask:
                     elif "2" in self.task_name:
                         inputs[:, 14] = 1
                         largest_mag = np.argmax([targ_mag_1B, targ_mag_2B])
-                        ang_array = [targ_ang_1B, targ_ang_2B]
+                        ang_array = [targ_ang_1, targ_ang_2]
                         max_ang = ang_array[largest_mag]
                     else:
                         inputs[:, 15] = 1
                         largest_mag = np.argmax(
-                            [targ_mag_1, targ_mag_2, targ_mag_1B, targ_mag_2B]
+                            [targ_mag_1 + targ_mag_1B, targ_mag_2 + targ_mag_2B]
                         )
-                        ang_array = [targ_ang_1, targ_ang_2, targ_ang_1B, targ_ang_2B]
+                        ang_array = [targ_ang_1, targ_ang_2]
                         max_ang = ang_array[largest_mag]
 
                     outputs[response_ind:total_len, 1] = np.cos(max_ang)
@@ -498,45 +502,63 @@ class MultiTask:
             case "Match":
                 # Fixation
                 inputs[:, 0] = 1
-
-                # Target
-                targ_num_1 = np.random.randint(0, self.num_targets)
-                targ_ang_1 = targ_ang_list[targ_num_1]
-
-                targ_num_2 = np.random.randint(0, self.num_targets)
-                targ_ang_2 = targ_ang_list[targ_num_2]
-
-                if targ_num_1 == targ_num_2:
-                    isMatched = True
-                    isOpposite = False
-                elif abs(targ_num_1 - targ_num_2) == (self.num_targets / 2):
-                    isMatched = False
-                    isOpposite = True
-                else:
-                    isMatched = False
-                    isOpposite = False
-
-                inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
-                inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
-
-                inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
-                inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
-
-                outputs[:response_ind, 0] = 1
                 if self.task_name == "Match2Sample":
                     inputs[:, 16] = 1
-                    if isMatched:
+                    matched = np.random.choice([True, False])
+                    # Target
+                    if matched:
+                        targ_num_1 = np.random.randint(0, self.num_targets)
+                        targ_ang_1 = targ_ang_list[targ_num_1]
+
+                        targ_num_2 = targ_num_1
+                        targ_ang_2 = targ_ang_1
+                    else:
+                        targ_num_1 = np.random.randint(0, self.num_targets)
+                        targ_ang_1 = targ_ang_list[targ_num_1]
+
+                        targ_ang_2 = np.mod(
+                            targ_ang_1 + np.deg2rad(np.random.randint(10, 350)),
+                            2 * np.pi,
+                        )
+
+                    inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
+                    inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
+
+                    inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
+                    inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
+
+                    outputs[:response_ind, 0] = 1
+                    if matched:
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
 
                 elif self.task_name == "NonMatch2Sample":
                     inputs[:, 17] = 1
+                    isOpposite = np.random.choice([True, False])
+                    if isOpposite:
+                        targ_num_1 = np.random.randint(0, self.num_targets)
+                        targ_ang_1 = targ_ang_list[targ_num_1]
+
+                        targ_ang_2 = np.mod(targ_ang_1 + np.pi, 2 * np.pi)
+                    else:
+                        targ_num_1 = np.random.randint(0, self.num_targets)
+                        targ_ang_1 = targ_ang_list[targ_num_1]
+
+                        targ_ang_2 = np.mod(
+                            targ_ang_1 + np.pi + np.deg2rad(np.random.randint(10, 350)),
+                            2 * np.pi,
+                        )
                     if isOpposite:
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
 
                 elif self.task_name == "MatchCatPro":
                     inputs[:, 18] = 1
+                    targ_num_1 = np.random.randint(0, self.num_targets)
+                    targ_ang_1 = targ_ang_list[targ_num_1]
+                    targ_num_2 = np.random.randint(0, self.num_targets)
+                    targ_ang_2 = targ_ang_list[targ_num_2]
+
                     if (targ_ang_1 < np.pi and targ_ang_2 < np.pi) or (
                         targ_ang_1 >= np.pi and targ_ang_2 >= np.pi
                     ):
@@ -545,6 +567,11 @@ class MultiTask:
 
                 elif self.task_name == "MatchCatAnti":
                     inputs[:, 19] = 1
+                    targ_num_1 = np.random.randint(0, self.num_targets)
+                    targ_ang_1 = targ_ang_list[targ_num_1]
+                    targ_num_2 = np.random.randint(0, self.num_targets)
+                    targ_ang_2 = targ_ang_list[targ_num_2]
+
                     if (targ_ang_1 < np.pi and targ_ang_2 >= np.pi) or (
                         targ_ang_1 >= np.pi and targ_ang_2 < np.pi
                     ):
