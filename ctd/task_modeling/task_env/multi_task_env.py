@@ -424,9 +424,9 @@ class MultiTask:
                 targ_num_1 = np.random.randint(0, self.num_targets)
                 targ_ang_1 = targ_ang_list[targ_num_1]
 
-                targ_ang_2 = np.mod(
-                    targ_ang_1 + np.deg2rad(np.random.uniform(90, 270)), 2 * np.pi
-                )
+                angle_diff = np.deg2rad(np.random.uniform(90, 270))
+
+                targ_ang_2 = np.mod(targ_ang_1 + angle_diff, 2 * np.pi)
 
                 targ_mag_1 = stim_meanA + stim_cohA * stim_coh_sign
                 targ_mag_2 = stim_meanA - stim_cohA * stim_coh_sign
@@ -516,8 +516,10 @@ class MultiTask:
                         targ_num_1 = np.random.randint(0, self.num_targets)
                         targ_ang_1 = targ_ang_list[targ_num_1]
 
+                        angle_diff = np.deg2rad(np.random.randint(10, 350))
+
                         targ_ang_2 = np.mod(
-                            targ_ang_1 + np.deg2rad(np.random.randint(10, 350)),
+                            targ_ang_1 + angle_diff,
                             2 * np.pi,
                         )
 
@@ -548,6 +550,13 @@ class MultiTask:
                             targ_ang_1 + np.pi + np.deg2rad(np.random.randint(10, 350)),
                             2 * np.pi,
                         )
+
+                    inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
+                    inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
+
+                    inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
+                    inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
+
                     if isOpposite:
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
@@ -558,6 +567,12 @@ class MultiTask:
                     targ_ang_1 = targ_ang_list[targ_num_1]
                     targ_num_2 = np.random.randint(0, self.num_targets)
                     targ_ang_2 = targ_ang_list[targ_num_2]
+
+                    inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
+                    inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
+
+                    inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
+                    inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
 
                     if (targ_ang_1 < np.pi and targ_ang_2 < np.pi) or (
                         targ_ang_1 >= np.pi and targ_ang_2 >= np.pi
@@ -571,6 +586,12 @@ class MultiTask:
                     targ_ang_1 = targ_ang_list[targ_num_1]
                     targ_num_2 = np.random.randint(0, self.num_targets)
                     targ_ang_2 = targ_ang_list[targ_num_2]
+
+                    inputs[stim1_ind:mem1_ind, 1] = np.cos(targ_ang_1)
+                    inputs[stim1_ind:mem1_ind, 2] = np.sin(targ_ang_1)
+
+                    inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
+                    inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
 
                     if (targ_ang_1 < np.pi and targ_ang_2 >= np.pi) or (
                         targ_ang_1 >= np.pi and targ_ang_2 < np.pi
