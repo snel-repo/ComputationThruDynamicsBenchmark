@@ -416,7 +416,8 @@ class MultiTask:
                 stim_meanB = np.random.uniform(0.8, 1.2)
 
                 stim_coh_range = np.array([0.08, 0.16, 0.32])
-                stim_coh_sign = np.random.choice([-1, 1])
+                stim_coh_signA = np.random.choice([-1, 1])
+                stim_coh_signB = np.random.choice([-1, 1])
 
                 stim_cohA = np.random.choice(stim_coh_range)
                 stim_cohB = np.random.choice(stim_coh_range)
@@ -428,11 +429,11 @@ class MultiTask:
 
                 targ_ang_2 = np.mod(targ_ang_1 + angle_diff, 2 * np.pi)
 
-                targ_mag_1 = stim_meanA + stim_cohA * stim_coh_sign
-                targ_mag_2 = stim_meanA - stim_cohA * stim_coh_sign
+                targ_mag_1 = stim_meanA + stim_cohA * stim_coh_signA
+                targ_mag_2 = stim_meanA - stim_cohA * stim_coh_signA
 
-                targ_mag_1B = stim_meanB + stim_cohB * stim_coh_sign
-                targ_mag_2B = stim_meanB - stim_cohB * stim_coh_sign
+                targ_mag_1B = stim_meanB + stim_cohB * stim_coh_signB
+                targ_mag_2B = stim_meanB - stim_cohB * stim_coh_signB
 
                 outputs[:response_ind, 0] = 1
                 if "Context" in self.task_name:
@@ -574,8 +575,8 @@ class MultiTask:
                     inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                     inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
 
-                    if (targ_ang_1 < np.pi and targ_ang_2 < np.pi) or (
-                        targ_ang_1 >= np.pi and targ_ang_2 >= np.pi
+                    if (targ_ang_1 < 0 and targ_ang_2 < 0) or (
+                        targ_ang_1 >= 0 and targ_ang_2 >= 0
                     ):
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
@@ -593,8 +594,8 @@ class MultiTask:
                     inputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                     inputs[response_ind:total_len, 2] = np.sin(targ_ang_2)
 
-                    if (targ_ang_1 < np.pi and targ_ang_2 >= np.pi) or (
-                        targ_ang_1 >= np.pi and targ_ang_2 < np.pi
+                    if (targ_ang_1 < 0 and targ_ang_2 >= 0) or (
+                        targ_ang_1 >= 0 and targ_ang_2 < 0
                     ):
                         outputs[response_ind:total_len, 1] = np.cos(targ_ang_2)
                         outputs[response_ind:total_len, 2] = np.sin(targ_ang_2)

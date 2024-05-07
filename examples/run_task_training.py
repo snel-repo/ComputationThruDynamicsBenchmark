@@ -21,13 +21,13 @@ log = logging.getLogger(__name__)
 dotenv.load_dotenv(override=True)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "Fig1_MultiTaskIntFixed_NoisyGRU_DynNoise_test"  # For WandB and run dir
-TASK = "MultiTaskInt"  # Task to train on (see configs/task_env for options)
-MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
+RUN_DESC = "Fig1_MultiTask_GRU_RNN_Sampler"  # For WandB and run dir
+TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
+MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
 # -----------------Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
@@ -38,10 +38,12 @@ SEARCH_SPACE = dict(
     env_params=dict(
         dynamic_noise=tune.grid_search([0.2]),
         noise=tune.grid_search([0.0]),
+        num_targets=tune.grid_search([64]),
     ),
     datamodule_task=dict(
-        n_samples=tune.choice([100]),
-        batch_size=tune.grid_search([100]),
+        n_samples=tune.choice([500]),
+        batch_size=tune.grid_search([500]),
+        grouped_sampler=tune.grid_search([False]),
     ),
     model=dict(
         latent_size=tune.choice([128]),
