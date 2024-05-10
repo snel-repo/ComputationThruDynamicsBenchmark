@@ -27,13 +27,14 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Fig1_NBFF_NODE_TT_NODE_Sweep"
+RUN_DESC = "Fig4_NBFF_GRU_TT_NODE_LatSweep_Gaussian"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "NODE"  # "ResLFADS" or "LFADS"
+MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 GEN_MODEL = "NODE"
 INFER_INPUTS = False
+NORMAL = True
 
 if GEN_MODEL == "NoisyGRU_RNN":
     if DATA == "NBFF":
@@ -44,7 +45,10 @@ if GEN_MODEL == "NoisyGRU_RNN":
         prefix = "20240422_MultiTask_NoisyGRU_Final"
 elif GEN_MODEL == "NODE":
     if DATA == "NBFF":
-        prefix = "20240503_Fig1_NBFF_NODE"
+        if NORMAL:
+            prefix = "20240503_Fig1_NBFF_NODE_Gaussian"
+        else:
+            prefix = "20240503_Fig1_NBFF_NODE"
 
 # -------------------------------------
 SEARCH_SPACE = dict(
@@ -61,7 +65,7 @@ SEARCH_SPACE = dict(
         max_epochs=tune.grid_search([1000]),
     ),
     model=dict(
-        latent_size=tune.grid_search([3]),
+        latent_size=tune.grid_search([3, 8, 16, 32, 64]),
     ),
 )
 

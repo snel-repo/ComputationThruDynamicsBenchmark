@@ -56,8 +56,8 @@ class Analysis_TT_MultiTask(Analysis_TT):
         elif phase == "val":
             return tt_ics, valid_noiseless_inputs, tt_targets
 
-    def get_model_outputs_noiseless(self):
-        tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless()
+    def get_model_outputs_noiseless(self, phase="all"):
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless(phase=phase)
         dyn_noise = self.wrapper.dynamic_noise
         self.wrapper.dynamic_noise = 0.0
         out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
@@ -80,22 +80,23 @@ class Analysis_TT_MultiTask(Analysis_TT):
         noise_scale=0.1,
         max_iters=50000,
         n_inits=2048,
-        use_noisy=False,
+        use_noisy=True,
     ):
         # Compute latent activity from task trained model
-        task_flag, phase_task = self.get_task_flag(task_to_analyze)
-        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
-        true_inputs = self.get_true_inputs()
+        task_flag, phase_task = self.get_task_flag(task_to_analyze, phase="val")
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs(phase="val")
+        true_inputs = self.get_true_inputs(phase="val")
 
         tt_ics = tt_ics[task_flag]
         tt_inputs = tt_inputs[task_flag]
         tt_targets = tt_targets[task_flag]
         true_inputs = true_inputs[task_flag]
         if use_noisy:
-            out_dict = self.get_model_outputs()
+            out_dict = self.get_model_outputs(phase="val")
         else:
-            out_dict = self.get_model_outputs_noiseless()
+            out_dict = self.get_model_outputs_noiseless(phase="val")
         latents = out_dict["latents"]
+        latents = latents[task_flag]
 
         lats_phase = []
         inputs_phase = []
@@ -160,6 +161,7 @@ class Analysis_TT_MultiTask(Analysis_TT):
 
         out_dict = self.wrapper(tt_ics, inputs_fp, tt_targets)
         latents = out_dict["latents"]
+        # latents = latents[task_flag]
         true_inputs_1 = true_inputs[0, phase_task[0][phase1][0], :]
         true_inputs_2 = true_inputs[0, phase_task[0][phase2][0], :]
 

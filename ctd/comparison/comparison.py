@@ -117,8 +117,20 @@ class Comparison:
         label_runs=False,
         label_groups=True,
         phase="val",
-        save_pdf=False,
+        plot_dict={},
     ):
+        if "save_pdf" in plot_dict:
+            save_pdf = plot_dict["save_pdf"]
+        else:
+            save_pdf = False
+        if "ax_lim" in plot_dict:
+            ax_lim = plot_dict["ax_lim"]
+        else:
+            ax_lim = None
+        if "marker" in plot_dict:
+            marker = plot_dict["marker"]
+        else:
+            marker = "o"
         # Function to compare the latent activity
         if ref_ind is None:
             ref_ind = self.ref_ind
@@ -195,6 +207,7 @@ class Comparison:
                     rate_state_mat[i, 0],
                     rate_state_mat[i, 1],
                     color=colors(color_inds[i]),
+                    marker=marker,
                 )
                 if label_runs:
                     ax.text(
@@ -209,6 +222,7 @@ class Comparison:
                     [],
                     color=colors(i),
                     label=np.unique(self.groups)[i],
+                    marker=marker,
                 )
             ax.legend()
         bool_idx = np.arange(self.num_analyses) != ref_ind
@@ -216,6 +230,9 @@ class Comparison:
         max_val = np.max(rate_state_mat[bool_idx]) + 0.2
         max_val = np.min([max_val, 1.05])
         min_val = np.max([min_val, -1.05])
+        if ax_lim is not None:
+            min_val = ax_lim[0]
+            max_val = ax_lim[1]
         ax.set_xlim([min_val, max_val])
         ax.set_ylim([min_val, max_val])
         ax.plot([min_val, max_val], [min_val, max_val], "k--")
@@ -427,14 +444,70 @@ class Comparison:
 
             axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
 
-    def plot_trials_reference(self, num_trials=2, ref_ind=None, num_pcs=3):
+    def plot_trials_reference_dims(self, num_trials=2, ref_ind=None, dims=[0, 1, 2, 3]):
 
         if ref_ind is None:
             ref_ind = self.ref_ind
         if ref_ind is None and self.ref_ind is None:
             # Throw an error
             raise ValueError("No reference index provided")
-        ref_lats = self.analyses[ref_ind].get_latents().detach().numpy()
+        ref_lats = (
+            self.analyses[ref_ind]
+            .get_latents(
+                phase="val",
+            )
+            .detach()
+            .numpy()
+        )
+        pca = PCA()
+        ref_lats_flat = ref_lats.reshape(
+            ref_lats.shape[0] * ref_lats.shape[1], ref_lats.shape[2]
+        )
+        ref_lats_pca_flat = pca.fit_transform(ref_lats_flat)
+        ref_lats_pca = ref_lats_pca_flat.reshape(ref_lats.shape)
+
+        fig = plt.figure()
+        axes = fig.subplots(num_trials, len(dims), sharey=True, sharex=True)
+        for i in range(self.num_analyses):
+            latents = self.analyses[i].get_latents(phase="val").detach().numpy()
+            lats_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            reg = LinearRegression().fit(lats_flat, ref_lats_pca_flat)
+            latents_pca_flat = reg.predict(lats_flat)
+            latents_pca = latents_pca_flat.reshape(ref_lats_pca.shape)
+
+            for j in range(num_trials):
+                for k in range(len(dims)):
+                    if j == num_trials - 1 and k == len(dims) - 1:
+                        axes[j, k].plot(
+                            latents_pca[j, :100, dims[k]],
+                            label=self.analyses[i].run_name,
+                        )
+                        axes[j, k].set_xlabel("Time")
+                    else:
+                        axes[j, k].plot(latents_pca[j, :100, dims[k]])
+                        axes[j, k].set_xticks([])
+
+            axes[num_trials - 1, len(dims) - 1].legend()
+            plt.suptitle("Predicted TT PC")
+            plt.savefig(f"{self.comparison_tag}_predicted_tt_pc.pdf")
+
+    def plot_trials_reference(self, num_trials=2, ref_ind=None, num_pcs=4):
+
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        ref_lats = (
+            self.analyses[ref_ind]
+            .get_latents(
+                phase="val",
+            )
+            .detach()
+            .numpy()
+        )
         pca = PCA()
         ref_lats_flat = ref_lats.reshape(
             ref_lats.shape[0] * ref_lats.shape[1], ref_lats.shape[2]
@@ -445,7 +518,7 @@ class Comparison:
         fig = plt.figure()
         axes = fig.subplots(self.num_analyses, num_trials)
         for i in range(self.num_analyses):
-            latents = self.analyses[i].get_latents().detach().numpy()
+            latents = self.analyses[i].get_latents(phase="val").detach().numpy()
             lats_flat = latents.reshape(
                 latents.shape[0] * latents.shape[1], latents.shape[2]
             )

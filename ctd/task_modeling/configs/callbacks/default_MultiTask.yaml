@@ -20,3 +20,6 @@ state_transition_scatter_callback:
 performance_callback:
   _target_: ctd.task_modeling.callbacks.callbacks_multitask.MultiTaskPerformanceCallback
   log_every_n_epochs: 50
+shared_subspace:
+  _target_: ctd.task_modeling.callbacks.callbacks_multitask.SharedSubspaceCallback
+  log_every_n_epochs: 20

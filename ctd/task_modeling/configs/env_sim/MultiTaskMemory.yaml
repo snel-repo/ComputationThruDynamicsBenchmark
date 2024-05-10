@@ -5,6 +5,7 @@ task_list:
   - MemoryAnti
 
 n_timesteps: 450
+dynamic_noise: 0.0
 noise: 0.3
 num_targets: 32
 bin_size: 20

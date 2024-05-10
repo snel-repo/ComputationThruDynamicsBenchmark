@@ -171,12 +171,21 @@ class SharedSubspaceCallback(pl.Callback):
 
         if (trainer.current_epoch % self.log_every_n_epochs) != 0:
             return
-        # Get trajectories and model predictions
-        data_dict = trainer.datamodule.all_data
-        ics = data_dict["ics"]
-        phase_dict = data_dict["phase_dict"]
-        task_names = data_dict["task_names"]
-        inputs = data_dict["inputs"]
+        dataloader = trainer.datamodule.val_dataloader()
+        ics = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        inputs = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        inds = (
+            torch.cat([batch[3] for batch in dataloader])
+            .to(pl_module.device)
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(int)
+        )
+
+        extra_dict = trainer.datamodule.extra_data
+        phase_dict = [extra_dict["phase_dict"][ind] for ind in inds]
+        task_names = [extra_dict["task_names"][ind] for ind in inds]
 
         # Get the first indices for each task
         task1 = "MemoryPro"
@@ -207,6 +216,7 @@ class SharedSubspaceCallback(pl.Callback):
             torch.Tensor(ics2).to(pl_module.device),
             torch.Tensor(inputs2).to(pl_module.device),
         )["latents"]
+
         memInds1 = np.array([phase_dict[i]["mem1"] for i in task1_inds])
         memInds2 = np.array([phase_dict[i]["mem1"] for i in task2_inds])
 
@@ -498,10 +508,10 @@ class MultiTaskPerformanceCallback(pl.Callback):
                 response_edges = task_phase_dict[i]["response"]
                 response_len = response_edges[1] - response_edges[0]
 
-                # Compute average angle for the last 1/4 of the response period
+                # Compute average angle for the last 1/8 of the response period
                 response_val = tt_outputs[
                     i,
-                    response_edges[0] + (3 * response_len // 4) : response_edges[1],
+                    response_edges[0] + (7 * response_len // 8) : response_edges[1],
                     1:,
                 ]
                 mean_response = torch.mean(response_val, dim=0)
