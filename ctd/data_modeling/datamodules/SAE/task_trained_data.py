@@ -19,13 +19,12 @@ def to_tensor(array):
 class TaskTrainedRNNDataModule(pl.LightningDataModule):
     def __init__(
         self,
+        embed_dict: dict,
+        noise_dict: dict,
         prefix=None,
         system: str = "3BFF",
-        gen_model: str = "GRU_RNN",
         n_neurons: int = 50,
-        nonlin_embed: bool = False,
         seed: int = 0,
-        obs_noise: str = "poisson",
         batch_size: int = 64,
         num_workers: int = 2,
         provide_inputs: bool = True,
@@ -33,16 +32,13 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.n_neurons = n_neurons
         self.seed = seed
+        self.noise_dict = noise_dict
+        self.embed_dict = embed_dict
         self.data_dir = os.path.join(HOME_DIR, "content", "datasets", "dt")
 
-        filedir = (
-            f"{prefix}_"
-            f"{system}_"
-            f"model_{gen_model}_"
-            f"n_neurons_{n_neurons}_"
-            f"seed_{seed}"
-        )
+        filedir = prefix
         fpath = os.path.join(self.data_dir, filedir)
         dirs = os.listdir(fpath)
         if file_index >= len(dirs):
@@ -50,15 +46,30 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
                 f"File index {file_index} is out of range for directory {fpath}"
             )
         else:
-            filename = dirs[0]
+            run_folder = dirs[file_index]
 
-        self.name = os.path.join(filename)
+        filename = f"n_neurons_{self.n_neurons}"
+        if embed_dict["rect_func"] not in ["exp"]:
+            for key, val in self.embed_dict.items():
+                filename += f"_{key}_{val}"
+
+        if noise_dict["obs_noise"] not in ["poisson"]:
+            for key, val in self.noise_dict.items():
+                filename += f"_{key}_{val}"
+
+        filename += f"_seed_{seed}"
+
+        self.run_folder = run_folder
+        self.name = filename
+
         self.fpath = filedir
         self.system = system
 
     def prepare_data(self):
         filename = self.name
-        fpath = os.path.join(self.data_dir, self.fpath, filename)
+        fpath = os.path.join(
+            self.data_dir, self.fpath, self.run_folder, filename + ".h5"
+        )
         if os.path.isfile(fpath):
             logger.info(f"Loading dataset {self.name}")
             return
@@ -68,7 +79,9 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # Load data arrays from file
-        data_path = os.path.join(self.data_dir, self.fpath, self.name)
+        data_path = os.path.join(
+            self.data_dir, self.fpath, self.run_folder, self.name + ".h5"
+        )
         with h5py.File(data_path, "r") as h5file:
             # Load the data
             train_data = to_tensor(h5file["train_encod_data"][()])

@@ -25,7 +25,7 @@ LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "Fig1_MultiTask_NoisyGRU_Final_SharedBatch"  # For WandB and run dir
+RUN_DESC = "MultiTask_NoisyGRU_Final"  # For WandB and run dir
 TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
 MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
 
@@ -33,16 +33,11 @@ MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
 SEARCH_SPACE = dict(
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1500]),
-    ),
-    env_params=dict(
-        noise=tune.grid_search([0.3]),
-        num_targets=tune.grid_search([128]),
-        grouped_sampler=tune.grid_search([True]),
+        max_epochs=tune.choice([500]),
     ),
     datamodule_task=dict(
         n_samples=tune.choice([2000]),
-        batch_size=tune.grid_search([64, 128, 256, 512]),
+        batch_size=tune.grid_search([2000]),
     ),
     model=dict(
         latent_size=tune.choice([128]),
@@ -52,7 +47,7 @@ SEARCH_SPACE = dict(
         seed=tune.grid_search([0]),
     ),
     task_wrapper=dict(
-        learning_rate=tune.grid_search([2e-3]),
+        learning_rate=tune.grid_search([1e-3]),
     ),
 )
 

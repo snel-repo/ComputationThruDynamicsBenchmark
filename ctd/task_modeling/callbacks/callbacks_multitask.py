@@ -1,4 +1,5 @@
 import io
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,20 +13,28 @@ from sklearn.decomposition import PCA
 
 def angle_diff(angle1, angle2):
     """
-    Calculate the smallest angle between two angles.
+    Calculate the smallest angle between two angles in radians,
+    handling the wrap around at theta = 0.
 
-    Args:
-    angle1 (float): The first angle in degrees.
-    angle2 (float): The second angle in degrees.
+    Parameters:
+    angle1 (float): First angle in radians.
+    angle2 (float): Second angle in radians.
 
     Returns:
-    float: The smallest angle between angle1 and angle2 in degrees.
+    float: The smallest angle between the two angles in radians.
     """
-    diff = (angle2 - angle1) % 2 * np.pi
-    if diff > np.pi:
-        diff -= 2 * np.pi
+    # Normalize angles to the range [0, 2*pi)
+    angle1 = angle1 % (2 * math.pi)
+    angle2 = angle2 % (2 * math.pi)
 
-    return abs(diff)
+    # Calculate the difference
+    diff = abs(angle1 - angle2)
+
+    # Ensure the difference is the smallest possible angle
+    if diff > math.pi:
+        diff = 2 * math.pi - diff
+
+    return diff
 
 
 def fig_to_rgb_array(fig):
@@ -506,29 +515,25 @@ class MultiTaskPerformanceCallback(pl.Callback):
             # Iterate through task trials
             for i in range(len(task_phase_dict)):
                 response_edges = task_phase_dict[i]["response"]
-                response_len = response_edges[1] - response_edges[0]
 
-                # Compute average angle for the last 1/8 of the response period
+                # Compute angle for the last bin
                 response_val = tt_outputs[
                     i,
-                    response_edges[0] + (7 * response_len // 8) : response_edges[1],
+                    response_edges[1] - 1 : response_edges[1],
                     1:,
                 ]
                 mean_response = torch.mean(response_val, dim=0)
                 mean_angle = torch.atan2(mean_response[1], mean_response[0])
 
                 # Get the target angle
-                response_target = task_targets[
-                    i, response_edges[0] + response_len // 2 : response_edges[1], 1:
-                ]
-                mean_target = torch.mean(response_target, dim=0)
-                mean_target_angle = torch.atan2(mean_target[1], mean_target[0])
+                response_target = task_targets[i, response_edges[1] - 1, 1:]
+                mean_target_angle = torch.atan2(response_target[1], response_target[0])
 
                 # Compute the performance (angle difference)
                 perf[i] = angle_diff(mean_angle, mean_target_angle)
 
                 # if no response was correct, check if the response was close to 0
-                if torch.sum(np.abs(mean_target)) == 0:
+                if torch.sum(np.abs(response_target)) == 0:
                     no_respond_trial[i] = True
                     perf_dist[i] = torch.sum(mean_response)
 

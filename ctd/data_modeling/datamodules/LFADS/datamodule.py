@@ -122,11 +122,9 @@ class BasicDataModule(pl.LightningDataModule):
     def __init__(
         self,
         prefix: str,
-        system: str,
-        gen_model: str,
+        noise_dict: dict,
+        embed_dict: dict,
         n_neurons: int,
-        nonlin_embed: bool,
-        obs_noise: str,
         seed: int,
         batch_keys: list[str] = [],
         attr_keys: list[str] = [],
@@ -144,13 +142,10 @@ class BasicDataModule(pl.LightningDataModule):
         ), "Dataset reshuffling is incompatible with the `attr_keys` argument."
         super().__init__()
 
-        filedir = (
-            f"{prefix}_"
-            f"{system}_"
-            f"model_{gen_model}_"
-            f"n_neurons_{n_neurons}_"
-            f"seed_{seed}"
-        )
+        filedir = f"{prefix}"
+        self.embed_dict = embed_dict
+        self.noise_dict = noise_dict
+        self.n_neurons = n_neurons
         data_dir = os.path.join(HOME_DIR, "content", "datasets", "dt")
         fpath = os.path.join(data_dir, filedir)
         dirs = os.listdir(fpath)
@@ -159,10 +154,19 @@ class BasicDataModule(pl.LightningDataModule):
                 f"File index {file_index} is out of range for directory {fpath}"
             )
         else:
-            filename = dirs[file_index]
-            self.name = filename
+            run_folder = dirs[file_index]
+            self.name = run_folder
+        filename = f"n_neurons_{self.n_neurons}"
+        if embed_dict["rect_func"] not in ["exp"]:
+            for key, val in self.embed_dict.items():
+                filename += f"_{key}_{val}"
 
-        self.fpath = os.path.join(fpath, filename)
+        if noise_dict["obs_noise"] not in ["poisson"]:
+            for key, val in self.noise_dict.items():
+                filename += f"_{key}_{val}"
+
+        filename += f"_seed_{seed}"
+        self.fpath = os.path.join(fpath, run_folder, filename + ".h5")
         self.save_hyperparameters()
 
     def setup(self, stage=None):

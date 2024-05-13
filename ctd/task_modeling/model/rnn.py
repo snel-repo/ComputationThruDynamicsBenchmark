@@ -46,7 +46,7 @@ class GRU_RNN(nn.Module):
         return output, hidden
 
 
-class NoisyGRU_RNN(nn.Module):
+class NoisyGRU(nn.Module):
     def __init__(
         self,
         latent_size,

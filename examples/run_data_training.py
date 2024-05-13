@@ -27,12 +27,12 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "Fig4_NBFF_GRU_TT_NODE_LatSweep_Gaussian"
+RUN_DESC = "FilePathTest"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
 MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
-GEN_MODEL = "NODE"
+GEN_MODEL = "GRU_RNN"
 INFER_INPUTS = False
 NORMAL = True
 
@@ -49,24 +49,22 @@ elif GEN_MODEL == "NODE":
             prefix = "20240503_Fig1_NBFF_NODE_Gaussian"
         else:
             prefix = "20240503_Fig1_NBFF_NODE"
-
+prefix = "20240510_SimulatorTest4"
 # -------------------------------------
 SEARCH_SPACE = dict(
     datamodule=dict(
-        # gen_model=tune.grid_search(["NoisyGRU_RNN"]),
-        gen_model=tune.grid_search([GEN_MODEL]),
         # Change the prefix to the correct path for your task-trained network
         prefix=tune.grid_search([prefix]),
     ),
     params=dict(
-        seed=tune.grid_search([0, 1, 2, 3, 4]),
+        seed=tune.grid_search([0]),
     ),
     trainer=dict(
         max_epochs=tune.grid_search([1000]),
     ),
-    model=dict(
-        latent_size=tune.grid_search([3, 8, 16, 32, 64]),
-    ),
+    # model=dict(
+    #     latent_size=tune.grid_search([64]),
+    # ),
 )
 
 # -----------------Default Parameter Sets -----------------------------------
