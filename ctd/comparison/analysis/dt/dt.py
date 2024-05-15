@@ -517,13 +517,34 @@ class Analysis_DT(Analysis):
         ax[0, 0].legend()
         plt.show()
 
-    def plot_scree(self, n_components=10):
+    def plot_scree(self, max_pcs=10):
         latents = self.get_latents().detach().numpy()
-        pca = PCA(n_components=n_components)
-        lats_flat = latents.reshape(-1, latents.shape[-1])
-        pca.fit(lats_flat)
-        fig, ax = plt.subplots()
-        ax.plot(pca.explained_variance_ratio_)
-        ax.set_xlabel("Principal Component")
-        ax.set_ylabel("Explained Variance Ratio")
-        plt.show()
+        latents = latents.reshape(-1, latents.shape[-1])
+        n_lats = latents.shape[-1]
+        high_bound = np.min([n_lats, max_pcs])
+        pca = PCA(n_components=high_bound)
+        pca.fit(latents)
+        exp_var = pca.explained_variance_ratio_
+        exp_var_ext = np.zeros(max_pcs)
+        exp_var_ext[:high_bound] = exp_var
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(121)
+        ax.plot(range(1, max_pcs + 1), exp_var_ext * 100, marker="o")
+        ax.set_xlabel("PC #")
+        ax.set_title("Scree Plot")
+        ax.set_ylabel("Explained Variance (%)")
+        ax2 = fig.add_subplot(122)
+        ax2.plot(range(1, max_pcs + 1), np.cumsum(exp_var_ext) * 100)
+        ax2.set_xlabel("PC #")
+        ax2.set_title("Cumulative Explained Variance")
+        ax2.set_ylabel("Explained Variance (%)")
+        # Add horiz lines at 50, 90, 95, 99%
+        ax2.axhline(y=50, color="r", linestyle="--")
+        ax2.axhline(y=90, color="r", linestyle="--")
+        ax2.axhline(y=95, color="r", linestyle="--")
+        ax2.axhline(y=99, color="r", linestyle="--")
+        # Add y ticks
+        ax2.set_yticks([50, 90, 95, 99])
+        ax2.set_ylim(0, 105)
+        plt.savefig(f"{self.run_name}_scree_plot.pdf")
+        return exp_var_ext

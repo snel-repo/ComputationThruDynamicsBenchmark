@@ -86,6 +86,46 @@ class NoisyGRU(nn.Module):
         return output, hidden
 
 
+class NoisyGRU_RNN(nn.Module):
+    def __init__(
+        self,
+        latent_size,
+        input_size=None,
+        output_size=None,
+        noise_level=0.05,
+        latent_ic_var=0.05,
+    ):
+        super().__init__()
+        self.input_size = input_size
+        self.latent_size = latent_size
+        self.output_size = output_size
+        self.cell = None
+        self.readout = None
+        self.noise_level = noise_level
+        self.latent_ics = torch.nn.Parameter(
+            torch.zeros(latent_size), requires_grad=True
+        )
+        self.latent_ic_var = latent_ic_var
+
+    def init_hidden(self, batch_size):
+        init_h = self.latent_ics.unsqueeze(0).expand(batch_size, -1)
+        ic_noise = torch.randn_like(init_h) * self.latent_ic_var
+        return init_h + ic_noise
+
+    def init_model(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.cell = GRUCell(input_size, self.latent_size)
+        self.readout = nn.Linear(self.latent_size, output_size, bias=True)
+
+    def forward(self, inputs, hidden):
+        hidden = self.cell(inputs, hidden)
+        noise = torch.randn_like(hidden) * self.noise_level
+        output = self.readout(hidden)
+        hidden = hidden + noise
+        return output, hidden
+
+
 class DriscollRNN(nn.Module):
     def __init__(
         self,

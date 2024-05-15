@@ -713,3 +713,61 @@ class Comparison:
         ax.set_ylim([minVal, maxVal])
         ax.set_ylabel("Mean R2 of Performance in group")
         ax.set_title("Performance of data-trained models at task (R2)")
+
+    def visualize_stateR2(self, num_trials=2, ref_ind=None, num_pcs=7):
+
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        ref_lats = (
+            self.analyses[ref_ind]
+            .get_latents(
+                phase="val",
+            )
+            .detach()
+            .numpy()
+        )
+        pca = PCA()
+        ref_lats_flat = ref_lats.reshape(
+            ref_lats.shape[0] * ref_lats.shape[1], ref_lats.shape[2]
+        )
+        ref_lats_pca_flat = pca.fit_transform(ref_lats_flat)
+
+        fig = plt.figure(figsize=(20, 10))
+        axes = fig.subplots(self.num_analyses, num_pcs)
+        for i in range(self.num_analyses):
+            latents = self.analyses[i].get_latents(phase="val").detach().numpy()
+            pca_DT = PCA()
+
+            lats_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            lats_pca_flat = pca_DT.fit_transform(lats_flat)
+
+            reg = LinearRegression().fit(ref_lats_pca_flat, lats_pca_flat)
+            pred_latents_pca_flat = reg.predict(ref_lats_pca_flat)
+            r2_scores = r2_score(
+                lats_pca_flat, pred_latents_pca_flat, multioutput="raw_values"
+            )
+            pred_latents_pca = pred_latents_pca_flat.reshape(latents.shape)
+            lats_pca = lats_pca_flat.reshape(latents.shape)
+
+            for j in range(num_pcs):
+                if j < latents.shape[2]:
+                    axes[i, j].plot(
+                        pred_latents_pca[0, :, j], c="r", label="Predicted from TT"
+                    )
+                    axes[i, j].plot(lats_pca[0, :, j], c="k", label="True from DT")
+                    axes[i, j].set_title(f"R2: {r2_scores[j]:.2f}")
+                else:
+                    axes[i, j].plot(
+                        np.zeros(lats_pca[0, :, 0].shape), label="Predicted from TT"
+                    )
+                if i == self.num_analyses - 1:
+                    axes[i, j].set_xlabel("Time")
+                else:
+                    axes[i, j].set_xticks([])
+
+            axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
