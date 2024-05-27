@@ -313,6 +313,7 @@ class Comparison:
 
     def compare_dynamics_DSA(
         self,
+        phase="val",
         n_delays=20,
         rank=50,
         delay_interval=1,
@@ -321,7 +322,7 @@ class Comparison:
     ):
         latent_list = []
         for analysis in self.analyses:
-            latents = analysis.get_latents().detach().numpy()
+            latents = analysis.get_latents(phase=phase).detach().numpy()
             # latent_list.append(latents.reshape(-1, latents.shape[-1]))
             latent_list.append(latents[: int(percent_data * latents.shape[0]), :, :])
 
@@ -640,6 +641,73 @@ class Comparison:
         ax.legend()
         plt.savefig(f"{self.comparison_tag}_procrustes.pdf")
 
+    def plot_neural_preds(self, neuron_list, trial_list):
+        # Function to plot the neural predictions
+        ref_ind = self.ref_ind
+
+        fig = plt.figure(figsize=(10, 10))
+        rates_list = []
+        r2_vals = []
+        dt_names = []
+        for i in range(self.num_analyses):
+            if i == ref_ind:
+                continue
+            rates, latents = self.analyses[i].get_model_outputs(phase="val")
+            true_rates = self.analyses[i].get_true_rates(phase="val")
+            rates_list.append(rates.detach().numpy())
+            r2_vals.append(
+                r2_score(
+                    true_rates.reshape(-1, true_rates.shape[-1]),
+                    rates.detach().numpy().reshape(-1, rates.shape[-1]),
+                    multioutput="raw_values",
+                )
+            )
+            dt_names.append(self.analyses[i].run_name)
+
+        rates = np.stack(rates_list)
+        axes = fig.subplots(len(neuron_list), len(trial_list))
+        for i in range(len(dt_names)):
+            for j in range(len(neuron_list)):
+                for k in range(len(trial_list)):
+                    if i == 0:
+                        axes[j, k].plot(
+                            true_rates[trial_list[k], :, neuron_list[j]],
+                            label="True",
+                            color="black",
+                        )
+
+                    axes[j, k].plot(
+                        rates[i, trial_list[k], :, neuron_list[j]],
+                        label=f"{dt_names[i]} Pred",
+                    )
+
+                    if i == len(dt_names) - 1:
+                        axes[j, k].set_xlabel("Time")
+                    else:
+                        axes[j, k].set_xticks([])
+                    if j == 0:
+                        axes[j, k].set_title(f"Trial {trial_list[k]}")
+                    if k == 0:
+                        axes[j, k].set_ylabel(f"Neuron {neuron_list[j]}")
+                        axes[j, k].text(
+                            0.5,
+                            0.9 - 0.05 * i,
+                            f"{dt_names[i]} R2: {r2_vals[i][neuron_list[j]]:.2f}",
+                            horizontalalignment="center",
+                            verticalalignment="center",
+                            transform=axes[j, k].transAxes,
+                        )
+        axes[0, 0].legend()
+
+        for ax in axes.flat:
+            # set ymin to 0
+            ax.set_ylim(bottom=0)
+        plt.suptitle("Neural Predictions")
+
+        plt.savefig(f"{self.comparison_tag}_neural_preds.pdf")
+
+        return r2_vals
+
     def compare_CCA(self, ref_ind=None, num_components=10, iters=500):
         # Function to compare the latent activity
         if ref_ind is None:
@@ -771,3 +839,156 @@ class Comparison:
                     axes[i, j].set_xticks([])
 
             axes[i, 0].set_ylabel(f"{self.analyses[i].run_name}")
+
+    def plot_rate_state_input_r2(
+        self,
+        ref_ind=None,
+        label_runs=False,
+        label_groups=True,
+        phase="val",
+        plot_dict={},
+    ):
+        if "save_pdf" in plot_dict:
+            save_pdf = plot_dict["save_pdf"]
+        else:
+            save_pdf = False
+        if "ax_lim" in plot_dict:
+            ax_lim = plot_dict["ax_lim"]
+        else:
+            ax_lim = None
+        if "marker" in plot_dict:
+            marker = plot_dict["marker"]
+        else:
+            marker = "o"
+
+        # Function to compare the latent activity
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        reference_analysis = self.analyses[ref_ind]
+        rate_state_inp_mat = np.zeros((self.num_analyses, 4))
+        rate_state_inp_mat[ref_ind, :] = np.nan
+        true_lats = reference_analysis.get_latents(phase=phase)
+        true_inputs = reference_analysis.get_inputs(phase=phase)
+        is_multitask = reference_analysis.env == "MultiTask"
+        if is_multitask:
+            trial_lens = self.analyses[1].get_trial_lens(phase=phase)
+            # Stack the latents to the different trial lengths
+            true_lats_stack = []
+            for i in range(trial_lens.shape[0]):
+                true_lats_stack.append(true_lats[i, : int(trial_lens[i]), :])
+            true_lats = torch.vstack(true_lats_stack)
+
+        for i in range(self.num_analyses):
+            print(
+                f"Working on {i+1} of {self.num_analyses}: {self.analyses[i].run_name}"
+            )
+            print(f"Group: {self.groups[i]}")
+            if i == ref_ind:
+                continue
+            rates, latents = self.analyses[i].get_model_outputs(phase=phase)
+            true_rates = self.analyses[i].get_true_rates(phase=phase)
+
+            rates_stack = []
+            latents_stack = []
+            true_rates_stack = []
+            true_inputs_stack = []
+
+            # If multitask (with different trial lengths)
+            if is_multitask:
+                trial_lens = self.analyses[i].get_trial_lens(phase=phase)
+                # Stack the latents to the different trial lengths
+                for j in range(latents.shape[0]):
+                    latents_stack.append(latents[j, : int(trial_lens[j]), :])
+                    rates_stack.append(rates[j, : int(trial_lens[j]), :])
+                    true_rates_stack.append(true_rates[j, : int(trial_lens[j]), :])
+                    true_inputs_stack.append(true_inputs[j, : int(trial_lens[j]), :])
+                rates = torch.vstack(rates_stack)
+                latents = torch.vstack(latents_stack)
+                true_rates = torch.vstack(true_rates_stack)
+                true_inputs = torch.vstack(true_inputs_stack)
+
+            # Check that latents arenot NaN
+            if np.isnan(latents.detach().numpy()).any():
+                continue
+            inf_inputs = self.analyses[i].get_inferred_inputs(phase=phase)
+            # Compute the rate R2 and state R2
+            rate_state_inp_mat[i, 0] = get_rate_r2(
+                rates_true=true_rates,
+                rates_pred=rates,
+            )
+            rate_state_inp_mat[i, 1] = get_state_r2_vaf(
+                lats_true=true_lats,
+                lats_pred=latents,
+            )
+            rate_state_inp_mat[i, 2] = get_state_r2_vaf(
+                lats_true=true_inputs,
+                lats_pred=inf_inputs,
+            )
+            rate_state_inp_mat[i, 3] = get_state_r2_vaf(
+                lats_true=inf_inputs,
+                lats_pred=true_inputs,
+            )
+
+            print(f"Rate R2: {rate_state_inp_mat[i, 0]}")
+            print(f"State R2: {rate_state_inp_mat[i, 1]}")
+            print(f"Input R2 (toInf): {rate_state_inp_mat[i, 2]}")
+            print(f"Input R2 (toTrue): {rate_state_inp_mat[i, 3]}")
+
+        # Sort results by the groups
+        num_groups = len(np.unique(self.groups))
+        colors = plt.cm.get_cmap("tab10", num_groups)
+        color_inds = np.array(
+            [np.where(np.unique(self.groups) == group)[0][0] for group in self.groups]
+        )
+
+        # Plot the results
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        for i in range(self.num_analyses):
+            if i != ref_ind:
+                ax.scatter(
+                    rate_state_inp_mat[i, 0],
+                    rate_state_inp_mat[i, 1],
+                    rate_state_inp_mat[i, 2],
+                    color=colors(color_inds[i]),
+                    marker=marker,
+                )
+                if label_runs:
+                    ax.text(
+                        rate_state_inp_mat[i, 0],
+                        rate_state_inp_mat[i, 1],
+                        rate_state_inp_mat[i, 2],
+                        self.analyses[i].run_name,
+                    )
+        if label_groups:
+            for i in range(num_groups):
+                ax.scatter(
+                    [],
+                    [],
+                    color=colors(i),
+                    label=np.unique(self.groups)[i],
+                    marker=marker,
+                )
+            ax.legend()
+        bool_idx = np.arange(self.num_analyses) != ref_ind
+        min_val = np.min(rate_state_inp_mat[bool_idx]) - 0.2
+        max_val = np.max(rate_state_inp_mat[bool_idx]) + 0.2
+        max_val = np.min([max_val, 1.05])
+        min_val = np.max([min_val, -1.05])
+        if ax_lim is not None:
+            min_val = ax_lim[0]
+            max_val = ax_lim[1]
+        ax.set_xlim([min_val, max_val])
+        ax.set_ylim([min_val, max_val])
+        ax.plot([min_val, max_val], [min_val, max_val], "k--")
+        # Square axis
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlabel("Rate R2 ")
+        ax.set_ylabel("State R2 ")
+        ax.set_title(f"Rate-State R2 ({self.comparison_tag})")
+        if save_pdf:
+            plt.savefig(f"{self.comparison_tag}_rate_state_inp_r2.pdf")
+        return rate_state_inp_mat

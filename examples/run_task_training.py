@@ -21,26 +21,22 @@ log = logging.getLogger(__name__)
 dotenv.load_dotenv(override=True)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "NBFF_NoisyGRU_TorchTest"  # For WandB and run dir
-TASK = "NBFF"  # Task to train on (see configs/task_env for options)
-MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
+RUN_DESC = "MultiTask_GRU_RNN_RefactorTest"  # For WandB and run dir
+TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
+MODEL = "GRU_RNN"  # Model to train (see configs/model for options)
 
-# -----------------Parameter Selection -----------------------------------
+# ----------------- Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([1000]),
-    ),
-    datamodule_task=dict(
-        n_samples=tune.choice([1000]),
-        batch_size=tune.grid_search([1000]),
+        max_epochs=tune.choice([1500]),
     ),
     model=dict(
-        latent_size=tune.grid_search([100]),
+        latent_size=tune.grid_search([128]),
     ),
     # Data Parameters -----------------------------------
     params=dict(

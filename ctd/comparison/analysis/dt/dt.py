@@ -183,6 +183,61 @@ def get_true_rates_LFADS(self, phase="all"):
     return dt_rates
 
 
+def get_inferred_inputs_LFADS(self, phase="all"):
+    dt_inf_inputs = []
+    if phase == "all":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        val_dataloader = self.datamodule.val_dataloader()
+
+        for batch in train_ds:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_inf_inputs.append(output[4])
+
+        for batch in val_dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_inf_inputs.append(output[4])
+    elif phase == "train":
+        train_ds = self.datamodule.train_dataloader(shuffle=False)
+        for batch in train_ds:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_inf_inputs.append(output[4])
+    elif phase == "val":
+        val_dataloader = self.datamodule.val_dataloader()
+        for batch in val_dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, self.model.device)
+            # Compute model output
+            output = self.model.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            dt_inf_inputs.append(output[4])
+    dt_inf_inputs = torch.cat(dt_inf_inputs, dim=0)
+    return dt_inf_inputs
+
+
 def get_model_outputs_LDS(self):
     spiking, inputs = self.get_model_inputs()
     key = random.PRNGKey(0)
@@ -200,12 +255,11 @@ def get_model_outputs_SAE(self, phase="all"):
 
 
 def get_model_outputs_LFADS(self, phase="all"):
+    dt_rates = []
+    dt_latents = []
     if phase == "all":
         train_ds = self.datamodule.train_dataloader(shuffle=False)
         val_dataloader = self.datamodule.val_dataloader()
-        dt_rates = []
-        dt_latents = []
-
         for batch in train_ds:
             # Move data to the right device
             batch = send_batch_to_device(batch, self.model.device)
@@ -231,8 +285,6 @@ def get_model_outputs_LFADS(self, phase="all"):
             dt_latents.append(output[6])
     elif phase == "train":
         train_ds = self.datamodule.train_dataloader(shuffle=False)
-        dt_rates = []
-        dt_latents = []
         for batch in train_ds:
             # Move data to the right device
             batch = send_batch_to_device(batch, self.model.device)
@@ -246,8 +298,6 @@ def get_model_outputs_LFADS(self, phase="all"):
             dt_latents.append(output[6])
     elif phase == "val":
         val_dataloader = self.datamodule.val_dataloader()
-        dt_rates = []
-        dt_latents = []
         for batch in val_dataloader:
             # Move data to the right device
             batch = send_batch_to_device(batch, self.model.device)
@@ -261,7 +311,6 @@ def get_model_outputs_LFADS(self, phase="all"):
             dt_latents.append(output[6])
     dt_rates = torch.cat(dt_rates, dim=0)
     dt_latents = torch.cat(dt_latents, dim=0)
-
     return dt_rates, dt_latents
 
 
@@ -315,6 +364,7 @@ class Analysis_DT(Analysis):
             self.get_true_rates = types.MethodType(get_true_rates_LFADS, self)
             self.get_rates = types.MethodType(get_rates_LFADS, self)
             self.get_trial_lens = types.MethodType(get_trial_lens_LFADS, self)
+            self.get_inferred_inputs = types.MethodType(get_inferred_inputs_LFADS, self)
         elif self.model_type == "LDS":
             self.get_model_inputs = types.MethodType(get_model_inputs_LDS, self)
             self.get_model_outputs = types.MethodType(get_model_outputs_LDS, self)
@@ -475,8 +525,8 @@ class Analysis_DT(Analysis):
 
         plt.show()
 
-    def get_inputs(self):
-        _, inputs = self.get_model_inputs()
+    def get_inputs(self, phase="val"):
+        _, inputs = self.get_model_inputs(phase=phase)
 
         return inputs
 

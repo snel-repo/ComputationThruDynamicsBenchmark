@@ -27,13 +27,13 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "FilePathTest"
-NUM_SAMPLES = 1
-MODEL_CLASS = "LDS"  # "LFADS" or "SAE"
-MODEL = "JSLDS"  # "ResLFADS" or "LFADS"
+RUN_DESC = "LFADS_Input_Inf_Sweep_Random2"
+NUM_SAMPLES = 100
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 GEN_MODEL = "NoisyGRU_RNN"
-INFER_INPUTS = False
+INFER_INPUTS = True
 
 if GEN_MODEL == "NoisyGRU_RNN":
     if DATA == "NBFF":
@@ -51,15 +51,18 @@ SEARCH_SPACE = dict(
         # Change the prefix to the correct path for your task-trained network
         prefix=tune.grid_search([prefix]),
     ),
-    # params=dict(
-    #     seed=tune.grid_search([0]),
-    # ),
-    # trainer=dict(
-    #     max_epochs=tune.grid_search([1000]),
-    # ),
-    # model=dict(
-    #     latent_size=tune.grid_search([64]),
-    # ),
+    params=dict(
+        seed=tune.grid_search([0]),
+    ),
+    trainer=dict(
+        max_epochs=tune.grid_search([1000]),
+    ),
+    model=dict(
+        kl_co_scale=tune.loguniform(1e-7, 1e-2),
+        co_prior=dict(
+            df=tune.grid_search([5]),
+        ),
+    ),
 )
 
 # -----------------Default Parameter Sets -----------------------------------
@@ -138,7 +141,7 @@ def main(
             train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=4, gpu=0.5),
+        resources_per_trial=dict(cpu=4, gpu=0.9),
         num_samples=NUM_SAMPLES,
         local_dir=run_dir,
         search_alg=BasicVariantGenerator(),

@@ -41,6 +41,7 @@ class TaskTrainedWrapper(pl.LightningModule):
 
         """
         super().__init__()
+        self.save_hyperparameters()
         self.task_env = task_env
         self.model = model
         self.input_size = input_size

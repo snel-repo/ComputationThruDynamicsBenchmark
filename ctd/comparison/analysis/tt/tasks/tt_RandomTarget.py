@@ -71,7 +71,7 @@ class TT_RandomTarget(Analysis_TT):
         align_to="go_cue",
         pre_align=20,
         post_align=20,
-        pcs_to_use=[4, 5, 6],
+        pcs_to_use=[0, 1, 2],
         fps=10,
     ):
         tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
@@ -79,12 +79,16 @@ class TT_RandomTarget(Analysis_TT):
         extra = self.get_extra_inputs()
         out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env=inputs_to_env)
         latents = out_dict["latents"]
-
         go_cue = extra[:, 1]
-        pre_ind = go_cue - pre_align
-        post_ind = post_align + go_cue
-
-        go_trials = go_cue.detach().numpy() > 0
+        target_on = extra[:, 0]
+        if align_to == "go_cue":
+            pre_ind = go_cue - pre_align
+            post_ind = post_align + go_cue
+            go_trials = go_cue.detach().numpy() > 0
+        elif align_to == "target_on":
+            pre_ind = target_on - pre_align
+            post_ind = post_align + target_on
+            go_trials = target_on.detach().numpy() > 0
 
         pre_ind = pre_ind[go_trials]
         post_ind = post_ind[go_trials]
@@ -100,7 +104,7 @@ class TT_RandomTarget(Analysis_TT):
         )
         for i in range(latents.shape[0]):
             lats_trim[i, :, :] = latents[i, pre_ind[i] : post_ind[i], :]
-        num_pcs = 10
+        num_pcs = 4
         lat_pca = PCA(n_components=num_pcs)
         lats_trim_pca = lat_pca.fit_transform(lats_trim.reshape(-1, latents.shape[-1]))
         lats_trim_pca = lats_trim_pca.reshape(
@@ -243,10 +247,10 @@ class TT_RandomTarget(Analysis_TT):
         ax.legend(loc="lower right")
 
         ax = fig.add_subplot(313)
-        ax.plot(
-            inputs_to_env[trial_num, :, 0].detach().numpy(), "k", label="Bump onset"
-        )
-        ax.plot(inputs_to_env[trial_num, :, 1].detach().numpy(), "k")
+        ax.plot(inputs_to_env[trial_num, :, 0].detach().numpy(), "k", label="Bump X")
+        ax.plot(inputs_to_env[trial_num, :, 1].detach().numpy(), "r", label="Bump Y")
+        ax.set_ylim(-25, 25)
+        ax.legend()
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Environment Inputs")
 
@@ -479,3 +483,33 @@ class TT_RandomTarget(Analysis_TT):
         ax.set_title("Fixed points in PC")
 
         return fps
+
+    def plot_bump_response(self):
+        # plot the trial
+        # get the trial
+        tt_ics, tt_inputs, tt_targets = self.get_model_inputs()
+        inputs_to_env = self.get_inputs_to_env()
+
+        out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env=inputs_to_env)
+        states = out_dict["states"]
+        states = states.detach().numpy()
+        bump_states = states[:, 65:70, :]
+        bump_states = bump_states.reshape(-1, bump_states.shape[-1])
+        pca = PCA(n_components=3)
+        bump_pca = pca.fit_transform(bump_states)
+        fig = plt.figure(figsize=(5, 5))
+        ax = fig.add_subplot(111, projection="3d")
+        inputs_bump = inputs_to_env[:, 65, :]
+        bump_ang = np.arctan2(inputs_bump[:, 1], inputs_bump[:, 0])
+        bump_type = np.unique(bump_ang, axis=0)
+        # Map bump type to color
+        bump_colors = cm.jet(np.linspace(0, 1, bump_type.shape[0]))
+        bump_ind = np.where(bump_ang == bump_type[0])[0]
+        for i in range(states.shape[0]):
+            print(f"Bump: {bump_ang[i]}")
+            ax.plot(
+                bump_pca[i, 0],
+                bump_pca[i, 1],
+                bump_pca[i, 2],
+                color=bump_colors[bump_ind],
+            )

@@ -156,17 +156,22 @@ class BasicDataModule(pl.LightningDataModule):
         else:
             run_folder = dirs[file_index]
             self.name = run_folder
-        filename = f"n_neurons_{self.n_neurons}"
-        if embed_dict["rect_func"] not in ["exp"]:
-            for key, val in self.embed_dict.items():
-                filename += f"_{key}_{val}"
 
-        if noise_dict["obs_noise"] not in ["poisson"]:
-            for key, val in self.noise_dict.items():
-                filename += f"_{key}_{val}"
+        if not os.path.isdir(os.path.join(fpath, run_folder)):
+            filename = run_folder
+            self.fpath = os.path.join(fpath, filename)
+        else:
+            filename = f"n_neurons_{self.n_neurons}"
+            if embed_dict["rect_func"] not in ["exp"]:
+                for key, val in self.embed_dict.items():
+                    filename += f"_{key}_{val}"
 
-        filename += f"_seed_{seed}"
-        self.fpath = os.path.join(fpath, run_folder, filename + ".h5")
+            if noise_dict["obs_noise"] not in ["poisson"]:
+                for key, val in self.noise_dict.items():
+                    filename += f"_{key}_{val}"
+
+            filename += f"_seed_{seed}"
+            self.fpath = os.path.join(fpath, run_folder, filename + ".h5")
         self.save_hyperparameters()
 
     def setup(self, stage=None):

@@ -1,4 +1,4 @@
-_target_: ctd.task_modeling.task_env.task_env.NBitFlipFlop
+_target_: ctd.task_modeling.task_env.NBFF.NBitFlipFlop
 
 n: 3
 n_timesteps: 500

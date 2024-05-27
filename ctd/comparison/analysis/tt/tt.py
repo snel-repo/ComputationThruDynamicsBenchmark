@@ -40,7 +40,7 @@ class Analysis_TT(Analysis):
                 self.datamodule = pickle.load(f)
                 self.datamodule.prepare_data()
                 self.datamodule.setup()
-        self.env = self.datamodule.data_env.dataset_name
+        # self.env = self.datamodule.data_env.dataset_name
         # if the simulator exists
         if Path(filepath + "simulator.pkl").exists():
             with open(filepath + "simulator.pkl", "rb") as f:

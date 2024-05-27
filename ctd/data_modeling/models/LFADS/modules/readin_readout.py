@@ -31,52 +31,6 @@ class MLP(nn.Module):
         return x
 
 
-class Flow(nn.Module):
-    def __init__(
-        self,
-        readout_num_layers,
-        readout_hidden_size,
-        in_features,
-        out_features,
-        flow_num_steps,
-    ):
-        super(Flow, self).__init__()
-
-        self.flow_num_steps = flow_num_steps
-        self.neural_dim = out_features
-        self.latent_dim = in_features
-        self.network = MLP(
-            in_features=self.neural_dim,
-            hidden_size=readout_hidden_size,
-            num_layers=readout_num_layers,
-            out_features=self.neural_dim,
-        )
-
-    def forward(self, Z, reverse=False):
-        if reverse:
-            B, N = Z.shape
-            # Trim the last elements to make it D dimensional
-            for _ in range(self.flow_num_steps):
-                deltaZ = self.network(Z)
-                Z = Z - deltaZ
-            return Z[:, : self.latent_dim]
-        else:
-            B, T, D = Z.shape
-            D = self.latent_dim
-            N = self.neural_dim
-            # Padding the tensor
-            Z = nn.functional.pad(Z, (0, N - D))
-            # Reshape the tensor to be a BT x N tensor
-            Z = Z.reshape(-1, N)
-            # Applying the MLP for flow_num_steps times
-            for _ in range(self.flow_num_steps):
-                deltaZ = self.network(Z)
-                Z = Z + deltaZ
-            # Reshape the tensor back to BxTxN
-            Z = Z.reshape(B, T, self.neural_dim)
-            return Z
-
-
 # class PCRInitModuleList(nn.ModuleList):
 #     def __init__(self, inits_path: str, modules: list[nn.Module]):
 #         super().__init__(modules)

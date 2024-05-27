@@ -179,6 +179,7 @@ class MotorNetVideoGenerationArm(pl.Callback):
         inputs = batch[1].to(pl_module.device)
         targets = batch[2].to(pl_module.device)
         inputs_to_env = batch[6].to(pl_module.device)
+        true_inputs = batch[7].to(pl_module.device)
 
         # Pass data through the model
         output_dict = pl_module.forward(
@@ -277,7 +278,7 @@ class MotorNetVideoGenerationArm(pl.Callback):
                         draw_biarticular_muscle(
                             ax, shoulder_pos, elbow_pos, isFlexor=False, color=color
                         )
-                input_temp = inputs[i, t, :].detach().cpu().numpy()
+                input_temp = true_inputs[i, t, :].detach().cpu().numpy()
 
                 # Draw a solid line a y = 0 to represent the ground
                 ax.plot([-0.5, 0.5], [0, 0], "k-", linewidth=3)
@@ -286,7 +287,10 @@ class MotorNetVideoGenerationArm(pl.Callback):
                 if input_temp.sum() != 0:
                     # Plot as a green square
                     input_patch = patches.Rectangle(
-                        (inputs[i, t, 0].item() - 0.05, inputs[i, t, 1].item() - 0.05),
+                        (
+                            true_inputs[i, t, 0].item() - 0.05,
+                            true_inputs[i, t, 1].item() - 0.05,
+                        ),
                         0.1,
                         0.1,
                         color="red",
