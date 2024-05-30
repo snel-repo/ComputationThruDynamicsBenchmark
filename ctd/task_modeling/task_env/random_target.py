@@ -93,7 +93,7 @@ class RandomTarget(Environment):
                 move_bump_trial = np.random.choice([0, 1], p=[0.5, 0.5])
 
                 target_on = np.random.randint(10, 30)
-                go_cue = np.random.randint(target_on, self.n_timesteps)
+                go_cue = np.random.randint(target_on + 5, self.n_timesteps)
                 if move_bump_trial:
                     bump_time = np.random.randint(go_cue, go_cue + 40)
                 else:
@@ -143,7 +143,7 @@ class RandomTarget(Environment):
                 goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
 
             go_cue_list.append(go_cue)
-            inputs[i, target_on:, 0:2] = info["goal"]
+            inputs[i, target_on:go_cue, 0:2] = info["goal"]
 
             catch_trials.append(catch_trial)
             goal_list.append(goal_matrix)
@@ -401,7 +401,7 @@ class RandomTargetAligned(Environment):
             if move_bump_trial:
                 bump_time = np.random.randint(go_cue, go_cue + 40)
             else:
-                bump_time = np.random.randint(0, self.go_cue - 3)
+                bump_time = np.random.randint(0, go_cue - 3)
             bump_duration = np.random.randint(15, 30)
             bump_theta = np.random.uniform(0, 2 * np.pi)
             bump_mag = np.random.uniform(self.bump_mag_low, self.bump_mag_high)
@@ -429,7 +429,7 @@ class RandomTargetAligned(Environment):
             goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
 
             go_cue_list.append(go_cue)
-            inputs[i, target_on:, 0:2] = info["goal"]
+            inputs[i, target_on:go_cue, 0:2] = info["goal"]
 
             catch_trials.append(catch_trial)
             goal_list.append(goal_matrix)

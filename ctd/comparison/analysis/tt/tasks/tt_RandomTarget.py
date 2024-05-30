@@ -254,6 +254,41 @@ class TT_RandomTarget(Analysis_TT):
         ax.set_xlabel("Time (bins)")
         ax.set_ylabel("Environment Inputs")
 
+    def plot_trial_latents(self, num_trials=10):
+        out_dict = self.get_model_outputs(phase="val")
+        latents = out_dict["latents"].detach().numpy()
+        pca = PCA(n_components=3)
+        lats_pca = pca.fit_transform(latents.reshape(-1, latents.shape[-1]))
+        lats_pca = lats_pca.reshape(latents.shape[0], latents.shape[1], 3)
+        target_ons = (
+            self.get_extra_inputs(phase="val")[:, 0].detach().numpy().astype(int)
+        )
+        go_cues = self.get_extra_inputs(phase="val")[:, 1].detach().numpy().astype(int)
+
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        for i in range(num_trials):
+            ax.plot(
+                lats_pca[i, :, 0],
+                lats_pca[i, :, 1],
+                lats_pca[i, :, 2],
+            )
+            ax.scatter(
+                lats_pca[i, target_ons[i], 0],
+                lats_pca[i, target_ons[i], 1],
+                lats_pca[i, target_ons[i], 2],
+                color="r",
+            )
+            ax.scatter(
+                lats_pca[i, go_cues[i], 0],
+                lats_pca[i, go_cues[i], 1],
+                lats_pca[i, go_cues[i], 2],
+                color="g",
+            )
+
+        ax.set_title("Task-trained Latent Activity")
+        plt.show()
+
     def generate_latent_video(
         self,
         align_to="go_cue",

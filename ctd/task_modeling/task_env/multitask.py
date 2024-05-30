@@ -4,7 +4,7 @@ from gymnasium import spaces
 
 from ctd.task_modeling.datamodule.samplers import GroupedSampler, RandomSampler
 from ctd.task_modeling.task_env.loss_func import MultiTaskLoss
-from ctd.task_modeling.task_env.NBFF import DecoupledEnvironment
+from ctd.task_modeling.task_env.task_env import DecoupledEnvironment
 
 
 class MultiTaskWrapper(DecoupledEnvironment):

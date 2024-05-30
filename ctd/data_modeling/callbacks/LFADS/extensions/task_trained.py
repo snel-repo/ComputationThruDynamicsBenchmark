@@ -145,11 +145,6 @@ class InputR2Plot(pl.Callback):
             inf_inputs.reshape(-1, n_inf_inputs),
         )
 
-        inf_inputs = lr.predict(inf_inputs.reshape(-1, n_inf_inputs)).reshape(
-            -1, n_time, n_true_inputs
-        )
-        inf_inputs = inf_inputs.reshape(-1, n_time, n_true_inputs)
-
         # Get R2
         r2_true_to_inf = lr2.score(
             true_inputs.reshape(-1, n_true_inputs),

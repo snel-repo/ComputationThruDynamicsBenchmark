@@ -3,7 +3,7 @@ prefix: 20240122_NBFF_GRU
 n_neurons: 50
 seed: 0
 batch_size: 250
-provide_inputs: True
+provide_inputs: False
 
 embed_dict:
   rect_func: exp
@@ -16,4 +16,3 @@ batch_keys:
   - inputs
   - latents
   - activity
-  - extra

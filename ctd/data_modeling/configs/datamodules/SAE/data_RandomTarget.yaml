@@ -1,9 +1,12 @@
 _target_: ctd.data_modeling.datamodules.SAE.task_trained_data.TaskTrainedRNNDataModule
-system: RandomTarget
-prefix: 20240122_NBFF_GRU
-gen_model: GRU_RNN
+prefix: 20240202_NBFF_Comparison
 n_neurons: 50
-obs_noise: poisson
+embed_dict:
+  rect_func: exp
+  fr_scaling: 2.0
+noise_dict:
+  obs_noise: pseudoPoisson
+  dispersion: 1.0
 seed: 0
 batch_size: 250
 num_workers: 4

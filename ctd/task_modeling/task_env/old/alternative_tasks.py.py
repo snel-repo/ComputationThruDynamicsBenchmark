@@ -6,7 +6,7 @@ import torch
 from gymnasium import spaces
 from motornet.environment import Environment
 
-from ctd.task_modeling.task_env.NBFF import DecoupledEnvironment
+from ctd.task_modeling.task_env.task_env import DecoupledEnvironment
 
 
 class SimonSays(DecoupledEnvironment):

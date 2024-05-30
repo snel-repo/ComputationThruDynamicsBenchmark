@@ -190,10 +190,10 @@ def train(
         data_env=sim_env,
         for_sim=True,
     )
-
     sim_datamodule.prepare_data()
     sim_datamodule.setup()
 
+    task_wrapper.set_environment(sim_env)
     # ------Step 12:------------Simulate neural data---------------------------
     simulator.simulate_neural_data(
         task_trained_model=task_wrapper,

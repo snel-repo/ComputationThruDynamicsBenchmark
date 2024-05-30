@@ -6,10 +6,10 @@ encoder_window: -1
 
 heldin_size: 50
 heldout_size: 50
-latent_size: 128
+latent_size: 64
 input_size: 17
 
-weight_decay: 0
+weight_decay: 1e-6
 lr: 5e-3
 
-dropout: 0.05
+dropout: 0.2

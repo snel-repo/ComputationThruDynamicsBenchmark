@@ -4,15 +4,15 @@ _target_: ctd.data_modeling.models.LFADS.lfads.LFADS
 gen_type: RNN
 inv_encoder: False
 encod_data_dim: 50
-encod_seq_len: 500
-recon_seq_len: 500
-ext_input_dim: 3 # Ext. Inputs
+encod_seq_len: 150
+recon_seq_len: 150
+ext_input_dim: 0 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 128 # Encoder for latent ICs hidden units
-ci_enc_dim: 0 # Controller encoder dimensionality
+ci_enc_dim: 128 # Controller encoder dimensionality
 ci_lag: 1
-con_dim: 0 # Hidden size of controller
-co_dim: 0 # # of controller inputs
+con_dim: 128 # Hidden size of controller
+co_dim: 17 # # of controller inputs
 ic_dim: 128 # # neurons if Flow_inv, gen_dim if not
 gen_dim: 128
 fac_dim: 20

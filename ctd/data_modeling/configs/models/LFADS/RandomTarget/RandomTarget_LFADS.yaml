@@ -57,18 +57,13 @@ reconstruction:
 variational: True
 
 # Sparse input prior
-co_prior:
-  _target_: ctd.data_modeling.models.LFADS.modules.priors.SparseMultivariateNormal
-  mean: 0
-  scale: 1.0
-  shape: ${co_dim}
 
 # Autoregressive input prior
-# co_prior:
-#   _target_: ctd.data_modeling.models.LFADS.modules.priors.AutoregressiveMultivariateNormal
-#   tau: 10.0
-#   nvar: 0.1
-#   shape: ${co_dim}
+co_prior:
+  _target_: ctd.data_modeling.models.LFADS.modules.priors.AutoregressiveMultivariateNormal
+  tau: 10.0
+  nvar: 0.1
+  shape: ${co_dim}
 
 ic_prior:
   _target_: ctd.data_modeling.models.LFADS.modules.priors.MultivariateNormal
