@@ -177,6 +177,7 @@ class MotorNetVideoGenerationArm(pl.Callback):
         batch = next(iter(train_dataloader))
         ics = batch[0].to(pl_module.device)
         inputs = batch[1].to(pl_module.device)
+        extra = batch[5].to(pl_module.device)
         targets = batch[2].to(pl_module.device)
         inputs_to_env = batch[6].to(pl_module.device)
         true_inputs = batch[7].to(pl_module.device)
@@ -201,6 +202,8 @@ class MotorNetVideoGenerationArm(pl.Callback):
         frames = []
         # Loop through the trials and time steps to create the video
         for i in range(self.num_trials_to_plot):
+            go_cue = extra[i, 1].detach().cpu().numpy().astype(int)
+            targ_on = extra[i, 0].detach().cpu().numpy().astype(int)
             for t in range(T):
                 fig, ax = plt.subplots(figsize=(5, 5))
 
@@ -278,14 +281,12 @@ class MotorNetVideoGenerationArm(pl.Callback):
                         draw_biarticular_muscle(
                             ax, shoulder_pos, elbow_pos, isFlexor=False, color=color
                         )
-                input_temp = true_inputs[i, t, :].detach().cpu().numpy()
 
                 # Draw a solid line a y = 0 to represent the ground
                 ax.plot([-0.5, 0.5], [0, 0], "k-", linewidth=3)
 
-                # if input_temp is all zeros
-                if input_temp.sum() != 0:
-                    # Plot as a green square
+                # Plot as a green square
+                if t >= targ_on and t < go_cue:
                     input_patch = patches.Rectangle(
                         (
                             true_inputs[i, t, 0].item() - 0.05,
@@ -297,17 +298,17 @@ class MotorNetVideoGenerationArm(pl.Callback):
                     )
                     ax.add_patch(input_patch)
 
-                    # Plot target position as a red square
-                    target = patches.Rectangle(
-                        (
-                            targets[i, t, 0].item() - 0.05,
-                            targets[i, t, 1].item() - 0.05,
-                        ),
-                        0.1,
-                        0.1,
-                        color="green",
-                    )
-                    ax.add_patch(target)
+                # Plot target position as a red square
+                target = patches.Rectangle(
+                    (
+                        targets[i, t, 0].item() - 0.05,
+                        targets[i, t, 1].item() - 0.05,
+                    ),
+                    0.1,
+                    0.1,
+                    color="green",
+                )
+                ax.add_patch(target)
 
                 # Plot hand position as a black dot
                 ax.scatter(
