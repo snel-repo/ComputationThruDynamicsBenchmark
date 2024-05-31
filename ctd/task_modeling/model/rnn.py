@@ -126,6 +126,54 @@ class NoisyGRU_RNN(nn.Module):
         return output, hidden
 
 
+class NoisyGRU_LatentL2(nn.Module):
+    def __init__(
+        self,
+        latent_size,
+        input_size=None,
+        output_size=None,
+        noise_level=0.05,
+        latent_ic_var=0.05,
+        l2_wt=1e-2,
+    ):
+        super().__init__()
+        self.input_size = input_size
+        self.latent_size = latent_size
+        self.output_size = output_size
+        self.cell = None
+        self.readout = None
+        self.noise_level = noise_level
+        self.l2_wt = l2_wt
+        self.latent_ics = torch.nn.Parameter(
+            torch.zeros(latent_size), requires_grad=True
+        )
+        self.latent_ic_var = latent_ic_var
+
+    def init_hidden(self, batch_size):
+        init_h = self.latent_ics.unsqueeze(0).expand(batch_size, -1)
+        ic_noise = torch.randn_like(init_h) * self.latent_ic_var
+        return init_h + ic_noise
+
+    def init_model(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.cell = GRUCell(input_size, self.latent_size)
+        self.readout = nn.Linear(self.latent_size, output_size, bias=True)
+
+    def forward(self, inputs, hidden):
+        hidden = self.cell(inputs, hidden)
+        noise = torch.randn_like(hidden) * self.noise_level
+        output = self.readout(hidden)
+        hidden = hidden + noise
+        return output, hidden
+
+    def model_loss(self, loss_dict):
+        latents = loss_dict["latents"]
+        lats_flat = latents.view(latents.shape[0], -1)
+        latent_l2_loss = self.l2_wt * torch.norm(lats_flat, p=2, dim=1).mean()
+        return latent_l2_loss
+
+
 class DriscollRNN(nn.Module):
     def __init__(
         self,

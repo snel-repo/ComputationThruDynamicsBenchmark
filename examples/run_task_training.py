@@ -25,9 +25,9 @@ LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "RandomTarget_NoisyGRU_Memory"  # For WandB and run dir
+RUN_DESC = "RandomTarget_NoisyGRU_LatentL2_noGo"  # For WandB and run dir
 TASK = "RandomTarget"  # Task to train on (see configs/task_env for options)
-MODEL = "NoisyGRU"  # Model to train (see configs/model for options)
+MODEL = "NoisyGRULatentL2"  # Model to train (see configs/model for options)
 
 # ----------------- Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
@@ -39,6 +39,12 @@ SEARCH_SPACE = dict(
         latent_size=tune.grid_search([128]),
     ),
     # Data Parameters -----------------------------------
+    datamodule_task=dict(
+        n_samples=tune.grid_search([1100]),
+    ),
+    datamodule_sim=dict(
+        n_samples=tune.grid_search([1100]),
+    ),
     params=dict(
         seed=tune.grid_search([0]),
     ),

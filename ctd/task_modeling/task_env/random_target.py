@@ -113,9 +113,9 @@ class RandomTarget(Environment):
                 bump_duration = 10
                 bump_theta = np.random.choice([0])
                 if np.random.random() < 0.5:
-                    bump_mag = np.random.uniform(-20, -5)
+                    bump_mag = np.random.uniform(-40, -15)
                 else:
-                    bump_mag = np.random.uniform(5, 20)
+                    bump_mag = np.random.uniform(15, 40)
                 info = self.generate_bump_trial_info()
 
             target_on_list.append(target_on)
@@ -135,9 +135,9 @@ class RandomTarget(Environment):
                 go_cue = -1
                 goal_matrix[:, :] = initial_state_xy
             else:
-                inputs[i, go_cue:, 2] = 1
+                # inputs[i, go_cue:, 2] = 1
                 # Smoothly interpolate to the goal position
-                inputs[i, :, 2] = causal_smooth_vector(inputs[i, :, 2], 5)
+                # inputs[i, :, 2] = causal_smooth_vector(inputs[i, :, 2], 5)
 
                 goal_matrix[:go_cue, :] = initial_state_xy
                 goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])
@@ -421,9 +421,9 @@ class RandomTargetAligned(Environment):
 
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
 
-            inputs[i, go_cue:, 2] = 1
+            # inputs[i, go_cue:, 2] = 1
             # Smoothly interpolate to the goal position
-            inputs[i, :, 2] = causal_smooth_vector(inputs[i, :, 2], 5)
+            # inputs[i, :, 2] = causal_smooth_vector(inputs[i, :, 2], 5)
 
             goal_matrix[:go_cue, :] = initial_state_xy
             goal_matrix[go_cue:, :] = torch.squeeze(info["goal"])

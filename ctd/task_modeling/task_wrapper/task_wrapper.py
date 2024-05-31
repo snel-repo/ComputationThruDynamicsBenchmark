@@ -220,6 +220,9 @@ class TaskTrainedWrapper(pl.LightningModule):
 
         # Compute the loss using the loss function object
         loss_all = self.loss_func(loss_dict)
+        # If self.model has a loss function, add it to the loss
+        if hasattr(self.model, "model_loss"):
+            loss_all += self.model.model_loss(loss_dict)
         self.log("train/loss", loss_all)
         return loss_all
 
@@ -248,5 +251,7 @@ class TaskTrainedWrapper(pl.LightningModule):
 
         # Compute the loss using the loss function object
         loss_all = self.loss_func(loss_dict)
+        if hasattr(self.model, "model_loss"):
+            loss_all += self.model.model_loss(loss_dict)
         self.log("valid/loss", loss_all)
         return loss_all

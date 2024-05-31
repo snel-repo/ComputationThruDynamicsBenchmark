@@ -1,0 +1,4 @@
+_target_: ctd.task_modeling.model.rnn.NoisyGRU_LatentL2
+latent_size: 128
+noise_level: 0.01
+l2_wt: 1e-6
