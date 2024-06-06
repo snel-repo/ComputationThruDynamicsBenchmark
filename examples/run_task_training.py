@@ -25,38 +25,39 @@ LOCAL_MODE = True  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
-RUN_DESC = "RandomTarget_NoisyGRU_GoStep_HighActWt"  # For WandB and run dir
-TASK = "RandomTarget"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "MultiTask_NoisyGRUL2"  # For WandB and run dir
+TASK = "MultiTask"  # Task to train on (see configs/task_env for options)
 MODEL = "NoisyGRULatentL2"  # Model to train (see configs/model for options)
 
 # ----------------- Parameter Selection -----------------------------------
 SEARCH_SPACE = dict(
     trainer=dict(
         # Trainer Parameters -----------------------------------
-        max_epochs=tune.choice([2000]),
+        max_epochs=tune.choice([500]),
     ),
-    model=dict(
-        latent_size=tune.grid_search([128]),
-        l2_wt=tune.grid_search([5e-5]),
-    ),
-    env_params=dict(
-        # Environment Parameters -----------------------------------
-        proprioception_delay=tune.grid_search([0.02]),
-        vision_delay=tune.grid_search([0.05]),
-        act_weight=tune.grid_search([5.0]),
-    ),
+    # model=dict(
+    #     latent_size=tune.grid_search([128]),
+    #     l2_wt=tune.grid_search([5e-5]),
+    # ),
+    # env_params=dict(
+    #     # Environment Parameters -----------------------------------
+    #     proprioception_delay=tune.grid_search([0.02]),
+    #     vision_delay=tune.grid_search([0.05]),
+    #     act_weight=tune.grid_search([5.0]),
+    # ),
     # Data Parameters -----------------------------------
     datamodule_task=dict(
-        n_samples=tune.grid_search([1100]),
+        n_samples=tune.grid_search([2000]),
+        batch_size=tune.grid_search([1000]),
     ),
     datamodule_sim=dict(
-        n_samples=tune.grid_search([1100]),
+        n_samples=tune.grid_search([2000]),
     ),
     params=dict(
         seed=tune.grid_search([0]),
     ),
     task_wrapper=dict(
-        learning_rate=tune.grid_search([5e-3]),
+        learning_rate=tune.grid_search([1e-3]),
     ),
 )
 
