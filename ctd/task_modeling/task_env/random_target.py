@@ -135,7 +135,8 @@ class RandomTarget(Environment):
                 go_cue = -1
                 goal_matrix[:, :] = initial_state_xy
             else:
-                # inputs[i, go_cue:, 2] = 1
+                inputs[i, go_cue:, 2] = 0.15
+
                 # Smoothly interpolate to the goal position
                 # inputs[i, :, 2] = causal_smooth_vector(inputs[i, :, 2], 5)
 
@@ -421,7 +422,7 @@ class RandomTargetAligned(Environment):
 
             goal_matrix = torch.zeros((self.n_timesteps, self.skeleton.space_dim))
 
-            # inputs[i, go_cue:, 2] = 1
+            inputs[i, go_cue:, 2] = 0.15
             # Smoothly interpolate to the goal position
             # inputs[i, :, 2] = causal_smooth_vector(inputs[i, :, 2], 5)
 

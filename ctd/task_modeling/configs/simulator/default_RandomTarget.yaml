@@ -2,7 +2,7 @@ _target_: ctd.task_modeling.simulator.neural_simulator.NeuralDataSimulatorGenera
 n_neurons: 50
 embed_dict:
   rect_func: exp
-  fr_scaling: 2.0
+  fr_scaling: 4.0
 noise_dict:
   obs_noise: pseudoPoisson
   dispersion: 1.0

@@ -170,6 +170,7 @@ def train(
     # -------Step 10:----------Save model and datamodule---------------------------
     log.info("Saving model and datamodule")
     SAVE_PATH = path_dict["trained_models"] / "task-trained"
+    task_wrapper.set_environment(sim_env)
 
     dir_path = os.path.join(SAVE_PATH, run_tag, subfolder, "")
     Path(dir_path).mkdir(parents=True, exist_ok=True)

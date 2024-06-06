@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "GRU_ExtInputs_RandomTarget_Final_Sweep"
+RUN_DESC = "LFADS_ExtInputs_RandomTarget_ModL2"
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"  # "ResLFADS" or "LFADS"
 DATA = "RandomTarget"  # "NBFF", "RandomTarget" or "MultiTask
 GEN_MODEL = "NoisyGRU_RNN"
 INFER_INPUTS = False
@@ -39,7 +39,7 @@ if GEN_MODEL == "NoisyGRU_RNN":
     if DATA == "NBFF":
         prefix = "20240503_Fig1_NBFF_NoisyGRU"
     elif DATA == "RandomTarget":
-        prefix = "20240529_RandomTarget_NoisyGRU_Memory"
+        prefix = "20240603_RandomTarget_NoisyGRU_GoStep_ModL2"
     elif DATA == "MultiTask":
         prefix = "20240513_MultiTask_NoisyGRU_Final"
 elif GEN_MODEL == "NODE":
@@ -54,11 +54,11 @@ SEARCH_SPACE = dict(
     params=dict(
         seed=tune.grid_search([0, 1, 2, 3, 4]),
     ),
+    model=dict(
+        gen_dim=tune.grid_search([128]),
+    ),
     trainer=dict(
         max_epochs=tune.grid_search([1000]),
-    ),
-    model=dict(
-        latent_size=tune.grid_search([10, 20, 30, 40, 50]),
     ),
 )
 
