@@ -35,29 +35,9 @@ SEARCH_SPACE = dict(
         # Trainer Parameters -----------------------------------
         max_epochs=tune.choice([500]),
     ),
-    # model=dict(
-    #     latent_size=tune.grid_search([128]),
-    #     l2_wt=tune.grid_search([5e-5]),
-    # ),
-    # env_params=dict(
-    #     # Environment Parameters -----------------------------------
-    #     proprioception_delay=tune.grid_search([0.02]),
-    #     vision_delay=tune.grid_search([0.05]),
-    #     act_weight=tune.grid_search([5.0]),
-    # ),
     # Data Parameters -----------------------------------
-    datamodule_task=dict(
-        n_samples=tune.grid_search([2000]),
-        batch_size=tune.grid_search([1000]),
-    ),
-    datamodule_sim=dict(
-        n_samples=tune.grid_search([2000]),
-    ),
     params=dict(
         seed=tune.grid_search([0]),
-    ),
-    task_wrapper=dict(
-        learning_rate=tune.grid_search([1e-3]),
     ),
 )
 
