@@ -27,26 +27,20 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "GRU_Resim3BFF"
+RUN_DESC = "GRU_ResimRT_Test"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
 MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
-DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
-GEN_MODEL = "NoisyGRU_RNN"
+DATA = "RandomTarget"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
-if GEN_MODEL == "NoisyGRU_RNN":
-    if DATA == "NBFF":
-        prefix = "20240503_Fig1_NBFF_NoisyGRU"
-    elif DATA == "RandomTarget":
-        prefix = "20240603_RandomTarget_NoisyGRU_GoStep_ModL2"
-    elif DATA == "MultiTask":
-        prefix = "20240513_MultiTask_NoisyGRU_Final"
-elif GEN_MODEL == "NODE":
-    if DATA == "NBFF":
-        prefix = "20240503_Fig1_NBFF_NODE"
+if DATA == "NBFF":
+    prefix = "tt_3bff"
+elif DATA == "MultiTask":
+    prefix = "tt_MultiTask"
+elif DATA == "RandomTarget":
+    prefix = "tt_RandomTarget"
 
-prefix = "tt_3bff"
 # -------------------------------------
 SEARCH_SPACE = dict(
     datamodule=dict(
@@ -57,7 +51,7 @@ SEARCH_SPACE = dict(
         seed=tune.grid_search([0, 1, 2, 3, 4]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([1000]),
+        max_epochs=tune.grid_search([10]),
     ),
 )
 
@@ -139,7 +133,7 @@ def main(
         config=SEARCH_SPACE,
         resources_per_trial=dict(cpu=4, gpu=0.9),
         num_samples=NUM_SAMPLES,
-        local_dir=run_dir,
+        storage_path=run_dir,
         search_alg=BasicVariantGenerator(),
         scheduler=FIFOScheduler(),
         verbose=1,

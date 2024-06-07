@@ -1,9 +1,8 @@
 # Computation-Through-Dynamics Benchmark
 
 ## Overview
-This git repo contains code that will allow users to perform four phases:
-1. Train task-trained models on a range of tasks with different complexities
-2. Simulate synthetic neural spiking from those task-trained networks
+This git repo contains code that will allow users to perform three steps:
+1. Choose a synthetic neural dataset to train on: (3BFF, MultiTask, RandomTarget)
 3. Train data-trained models on the synthetic spiking activity
 4. Compare the dynamics of the task-trained and data-trained networks with a variety of quantifications of dynamical accuracy
 
@@ -29,6 +28,13 @@ lfads-jslds is a JAX model that implements Jacobian-Switching Linear Dynamical S
 We use MotorNet, a musculoskeletal modeling package called MotorNet from Oli Codol.
 For more information on MotorNet, see the documentation:
 MotorNet: https://www.motornet.org/index.html
+
+Once you get the environment set up, you can generate the canonical datasets by running the following script:
+```
+python examples/gen_datasets.py
+
+```
+This function takes the pre-trained weights and datamodule and uses them to generate the synthetic datasets!
 
 ## Usage
 The only folder needed to get a basic idea of how the package works is the scripts folder.
