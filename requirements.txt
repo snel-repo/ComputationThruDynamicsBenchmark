@@ -8,7 +8,7 @@ hydra-core
 gymnasium
 h5py
 scikit-learn
-matplotlib
+matplotlib==3.8.2
 python-dotenv
 imageio[ffmpeg]
 motornet

@@ -27,11 +27,11 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "GRU_ResimRT_Test"
+RUN_DESC = "LDS_Resim3bff_Test"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
-DATA = "RandomTarget"  # "NBFF", "RandomTarget" or "MultiTask
+MODEL = "LDS"  # "ResLFADS" or "LFADS"
+DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":
@@ -51,7 +51,7 @@ SEARCH_SPACE = dict(
         seed=tune.grid_search([0, 1, 2, 3, 4]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([10]),
+        max_epochs=tune.grid_search([1000]),
     ),
 )
 

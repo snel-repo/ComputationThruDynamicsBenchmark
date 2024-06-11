@@ -17,7 +17,7 @@ task_list:
   - MatchCatPro
   - MatchCatAnti
 
-n_timesteps: 640
+n_timesteps: 320
 noise: 0.3
 dynamic_noise: 0.0
 num_targets: 32

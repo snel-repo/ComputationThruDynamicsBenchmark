@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 dotenv.load_dotenv(override=True)
 
 # ---------------Options---------------
-LOCAL_MODE = True  # Set to True to run locally (for debugging)
+LOCAL_MODE = False  # Set to True to run locally (for debugging)
 OVERWRITE = True  # Set to True to overwrite existing run
 WANDB_LOGGING = True  # Set to True to log to WandB (need an account)
 
