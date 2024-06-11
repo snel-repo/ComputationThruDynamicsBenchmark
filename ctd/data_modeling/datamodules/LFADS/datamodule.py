@@ -175,6 +175,19 @@ class BasicDataModule(pl.LightningDataModule):
         self.save_hyperparameters()
 
     def setup(self, stage=None):
+        """
+        Attach data to the datamodule
+
+        TODO: REVISE
+
+        (it doesn't look like stage is ever used)
+
+        Args:
+            stage (TODO: dtype):
+
+        Returns:
+            None
+        """
         hps = self.hparams
 
         # Load data arrays from the file

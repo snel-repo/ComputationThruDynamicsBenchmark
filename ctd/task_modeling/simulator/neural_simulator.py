@@ -92,6 +92,25 @@ class NeuralDataSimulator:
     def simulate_neural_data(
         self, task_trained_model, datamodule, run_tag, subfolder, dataset_path, seed=0
     ):
+        """
+        Simulate neural data from a task-trained model
+
+        TODO: REVISE
+
+        Args:
+            task_trained_model (TODO: dtype):
+            datamodule (Union[BasicDataModule, TaskTrainedRNNDataModule]):
+            run_tag (str):
+            subfolder (str):
+            dataset_path (str): 
+            seed (int): Random seed used in data generation
+        
+        Returns:
+            data (np.ndarray):
+            inputs (np.ndarray):
+            activity (np.ndarray):
+            latents (np.ndarray):
+        """
 
         # Make a filename based on the system being modeled, the number of neurons,
         # the nonlinearity, the observation noise, the epoch number, the model type,
@@ -339,6 +358,25 @@ class NeuralDataSimulatorGeneral:
     def simulate_neural_data(
         self, task_trained_model, datamodule, run_tag, subfolder, dataset_path, seed=0
     ):
+        """
+        Simulate neural data from a task-trained model
+
+        TODO: REVISE
+
+        Args:
+            task_trained_model (TODO: dtype):
+            datamodule (Union[BasicDataModule, TaskTrainedRNNDataModule]):
+            run_tag (str):
+            subfolder (str):
+            dataset_path (str): 
+            seed (int): Random seed used in data generation
+        
+        Returns:
+            data (np.ndarray):
+            inputs (np.ndarray):
+            activity (np.ndarray):
+            latents (np.ndarray):
+        """
 
         # Make a filename based on the system being modeled, the number of neurons,
         # the nonlinearity, the observation noise, the epoch number, the model type,

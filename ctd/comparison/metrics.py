@@ -6,7 +6,18 @@ from sklearn.metrics import explained_variance_score, r2_score
 
 # TODO Make metrics agnostic to the analysis class
 def get_rate_r2(rates_true, rates_pred):
-    # Function to compare the rate-reconstruction of the different models
+    """
+    Function to compare the rate-reconstruction of the different models
+
+    TODO: REVISE
+
+    Args:
+        rates_true (TODO: dtype) :
+        rates_pred (TODO: dtype) : 
+
+    Returns:
+        r2_rates (float) : R^2 value for the rate-reconstruction (higher is better)
+    """
     if len(rates_pred.shape) == 3:
         n_b_pred, n_t_pred, n_d_pred = rates_pred.shape
         rates_pred_flat = (
@@ -30,7 +41,19 @@ def get_rate_r2(rates_true, rates_pred):
 
 
 def get_state_r2(lats_true, lats_pred, num_pcs=3):
-    # Function to compare the latent activity821
+    """
+    Function to compare the latent activity of the different models
+
+    TODO: REVISE
+
+    Args:
+        lats_true (TODO: dtype) :
+        lats_pred (TODO: dtype) :
+        num_pcs (int) : Number of principal components to use for comparison
+
+    Returns:
+        state_r2 (float) : R^2 value for the latent activity (higher is better)
+    """
     n_b_pred, n_t_pred, n_d_pred = lats_pred.shape
     lats_pred_flat = lats_pred.reshape(n_b_pred * n_t_pred, n_d_pred).detach().numpy()
     pca = PCA(n_components=num_pcs)

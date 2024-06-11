@@ -20,6 +20,38 @@ def train(
     run_tag: str = "",
     path_dict: dict = {},
 ):
+    """
+    Completes the following sequence of steps:
+    1. Instantiate environments
+       - task_env is for training
+       - sim_env is for simulating the neural data
+    2. Instantiate model
+       - init_model with the correct input and output sizes
+    3. Instantiate task-wrapper
+       - Set wrapper environment and model
+    4. Instantiate training datamodule
+       - Set datamodule environment
+    5. Instantiate simulator
+    6. Instantiate callbacks
+    7. Instantiate loggers
+    8. Instantiate trainer
+    9. Train model
+    10. Save model + datamodule
+    11. Instantiate sim datamodule
+    12. Simulate neural data
+    13. Save simulator + sim datamodule
+
+    TODO: REVISE (^I grabbed that from a comment below)
+
+    Args: 
+        overrides (dict): 
+        config_dict (dict): 
+        run_tag (str): 
+        path_dict (dict): 
+
+    Returns:
+        None
+    """
     # Print the current working directory
     compose_list = config_dict.keys()
     # Format the overrides so they can be used by hydra

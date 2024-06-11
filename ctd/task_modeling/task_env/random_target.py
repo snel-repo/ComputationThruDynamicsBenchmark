@@ -73,6 +73,18 @@ class RandomTarget(Environment):
         )
 
     def generate_dataset(self, n_samples):
+        """
+        Generate a dataset for the task
+
+        TODO: Revise
+
+        Args:
+            n_samples (int) :
+
+        Returns:
+            dataset_dict (dict) :
+            extra_dict (dict) :
+        """
         # Make target circular, change loss function to be pinned at zero
         initial_state = []
         inputs = np.zeros((n_samples, self.n_timesteps, 3))
@@ -264,12 +276,22 @@ class RandomTarget(Environment):
         options: dict[str, Any] | None = None,
         seed: int | None = None,
     ) -> tuple[Any, dict[str, Any]]:
-
         """
         Uses the :meth:`Environment.reset()` method of the parent class
         :class:`Environment` that can be overwritten to change the returned data.
         Here the goals (`i.e.`, the targets) are drawn from a random uniform
         distribution across the full joint space.
+
+        TODO: REVISE
+
+        Args:
+            batch_size (int) : 
+            options (dict) :
+            seed (int) :
+
+        Returns:
+            obs (TODO: dtype) :
+            info (TODO: dtype) :
         """
         sho_limit = np.deg2rad([0, 135])  # mechanical constraints - used to be -90 180
         elb_limit = np.deg2rad([0, 155])
@@ -383,6 +405,18 @@ class RandomTargetAligned(Environment):
         )
 
     def generate_dataset(self, n_samples):
+        """
+        Generate a dataset for the task
+
+        TODO: Revise
+
+        Args:
+            n_samples (int) :
+
+        Returns:
+            dataset_dict (dict) :
+            extra_dict (dict) :
+        """
         # Make target circular, change loss function to be pinned at zero
         initial_state = []
         inputs = np.zeros((n_samples, self.n_timesteps, 3))
@@ -531,6 +565,17 @@ class RandomTargetAligned(Environment):
         :class:`Environment` that can be overwritten to change the returned data.
         Here the goals (`i.e.`, the targets) are drawn from a random uniform
         distribution across the full joint space.
+
+        TODO: REVISE
+
+        Args:
+            batch_size (int) : 
+            options (dict) :
+            seed (int) :
+
+        Returns:
+            obs (TODO: dtype) :
+            info (TODO: dtype) :
         """
         sho_limit = np.deg2rad([0, 135])  # mechanical constraints - used to be -90 180
         elb_limit = np.deg2rad([0, 155])

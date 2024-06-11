@@ -78,6 +78,18 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
             raise FileNotFoundError(f"Dataset {self.name} not found at {self.fpath}")
 
     def setup(self, stage=None):
+        """
+        Attach data to the datamodule
+
+        TODO: REVISE
+
+        Args:
+            stage (TODO: dtype)
+
+        Returns:
+            None
+        """
+
         # Load data arrays from file
         data_path = os.path.join(
             self.data_dir, self.fpath, self.run_folder, self.name + ".h5"

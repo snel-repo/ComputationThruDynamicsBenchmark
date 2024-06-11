@@ -90,6 +90,17 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.loss_func = NBFFLoss(transition_blind=transition_blind)
 
     def step(self, action):
+        """
+        Generates a state update given an input to the flip-flop
+
+        TODO: Revise
+
+        Args:
+            action (TODO: dtype) : 
+
+        Returns:
+            None
+        """
         # Generates state update given an input to the flip-flop
         for i in range(self.n):
             if action[i] == 1:
@@ -124,10 +135,33 @@ class NBitFlipFlop(DecoupledEnvironment):
         return inputs, outputs, true_inputs
 
     def reset(self):
+        """
+        Resets the state of the flip-flop
+
+        TODO: Revise
+
+        Args:
+            None
+
+        Returns:
+            state (TODO: dtype) :
+        """
         self.state = np.zeros(self.n)
         return self.state
 
     def generate_dataset(self, n_samples):
+        """
+        Generates a dataset for the NBFF task
+
+        TODO: Revise
+
+        Args:
+            n_samples (int) : 
+
+        Returns:
+            dataset_dict (dict) : 
+            extra_dict (dict) :
+        """
         # Generates a dataset for the NBFF task
         n_timesteps = self.n_timesteps
         ics_ds = np.zeros(shape=(n_samples, self.n))

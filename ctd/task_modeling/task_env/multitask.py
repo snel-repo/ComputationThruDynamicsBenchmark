@@ -110,16 +110,33 @@ class MultiTaskWrapper(DecoupledEnvironment):
         self.loss_func = MultiTaskLoss(lat_loss_weight=self.latent_l2_wt)
 
     def step(self, action):
+        """
+        No step is implemented for the MultiTask dataset
+
+        TODO: REVISE
+        """
         pass
 
     def reset(self):
+        """
+        No reset is implemented for the MuliTask dataset
+
+        TODO: REVISE
+        """
         pass
 
     def generate_dataset(self, n_samples):
         """
         Generates a dataset for the MultiTask dataset
+
+        TODO: REVISE
+        
         Args:
-            n_samples: Number of samples to generate (from each task)
+            n_samples (int) : Number of samples to generate (from each task)
+
+        Returns:
+            dataset_dict (dict) : 
+            extra_dict (dict) :
         """
         n_timesteps = self.n_timesteps
         ics_ds = np.zeros(shape=(n_samples * len(self.task_list), 3))
