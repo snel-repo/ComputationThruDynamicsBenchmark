@@ -89,6 +89,9 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.transition_blind = transition_blind
         self.loss_func = NBFFLoss(transition_blind=transition_blind)
 
+    def set_seed(self, seed):
+        np.random.seed(seed)
+
     def step(self, action):
         """
         Generates a state update given an input to the flip-flop
@@ -96,7 +99,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         TODO: Revise
 
         Args:
-            action (TODO: dtype) : 
+            action (TODO: dtype) :
 
         Returns:
             None
@@ -156,10 +159,10 @@ class NBitFlipFlop(DecoupledEnvironment):
         TODO: Revise
 
         Args:
-            n_samples (int) : 
+            n_samples (int) :
 
         Returns:
-            dataset_dict (dict) : 
+            dataset_dict (dict) :
             extra_dict (dict) :
         """
         # Generates a dataset for the NBFF task

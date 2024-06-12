@@ -72,6 +72,10 @@ class RandomTarget(Environment):
             position_loss=nn.MSELoss(), pos_weight=pos_weight, act_weight=act_weight
         )
 
+    def set_seed(self, seed):
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
     def generate_dataset(self, n_samples):
         """
         Generate a dataset for the task
@@ -285,7 +289,7 @@ class RandomTarget(Environment):
         TODO: REVISE
 
         Args:
-            batch_size (int) : 
+            batch_size (int) :
             options (dict) :
             seed (int) :
 
@@ -569,7 +573,7 @@ class RandomTargetAligned(Environment):
         TODO: REVISE
 
         Args:
-            batch_size (int) : 
+            batch_size (int) :
             options (dict) :
             seed (int) :
 

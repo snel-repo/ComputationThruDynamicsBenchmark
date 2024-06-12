@@ -62,6 +62,10 @@ class TaskDataModule(pl.LightningDataModule):
         """
         super().__init__()
         self.save_hyperparameters()
+        # Set the random seed
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
         # Generate the dataset tag
         self.data_env = data_env
         self.name = None
@@ -139,7 +143,9 @@ class TaskDataModule(pl.LightningDataModule):
             logger.info(f"Loading dataset {self.name}")
             return
         logger.info(f"Generating dataset {self.name}")
-
+        np.random.seed(self.hparams.seed)
+        torch.manual_seed(self.hparams.seed)
+        self.data_env.set_seed(self.hparams.seed)
         # Simulate the task
         dataset_dict, extra_dict = self.data_env.generate_dataset(
             self.hparams.n_samples
