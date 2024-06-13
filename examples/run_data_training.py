@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True
 
-RUN_DESC = "LDS_Resim3bff_Test"
+RUN_DESC = "Fig1_GRU_Replication"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "LDS"  # "ResLFADS" or "LFADS"
+MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
