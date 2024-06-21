@@ -27,11 +27,11 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "NODE_ResimMultiTask_Test"  # Description of the run
-NUM_SAMPLES = 1  # Number of samples to run (if using ray.tune random sweeps)
+RUN_DESC = "Fig1_GRU_Replication"
+NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "NODE"  # "ResLFADS" or "LFADS"
-DATA = "MultiTask"  # "NBFF", "RandomTarget" or "MultiTask
+MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
+DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":

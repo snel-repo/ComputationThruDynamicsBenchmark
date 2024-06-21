@@ -15,6 +15,7 @@ motornet
 ipykernel
 ipywidgets
 opencv-python
+jax[cpu]
 #torchvision==0.14
 #torchdata==0.5.1
 #torchaudio==0.13.1
