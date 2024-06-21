@@ -66,17 +66,17 @@ tt_3bff.simulate_neural_data(
     dataset_path=dataset_path,
 )
 
+mt_subfolder = "max_epochs=500 seed=0"
+tt_MultiTask.simulate_neural_data(
+    subfolder=mt_subfolder,
+    dataset_path=dataset_path,
+)
+
 rt_subfolder = (
     "max_epochs=2000 latent_size=128 l2_wt=5e-05 "
     + "proprioception_delay=0.02 vision_delay=0.05 "
     + "n_samples=1100 n_samples=1100 seed=0 learning_rate=0.005"
 )
-tt_MultiTask.simulate_neural_data(
-    subfolder="",
-    dataset_path=dataset_path,
-)
-
-
 tt_RandomTarget.simulate_neural_data(
     subfolder=rt_subfolder,
     dataset_path=dataset_path,

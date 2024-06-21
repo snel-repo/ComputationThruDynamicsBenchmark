@@ -25,13 +25,13 @@ log = logging.getLogger(__name__)
 # ---------------Options---------------
 LOCAL_MODE = False
 OVERWRITE = True
-WANDB_LOGGING = True
+WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "LDS_Resim3bff_Test"
-NUM_SAMPLES = 1
+RUN_DESC = "NODE_ResimMultiTask_Test"  # Description of the run
+NUM_SAMPLES = 1  # Number of samples to run (if using ray.tune random sweeps)
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "LDS"  # "ResLFADS" or "LFADS"
-DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
+MODEL = "NODE"  # "ResLFADS" or "LFADS"
+DATA = "MultiTask"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":
@@ -48,7 +48,7 @@ SEARCH_SPACE = dict(
         prefix=tune.grid_search([prefix]),
     ),
     params=dict(
-        seed=tune.grid_search([0, 1, 2, 3, 4]),
+        seed=tune.grid_search([0]),
     ),
     trainer=dict(
         max_epochs=tune.grid_search([1000]),

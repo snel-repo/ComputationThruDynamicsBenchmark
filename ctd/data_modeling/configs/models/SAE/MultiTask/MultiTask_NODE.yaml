@@ -1,5 +1,5 @@
 _target_: ctd.data_modeling.models.SAE.dyn_models.NODELatentSAE
-dataset: NBFF
+dataset: MultiTask
 
 encoder_size: 100
 encoder_window: -1
@@ -28,7 +28,7 @@ decay_encoder: 1e-7
 decay_decoder: 1e-7
 
 readout_type: Linear
-increment_trial: False
+increment_trial: True
 points_per_group: 20
 epochs_per_group: 10
 

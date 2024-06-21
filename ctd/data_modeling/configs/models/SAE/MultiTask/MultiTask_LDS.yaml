@@ -1,4 +1,4 @@
-_target_: ctd.data_modeling.models.SAE.dyn_models_GRU.GRULatentSAE
+_target_: ctd.data_modeling.models.SAE.LDS.LDSSAE
 dataset: MultiTask
 
 encoder_size: 100
@@ -10,9 +10,8 @@ latent_size: 128
 input_size: 20
 
 weight_decay: 0
-lr: 5e-3
+lr: 1e-4
 
 dropout: 0.05
-
 loss_func:
   _target_: ctd.data_modeling.models.SAE.loss_func.MultiTaskPoissonLossFunc
