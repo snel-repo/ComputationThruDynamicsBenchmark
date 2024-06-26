@@ -6,9 +6,9 @@ effector:
 max_ep_duration: 3.0
 action_noise: 0.005
 proprioception_noise: 0.005
-proprioception_delay: 0
+proprioception_delay: 0.02
 vision_noise: 0.005
-vision_delay: 0
+vision_delay: 0.05
 
 act_weight: 1.0
 pos_weight: 1.0

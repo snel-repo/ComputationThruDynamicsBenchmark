@@ -4,8 +4,8 @@ _target_: ctd.data_modeling.models.LFADS.lfads.LFADS
 gen_type: RNN
 inv_encoder: False
 encod_data_dim: 50
-encod_seq_len: 640
-recon_seq_len: 640
+encod_seq_len: 320
+recon_seq_len: 320
 ext_input_dim: 20 # Ext. Inputs
 ic_enc_seq_len: 0
 ic_enc_dim: 128 # Encoder for latent ICs hidden units
