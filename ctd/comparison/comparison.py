@@ -872,7 +872,7 @@ class Comparison:
         rate_state_inp_mat[ref_ind, :] = np.nan
         true_lats = reference_analysis.get_latents(phase=phase)
         true_inputs = reference_analysis.get_inputs(phase=phase)
-        is_multitask = reference_analysis.env == "MultiTask"
+        is_multitask = reference_analysis.env.dataset_name == "MultiTask"
         if is_multitask:
             trial_lens = self.analyses[1].get_trial_lens(phase=phase)
             # Stack the latents to the different trial lengths
