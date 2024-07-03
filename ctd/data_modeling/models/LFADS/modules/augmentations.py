@@ -167,8 +167,8 @@ class MultiTaskTrialLengthMasking:
 
     def process_losses(self, recon_loss, batch, log_fn, data_split):
         # Mask the recon loss to the length of the trial
-        _, _, _, extra, *_ = batch
-        trial_lens = extra[:, 1]
+        extra = batch[1][3]
+        trial_lens = extra[:, 1].int()
         trial_mask = torch.ones_like(recon_loss)
         for i, trial_len in enumerate(trial_lens):
             trial_mask[i, trial_len:] = 0

@@ -197,16 +197,16 @@ class LFADS(pl.LightningModule):
         # Check that the split argument is valid
         assert split in ["train", "valid"]
         # Discard the extra data - only the SessionBatches are relevant here
-        batch = batch[0]
+
         # Process the batch for each session (in order so aug stack can keep track)
         aug_stack = self.train_aug_stack if split == "train" else self.infer_aug_stack
-        batch = aug_stack.process_batch(batch)
+        batch[0] = aug_stack.process_batch(batch[0])
         # Perform the forward pass
         output = self.forward(
-            batch, sample_posteriors=hps.variational, output_means=False
+            batch[0], sample_posteriors=hps.variational, output_means=False
         )
         # Compute the reconstruction loss
-        recon_all = self.recon.compute_loss(batch.recon_data, output.output_params)
+        recon_all = self.recon.compute_loss(batch[0].recon_data, output.output_params)
 
         # Apply losses processing
         recon_all = aug_stack.process_losses(recon_all, batch, self.log, split)
@@ -231,13 +231,13 @@ class LFADS(pl.LightningModule):
         # Compute the final loss
         loss = hps.loss_scale * (recon + l2_ramp * l2 + kl_ramp * (ic_kl + co_kl))
         # Compute the reconstruction accuracy, if applicable
-        if batch.truth.numel() > 0:
+        if batch[0].truth.numel() > 0:
             output_means = self.recon.compute_means(output.output_params)
             r2 = torch.mean(r2_score(output_means, batch.truth))
         else:
             r2 = float("nan")
         # Compute batch sizes for logging
-        batch_size = len(batch.encod_data)
+        batch_size = len(batch[0].encod_data)
         # Log per-session metrics
         self.log(
             name=f"{split}/recon/",

@@ -40,8 +40,8 @@ train_aug_stack:
       cd_pass_rate: 0.0
       ic_enc_seq_len: ${ic_enc_seq_len}
     - _target_: ctd.data_modeling.models.LFADS.modules.augmentations.MultiTaskTrialLengthMasking
-  batch_order: [0]
-  loss_order: [0]
+  batch_order: [0, 1]
+  loss_order: [0, 1]
 infer_aug_stack:
   _target_: ctd.data_modeling.models.LFADS.modules.augmentations.AugmentationStack
   transforms:
@@ -51,7 +51,7 @@ infer_aug_stack:
       encod_seq_len: ${encod_seq_len}
       scale_by_quadrant: False
     - _target_: ctd.data_modeling.models.LFADS.modules.augmentations.MultiTaskTrialLengthMasking
-  loss_order: [0]
+  loss_order: [0, 1]
 
 # --------- priors / posteriors --------- #
 reconstruction:
