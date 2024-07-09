@@ -26,7 +26,7 @@ dotenv.load_dotenv(override=True)
 HOME_DIR = os.environ.get("HOME_DIR")
 
 tt_3bff_path = HOME_DIR + "pretrained/20240503_Fig1_NBFF_NoisyGRU/"
-tt_MultiTask_path = HOME_DIR + "pretrained/20240607_MultiTask_NoisyGRUL2/"
+tt_MultiTask_path = HOME_DIR + "pretrained/20240703_MultiTask_TrialLenFix/"
 tt_RandomTarget_path = (
     HOME_DIR + "pretrained/20240605_RandomTarget_NoisyGRU_GoStep_ModL2_Delay/"
 )

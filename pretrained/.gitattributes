@@ -1,0 +1,4 @@
+20240703_MultiTask_TrialLenFix/datamodule_sim.pkl filter=lfs diff=lfs merge=lfs -text
+20240703_MultiTask_TrialLenFix/datamodule_train.pkl filter=lfs diff=lfs merge=lfs -text
+20240703_MultiTask_TrialLenFix/model.pkl filter=lfs diff=lfs merge=lfs -text
+20240703_MultiTask_TrialLenFix/simulator.pkl filter=lfs diff=lfs merge=lfs -text
