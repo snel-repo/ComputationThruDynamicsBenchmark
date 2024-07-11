@@ -407,7 +407,9 @@ class RandomTargetAligned(Environment):
         self.loss_func = RandomTargetLoss(
             position_loss=nn.MSELoss(), pos_weight=pos_weight, act_weight=act_weight
         )
-
+    def set_seed(self, seed):
+        np.random.seed(seed)
+        torch.manual_seed(seed)
     def generate_dataset(self, n_samples):
         """
         Generate a dataset for the task
