@@ -8,6 +8,7 @@ This git repo contains code that will allow users to perform three steps:
 
 ## Installation
 We recommend using Conda to run this code. Unfortunately, Ray support for Windows is spotty, so I recommend Linux (or Windows Subsystem for Linux).
+
 To create an environment and install the dependencies of the project, run the following commands:
 
 ```
@@ -16,9 +17,10 @@ conda create --name CtDEnv python=3.10
 conda activate CtDEnv
 cd ComputationThruDynamicsBenchmark
 pip install -e .
-pip install -U jax[cpu]
 
 ```
+Second, navigate to the .env file and modify HOME_DIR to the path where you cloned the environment.
+
 You also need to install Dynamical Similarity Analysis (DSA).
 Follow the instructions on this git repo:
 https://github.com/mitchellostrow/DSA

@@ -1,6 +1,6 @@
-torch==1.13.1
-torchmetrics==1.3.0.post0
-pytorch-lightning==2.1.3
+torch
+torchmetrics
+pytorch-lightning
 ray[tune]
 omegaconf
 wandb
@@ -8,7 +8,7 @@ hydra-core
 gymnasium
 h5py
 scikit-learn
-matplotlib==3.8.2
+matplotlib
 python-dotenv
 imageio[ffmpeg]
 motornet
