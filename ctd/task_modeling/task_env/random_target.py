@@ -497,6 +497,10 @@ class RandomTargetAligned(Environment):
         extra_dict = {}
         return dataset_dict, extra_dict
 
+    def set_seed(self, seed):
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
     def generate_trial_info(self):
         """
         Generate a trial for the task.
