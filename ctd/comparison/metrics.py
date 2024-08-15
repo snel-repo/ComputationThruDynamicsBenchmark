@@ -13,7 +13,7 @@ def get_rate_r2(rates_true, rates_pred):
 
     Args:
         rates_true (TODO: dtype) :
-        rates_pred (TODO: dtype) : 
+        rates_pred (TODO: dtype) :
 
     Returns:
         r2_rates (float) : R^2 value for the rate-reconstruction (higher is better)
@@ -36,7 +36,9 @@ def get_rate_r2(rates_true, rates_pred):
     # lr = LinearRegression().fit(rates_pred_flat, rates_true_flat)
     # preds = lr.predict(rates_pred_flat)
     # r2_rates = r2_score(rates_true_flat, preds, multioutput="variance_weighted")
-    r2_rates = r2_score(rates_true_flat, rates_pred_flat)
+    r2_rates = r2_score(
+        rates_true_flat, rates_pred_flat, multioutput="variance_weighted"
+    )
     return r2_rates
 
 

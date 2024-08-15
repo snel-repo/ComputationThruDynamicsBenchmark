@@ -7,7 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 
 from ctd.comparison.analysis.tt.tt import Analysis_TT
-from ctd.comparison.fixedpoints import find_fixed_points_coupled
+from ctd.comparison.fixedpoints import find_fixed_points, find_fixed_points_coupled
 
 
 class TT_RandomTarget(Analysis_TT):
@@ -477,7 +477,7 @@ class TT_RandomTarget(Analysis_TT):
         env_states = env_states[go_trials, :, :]
         joint_states = joint_states[go_trials, :, :]
 
-        inputs[:, :, 2] = 1.0
+        # inputs[:, :, 2] = 0.0
 
         inputs_stack = []
         latents_stack = []
@@ -502,6 +502,80 @@ class TT_RandomTarget(Analysis_TT):
             model_states=latents,
             env_states=env_states,
             joint_states=joint_states,
+            n_inits=n_inits,
+            noise_scale=noise_scale,
+            learning_rate=learning_rate,
+            max_iters=max_iters,
+            device=device,
+            seed=seed,
+            compute_jacobians=compute_jacobians,
+        )
+        fig = plt.figure(figsize=(5, 5))
+        ax = fig.add_subplot(111, projection="3d")
+        pca = PCA(n_components=3)
+        latents_pca = pca.fit_transform(fps.xstar)
+        ax.scatter(latents_pca[:, 0], latents_pca[:, 1], latents_pca[:, 2])
+        ax.set_title("Fixed points in PC")
+
+        return fps
+
+    def compute_FPs(
+        self,
+        noiseless=True,
+        inputs=None,
+        n_inits=1024,
+        noise_scale=0.0,
+        learning_rate=1e-3,
+        max_iters=10000,
+        device="cpu",
+        seed=0,
+        compute_jacobians=False,
+    ):
+        # Compute latent activity from task trained model
+        inputs = self.get_model_inputs()[1]
+        extra = self.get_extra_inputs()
+        outputs = self.get_model_outputs()
+        latents = outputs["latents"]
+        env_states = outputs["states"]
+        joint_states = outputs["joints"]
+
+        go_cue = extra[:, 1]
+
+        go_trials = go_cue.detach().numpy() > 0
+
+        go_cues_on = go_cue[go_trials]
+
+        inputs = inputs[go_trials, :, :]
+        latents = latents[go_trials, :, :]
+        env_states = env_states[go_trials, :, :]
+        joint_states = joint_states[go_trials, :, :]
+
+        # inputs[:, :, 2] = 0.0
+
+        inputs_stack = []
+        latents_stack = []
+        env_states_stack = []
+        joint_states_stack = []
+        for i, go_cue_ind in enumerate(go_cues_on):
+            go_cue_ind = int(go_cue_ind)
+            end_ind = np.min([go_cue_ind + 50, inputs.shape[1]])
+            inputs_stack.append(inputs[i, go_cue_ind:end_ind, :])
+            latents_stack.append(latents[i, go_cue_ind:end_ind, :])
+            env_states_stack.append(env_states[i, go_cue_ind:end_ind, :])
+            joint_states_stack.append(joint_states[i, go_cue_ind:end_ind, :])
+
+        inputs = torch.concatenate(inputs_stack)
+        latents = torch.concatenate(latents_stack)
+        env_states = torch.concatenate(env_states_stack)
+        joint_states = torch.concatenate(joint_states_stack)
+
+        inputs_env = torch.concatenate([inputs, env_states], dim=1)
+        print(inputs_env.shape)
+
+        fps = find_fixed_points(
+            model=self.wrapper.model,
+            inputs=inputs_env,
+            state_trajs=latents,
             n_inits=n_inits,
             noise_scale=noise_scale,
             learning_rate=learning_rate,

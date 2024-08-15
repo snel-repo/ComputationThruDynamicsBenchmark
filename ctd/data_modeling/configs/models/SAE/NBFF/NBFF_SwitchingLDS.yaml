@@ -1,0 +1,17 @@
+_target_: ctd.data_modeling.models.SAE.SwitchingLDS.SwitchingLDS
+dataset: NBFF
+
+encoder_size: 100
+encoder_window: -1
+
+heldin_size: 50
+heldout_size: 50
+latent_size: 128
+input_size: 3
+
+weight_decay: 0
+lr: 1e-4
+
+num_LDS: 4
+
+dropout: 0.05

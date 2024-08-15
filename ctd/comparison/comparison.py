@@ -16,6 +16,32 @@ from ctd.comparison.metrics import (
 )
 
 
+def pca_with_nan_handling(A, pca_components):
+    B, T, N = A.shape
+
+    # Flatten the 3D matrix into a 2D matrix
+    A_flattened = A.reshape(B * T, N)
+
+    # Identify rows with NaNs
+    nan_rows = np.isnan(A_flattened).any(axis=1)
+
+    # Separate the data into rows with and without NaNs
+    data_no_nan = A_flattened[~nan_rows]
+
+    # Perform PCA on the data without NaNs
+    pca = PCA(n_components=pca_components)
+    pca_transformed = pca.fit_transform(data_no_nan)
+
+    # Create the output array with NaNs in the appropriate places
+    A_pca = np.full((B * T, pca_components), np.nan)
+    A_pca[~nan_rows] = pca_transformed
+
+    # Reshape the output array back to 3D
+    A_pca_reshaped = A_pca.reshape(B, T, pca_components)
+
+    return A_pca_reshaped, pca
+
+
 class Comparison:
     def __init__(self, comparison_tag=None):
         self.comparison_tag = comparison_tag
@@ -257,12 +283,12 @@ class Comparison:
         for i in range(self.num_analyses):
             if i == ref_ind:
                 continue
-            rate_state_mat[i, 0] = get_state_r2(
+            rate_state_mat[i, 0] = get_state_r2_vaf(
                 reference_analysis.get_latents(phase="val"),
                 self.analyses[i].get_latents(phase="val"),
                 num_pcs=num_pcs,
             )
-            rate_state_mat[i, 1] = get_state_r2(
+            rate_state_mat[i, 1] = get_state_r2_vaf(
                 reference_analysis.get_latents(),
                 self.analyses[i].get_latents(),
                 num_pcs=num_pcs,
@@ -567,7 +593,9 @@ class Comparison:
             axes[i].set_yticks([])
             axes[i].set_zticks([])
 
-    def plot_trials_3d_reference(self, num_trials, ref_ind=None):
+    def plot_trials_3d_reference(
+        self, num_trials, ref_ind=None, savePDF=False, angle=None
+    ):
         if ref_ind is None:
             ref_ind = self.ref_ind
         if ref_ind is None and self.ref_ind is None:
@@ -581,8 +609,13 @@ class Comparison:
         ref_lats_pca_flat = pca.fit_transform(ref_lats_flat)
         ref_lats_pca = ref_lats_pca_flat.reshape(ref_lats.shape)
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(15, 5))
         axes = fig.subplots(1, self.num_analyses, subplot_kw={"projection": "3d"})
+        # Make an array of axis ranges. Should be [-inf, inf] for three rows
+        axis_ranges = np.zeros((3, 2))
+        axis_ranges[:, 0] = np.inf
+        axis_ranges[:, 1] = -1 * np.inf
+
         for i in range(self.num_analyses):
             latents = self.analyses[i].get_latents().detach().numpy()
             lats_flat = latents.reshape(
@@ -597,6 +630,14 @@ class Comparison:
                     latents_pca[j, :, 1],
                     latents_pca[j, :, 2],
                 )
+                # Update the axis ranges
+            for k in range(3):
+                axis_ranges[k, 0] = np.min(
+                    [axis_ranges[k, 0], np.min(latents_pca[:, :, k])]
+                )
+                axis_ranges[k, 1] = np.max(
+                    [axis_ranges[k, 1], np.max(latents_pca[:, :, k])]
+                )
 
             axes[i].set_title(f"{self.analyses[i].run_name}")
             axes[i].set_xlabel("PC1")
@@ -605,6 +646,17 @@ class Comparison:
             axes[i].set_xticks([])
             axes[i].set_yticks([])
             axes[i].set_zticks([])
+        # Set the axis limits
+        for i in range(self.num_analyses):
+            axes[i].set_xlim(axis_ranges[0, :])
+            axes[i].set_ylim(axis_ranges[1, :])
+            axes[i].set_zlim(axis_ranges[2, :])
+            if angle is not None:
+                axes[i].view_init(angle[0], angle[1])
+
+        if savePDF:
+            plt.savefig(f"{self.comparison_tag}_3dLats.pdf")
+        return fig
 
     def compare_procrustes(self, ref_ind=None):
         # Function to compare the latent activity
@@ -992,3 +1044,71 @@ class Comparison:
         if save_pdf:
             plt.savefig(f"{self.comparison_tag}_rate_state_inp_r2.pdf")
         return rate_state_inp_mat
+
+    def plot_trials_3d_reference_trialLens(
+        self, num_trials, ref_ind=None, savePDF=False, angle=None
+    ):
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        ref_lats = self.analyses[ref_ind].get_latents().detach().numpy()
+        trial_lens = self.analyses[ref_ind].get_trial_lens().detach().numpy()
+        for i in range(len(trial_lens)):
+            ref_lats[i, int(trial_lens[i]) :, :] = np.nan
+        pca = PCA()
+        ref_lats_flat = ref_lats.reshape(
+            ref_lats.shape[0] * ref_lats.shape[1], ref_lats.shape[2]
+        )
+        ref_lats_pca_flat = pca.fit_transform(ref_lats_flat)
+        ref_lats_pca = ref_lats_pca_flat.reshape(ref_lats.shape)
+
+        fig = plt.figure(figsize=(15, 5))
+        axes = fig.subplots(1, self.num_analyses, subplot_kw={"projection": "3d"})
+        # Make an array of axis ranges. Should be [-inf, inf] for three rows
+        axis_ranges = np.zeros((3, 2))
+        axis_ranges[:, 0] = np.inf
+        axis_ranges[:, 1] = -1 * np.inf
+
+        for i in range(self.num_analyses):
+            latents = self.analyses[i].get_latents().detach().numpy()
+            lats_flat = latents.reshape(
+                latents.shape[0] * latents.shape[1], latents.shape[2]
+            )
+            reg = LinearRegression().fit(lats_flat, ref_lats_pca_flat)
+            latents_pca_flat = reg.predict(lats_flat)
+            latents_pca = latents_pca_flat.reshape(ref_lats_pca.shape)
+            for j in range(num_trials):
+                axes[i].plot(
+                    latents_pca[j, :, 0],
+                    latents_pca[j, :, 1],
+                    latents_pca[j, :, 2],
+                )
+                # Update the axis ranges
+            for k in range(3):
+                axis_ranges[k, 0] = np.min(
+                    [axis_ranges[k, 0], np.min(latents_pca[:, :, k])]
+                )
+                axis_ranges[k, 1] = np.max(
+                    [axis_ranges[k, 1], np.max(latents_pca[:, :, k])]
+                )
+
+            axes[i].set_title(f"{self.analyses[i].run_name}")
+            axes[i].set_xlabel("PC1")
+            axes[i].set_ylabel("PC2")
+            axes[i].set_zlabel("PC3")
+            axes[i].set_xticks([])
+            axes[i].set_yticks([])
+            axes[i].set_zticks([])
+        # Set the axis limits
+        for i in range(self.num_analyses):
+            axes[i].set_xlim(axis_ranges[0, :])
+            axes[i].set_ylim(axis_ranges[1, :])
+            axes[i].set_zlim(axis_ranges[2, :])
+            if angle is not None:
+                axes[i].view_init(angle[0], angle[1])
+
+        if savePDF:
+            plt.savefig(f"{self.comparison_tag}_3dLats.pdf")
+        return fig

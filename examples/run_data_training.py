@@ -27,10 +27,10 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "Fig1_GRU_Replication"
+RUN_DESC = "NBFF_SLDS2_Sweep_LR_4"
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
+MODEL = "SwitchingLDS2"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
@@ -47,11 +47,15 @@ SEARCH_SPACE = dict(
         # Change the prefix to the correct path for your task-trained network
         prefix=tune.grid_search([prefix]),
     ),
+    model=dict(
+        num_LDS=tune.grid_search([1, 3, 5, 8, 10, 15, 20]),
+        lr=tune.grid_search([5e-3]),
+    ),
     params=dict(
         seed=tune.grid_search([0]),
     ),
     trainer=dict(
-        max_epochs=tune.grid_search([1000]),
+        max_epochs=tune.grid_search([1500]),
     ),
 )
 
@@ -131,7 +135,7 @@ def main(
             train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=4, gpu=0.9),
+        resources_per_trial=dict(cpu=4, gpu=0.45),
         num_samples=NUM_SAMPLES,
         storage_path=run_dir,
         search_alg=BasicVariantGenerator(),
