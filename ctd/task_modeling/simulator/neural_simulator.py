@@ -266,6 +266,10 @@ class NeuralDataSimulatorGeneral:
 
     def generate_simulated_data(self, task_trained_model, datamodule, seed):
         coupled = task_trained_model.task_env.coupled_env
+        # Get task type
+        task = type(task_trained_model.task_env).__name__
+        # Set rtt flag if task is RandomTargetAligned
+        rtt = True if task == "RandomTargetAligned" else False
 
         # Step 1: Get trajectories and model predictions
         train_ds = datamodule.train_ds
@@ -285,6 +289,10 @@ class NeuralDataSimulatorGeneral:
 
         output_dict = task_trained_model(ics, inputs)
         latents = output_dict["latents"]
+        # Store true behavior if task is RTT
+        if rtt:
+            controlled = output_dict["controlled"].detach().numpy() #cursor pos
+            joints = output_dict["joints"].detach().numpy() #joint angles of arm model
 
         if coupled:
             states = output_dict["states"]
@@ -352,6 +360,8 @@ class NeuralDataSimulatorGeneral:
             "extra": extra,
             "perm_neurons": perm_neurons,
             "readout": readout,
+            "controlled": controlled if rtt else None,
+            "joints": joints if rtt else None,
         }
         return sim_dict
 
@@ -390,6 +400,8 @@ class NeuralDataSimulatorGeneral:
         extra = sim_dict["extra"]
         perm_neurons = sim_dict["perm_neurons"]
         readout = sim_dict["readout"]
+        controlled = sim_dict["controlled"]
+        joints = sim_dict["joints"]
 
         n_trials, n_times, n_lat_dim = latents.shape
 
@@ -434,6 +446,14 @@ class NeuralDataSimulatorGeneral:
 
             h5file.create_dataset("train_latents", data=latents[train_inds])
             h5file.create_dataset("valid_latents", data=latents[valid_inds])
+
+            if controlled is not None:
+                h5file.create_dataset("train_controlled", data=controlled[train_inds])
+                h5file.create_dataset("valid_controlled", data=controlled[valid_inds])
+
+            if joints is not None:
+                h5file.create_dataset("train_joints", data=joints[train_inds])
+                h5file.create_dataset("valid_joints", data=joints[valid_inds])
 
             h5file.create_dataset("train_extra", data=extra[train_inds])
             h5file.create_dataset("valid_extra", data=extra[valid_inds])
