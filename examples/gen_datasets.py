@@ -1,7 +1,7 @@
 import os
 import shutil
-
 import dotenv
+from argparse import ArgumentParser
 
 from ctd.comparison.analysis.tt.tt import Analysis_TT
 
@@ -21,19 +21,38 @@ def copy_folder_contents(src_folder, dest_folder):
         else:
             shutil.copy2(src_item, dest_item)
 
+# Find datasets to generate
+parser = ArgumentParser()
+parser.add_argument("-t", "--three_bit", action='store_true')
+parser.add_argument("-m", "--multitask", action='store_true')
+parser.add_argument("-r", "--rtt", action='store_true')
+# Parse the arguments
+args = parser.parse_args()
+
+# If all arguments are default of False, set all to True
+if not args.three_bit and not args.multitask and not args.rtt:
+    args.three_bit = True
+    args.multitask = True
+    args.rtt = True
 
 dotenv.load_dotenv(override=True)
 HOME_DIR = os.environ.get("HOME_DIR")
 
-tt_3bff_path = HOME_DIR + "pretrained/20240503_Fig1_NBFF_NoisyGRU/"
-tt_MultiTask_path = HOME_DIR + "pretrained/20240703_MultiTask_TrialLenFix/"
-tt_RandomTarget_path = (
-    HOME_DIR + "pretrained/20240605_RandomTarget_NoisyGRU_GoStep_ModL2_Delay/"
-)
+if args.three_bit:
+    tt_3bff_path = HOME_DIR + "pretrained/20240503_Fig1_NBFF_NoisyGRU/"
+if args.multitask:
+    tt_MultiTask_path = HOME_DIR + "pretrained/20240703_MultiTask_TrialLenFix/"
+if args.rtt:
+    tt_RandomTarget_path = (
+        HOME_DIR + "pretrained/20240605_RandomTarget_NoisyGRU_GoStep_ModL2_Delay/"
+    )
 
-tt_3bff = Analysis_TT(run_name="tt_3bff", filepath=tt_3bff_path)
-tt_MultiTask = Analysis_TT(run_name="tt_MultiTask", filepath=tt_MultiTask_path)
-tt_RandomTarget = Analysis_TT(run_name="tt_RandomTarget", filepath=tt_RandomTarget_path)
+if args.three_bit:
+    tt_3bff = Analysis_TT(run_name="tt_3bff", filepath=tt_3bff_path)
+if args.multitask:
+    tt_MultiTask = Analysis_TT(run_name="tt_MultiTask", filepath=tt_MultiTask_path)
+if args.rtt:
+    tt_RandomTarget = Analysis_TT(run_name="tt_RandomTarget", filepath=tt_RandomTarget_path)
 
 # Make copies of the pretrained models to the trained_models folder
 # if the folders don't already exist
@@ -41,43 +60,49 @@ path_3bff = HOME_DIR + "content/trained_models/task-trained/tt_3bff/"
 path_MultiTask = HOME_DIR + "content/trained_models/task-trained/tt_MultiTask/"
 path_RandomTarget = HOME_DIR + "content/trained_models/task-trained/tt_RandomTarget/"
 
-if not os.path.exists(path_3bff):
-    copy_folder_contents(
-        tt_3bff_path, HOME_DIR + "content/trained_models/task-trained/tt_3bff/"
-    )
+if args.three_bit:
+    if not os.path.exists(path_3bff):
+        copy_folder_contents(
+            tt_3bff_path, HOME_DIR + "content/trained_models/task-trained/tt_3bff/"
+        )
 
-if not os.path.exists(path_MultiTask):
-    copy_folder_contents(
-        tt_MultiTask_path,
-        HOME_DIR + "content/trained_models/task-trained/tt_MultiTask/",
-    )
+if args.multitask:
+    if not os.path.exists(path_MultiTask):
+        copy_folder_contents(
+            tt_MultiTask_path,
+            HOME_DIR + "content/trained_models/task-trained/tt_MultiTask/",
+        )
 
-if not os.path.exists(path_RandomTarget):
-    copy_folder_contents(
-        tt_RandomTarget_path,
-        HOME_DIR + "content/trained_models/task-trained/tt_RandomTarget/",
-    )
+if args.rtt:
+    if not os.path.exists(path_RandomTarget):
+        copy_folder_contents(
+            tt_RandomTarget_path,
+            HOME_DIR + "content/trained_models/task-trained/tt_RandomTarget/",
+        )
 
 # Generate simulated datasets
 dataset_path = HOME_DIR + "content/datasets/dt/"
 
-tt_3bff.simulate_neural_data(
-    subfolder="max_epochs=500 n_samples=1000 latent_size=64 seed=0 learning_rate=0.001",
-    dataset_path=dataset_path,
-)
+if args.three_bit:
+    tt_3bff.simulate_neural_data(
+        subfolder="max_epochs=500 n_samples=1000 latent_size=64 seed=0 learning_rate=0.001",
+        dataset_path=dataset_path,
+    )
 
-mt_subfolder = "max_epochs=500 seed=0"
-tt_MultiTask.simulate_neural_data(
-    subfolder=mt_subfolder,
-    dataset_path=dataset_path,
-)
+if args.multitask:
+    mt_subfolder = "max_epochs=500 seed=0"
+    tt_MultiTask.simulate_neural_data(
+        subfolder=mt_subfolder,
+        dataset_path=dataset_path,
+    )
 
-rt_subfolder = (
-    "max_epochs=2000 latent_size=128 l2_wt=5e-05 "
-    + "proprioception_delay=0.02 vision_delay=0.05 "
-    + "n_samples=1100 n_samples=1100 seed=0 learning_rate=0.005"
-)
-tt_RandomTarget.simulate_neural_data(
-    subfolder=rt_subfolder,
-    dataset_path=dataset_path,
-)
+if args.rtt:
+    rt_subfolder = (
+        "max_epochs=2000 latent_size=128 l2_wt=5e-05 "
+        + "proprioception_delay=0.02 vision_delay=0.05 "
+        + "n_samples=1100 n_samples=1100 seed=0 learning_rate=0.005"
+    )
+    tt_RandomTarget.simulate_neural_data(
+        subfolder=rt_subfolder,
+        dataset_path=dataset_path,
+    )
