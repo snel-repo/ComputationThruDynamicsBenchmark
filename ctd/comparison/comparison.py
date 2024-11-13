@@ -2,44 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from DSA import DSA
-from scipy.spatial import procrustes
-from sklearn.cross_decomposition import CCA
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
 from ctd.comparison.metrics import (
-    get_latents_vaf,
-    get_rate_r2,
-    get_state_r2,
-    get_state_r2_vaf,
+    get_bps,
+    get_cycle_consistency,
+    get_linear_cycle_consistency_v2,
+    get_signal_r2,
+    get_signal_r2_linear,
 )
-
-
-def pca_with_nan_handling(A, pca_components):
-    B, T, N = A.shape
-
-    # Flatten the 3D matrix into a 2D matrix
-    A_flattened = A.reshape(B * T, N)
-
-    # Identify rows with NaNs
-    nan_rows = np.isnan(A_flattened).any(axis=1)
-
-    # Separate the data into rows with and without NaNs
-    data_no_nan = A_flattened[~nan_rows]
-
-    # Perform PCA on the data without NaNs
-    pca = PCA(n_components=pca_components)
-    pca_transformed = pca.fit_transform(data_no_nan)
-
-    # Create the output array with NaNs in the appropriate places
-    A_pca = np.full((B * T, pca_components), np.nan)
-    A_pca[~nan_rows] = pca_transformed
-
-    # Reshape the output array back to 3D
-    A_pca_reshaped = A_pca.reshape(B, T, pca_components)
-
-    return A_pca_reshaped, pca
 
 
 class Comparison:
@@ -68,74 +41,130 @@ class Comparison:
         self.groups = groups[sorted_inds]
         self.ref_ind = np.where(sorted_inds == self.ref_ind)[0][0]
 
-    def compare_rate_r2(self):
-        # Function to compare the rate-reconstruction of the different models
-        dt_inds = []
-        rate_r2_mat = np.zeros(self.num_analyses)
+    def compute_metrics(
+        self,
+        ref_ind=None,
+        metric_list=["rate_r2", "state_r2"],
+        cycle_con_noise=None,
+        cycle_con_var=0.01,
+    ):
+        # Get the rates, latents, and inputs
+        if ref_ind is None:
+            ref_ind = self.ref_ind
+        if ref_ind is None and self.ref_ind is None:
+            # Throw an error
+            raise ValueError("No reference index provided")
+        reference_analysis = self.analyses[ref_ind]
+        metrics_dict = {"run_name": [], "group": []}
+        for metric in metric_list:
+            metrics_dict[metric] = []
         for i in range(self.num_analyses):
-            if self.analyses[i].tt_or_dt == "dt":
-                dt_inds.append(i)
-                rate_r2_mat[i] = get_rate_r2(
-                    self.analyses[i].get_rates(), self.analyses[i].get_true_rates()
-                )
-        dt_inds = np.array(dt_inds).astype(int)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        # Plot it as an image
-        ax.bar(np.arange(len(dt_inds)), rate_r2_mat[dt_inds])
-        ax.set_title("Rate R2 for data-trained model")
-        # Set ticks
-        ax.set_xticks(np.arange(len(dt_inds)))
-        ax.set_xticklabels(
-            [
-                analysis.run_name
-                for analysis in self.analyses
-                if analysis.tt_or_dt == "dt"
-            ]
-        )
-        ax.set_ylabel("Rate R2")
-        min_rate_r2 = np.min(rate_r2_mat[dt_inds])
-        max_rate_r2 = np.max(rate_r2_mat[dt_inds])
-        ax.set_ylim([min_rate_r2 - 0.05, max_rate_r2 + 0.05])
-        # Rotate the tick labels and set their alignment.
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
-
-    def compare_state_r2(self, num_pcs=4):
-        # Function to compare the latent activity
-        state_r2_mat = np.zeros((self.num_analyses, self.num_analyses))
-        for i in range(self.num_analyses):
-
-            for j in range(self.num_analyses):
-                if i == j:
-                    state_r2_mat[i, j] = 1
-                else:
-                    state_r2_mat[i, j] = get_state_r2(
-                        self.analyses[i].get_latents(),
-                        self.analyses[j].get_latents(),
-                        num_pcs=num_pcs,
+            print("")
+            print(
+                f"Working on {i+1} of {self.num_analyses}: {self.analyses[i].run_name}"
+            )
+            if i == ref_ind:
+                continue
+            metrics_dict["run_name"].append(self.analyses[i].run_name)
+            metrics_dict["group"].append(self.groups[i])
+            n_input_neurons = self.analyses[i].get_inputs()[0].shape[-1]
+            inf_rates_train, inf_latents_train = self.analyses[i].get_model_outputs(
+                phase="train"
+            )
+            inf_rates_val, inf_latents_val = self.analyses[i].get_model_outputs(
+                phase="val"
+            )
+            true_rates_val = self.analyses[i].get_true_rates(phase="val")
+            true_lats_train = reference_analysis.get_latents(phase="train")
+            true_lats_val = reference_analysis.get_latents(phase="val")
+            # Check that latents arenot NaN
+            if np.isnan(inf_latents_train.detach().numpy()).any():
+                continue
+            for j, metric in enumerate(metric_list):
+                if metric == "rate_r2":
+                    rate_r2 = get_signal_r2(
+                        signal_true=true_rates_val,
+                        signal_pred=inf_rates_val,
                     )
+                    print(f"Rate R2: {rate_r2}")
+                    metrics_dict["rate_r2"].append(rate_r2)
+                elif metric == "recon_r2":
+                    recon_r2 = get_signal_r2_linear(
+                        signal_true_train=true_lats_train,
+                        signal_pred_train=inf_latents_train,
+                        signal_true_val=true_lats_val,
+                        signal_pred_val=inf_latents_val,
+                    )
+                    print(f"Recon R2: {recon_r2}")
+                    metrics_dict["recon_r2"].append(recon_r2)
+                elif metric == "input_r2":
+                    input_r2 = get_signal_r2_linear(
+                        signal_true_train=self.analyses[ref_ind].get_inputs(
+                            phase="train"
+                        ),
+                        signal_pred_train=self.analyses[i].get_inferred_inputs(
+                            phase="train"
+                        ),
+                        signal_true_val=self.analyses[ref_ind].get_inputs(phase="val"),
+                        signal_pred_val=self.analyses[i].get_inferred_inputs(
+                            phase="val"
+                        ),
+                    )
+                    print(f"Input R2: {input_r2}")
+                    metrics_dict["input_r2"].append(input_r2)
+                elif metric in ["state_r2"]:
+                    state_r2 = get_signal_r2_linear(
+                        signal_true_train=true_lats_train,
+                        signal_pred_train=inf_latents_train,
+                        signal_true_val=true_lats_val,
+                        signal_pred_val=inf_latents_val,
+                    )
+                    print(f"State R2: {state_r2}")
+                    metrics_dict["state_r2"].append(state_r2)
 
-        ij_figure = plt.figure()
-        ij_ax = ij_figure.add_subplot(111)
-        # Plot it as an image
-        ij_ax.imshow(state_r2_mat)
-        ij_ax.set_title("State R2 from i to j")
-        # Set ticks
-        ij_ax.set_xticks(np.arange(self.num_analyses))
-        ij_ax.set_yticks(np.arange(self.num_analyses))
-        ij_ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
-        ij_ax.set_yticklabels([analysis.run_name for analysis in self.analyses])
-        # Rotate the tick labels and set their alignment.
-        plt.setp(
-            ij_ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
-        )
+                elif metric in ["cycle_con"]:
+                    cycle_con = get_cycle_consistency(
+                        inf_latents_train=inf_latents_train.detach().numpy(),
+                        inf_rates_train=inf_rates_train.detach().numpy(),
+                        inf_latents_val=inf_latents_val.detach().numpy(),
+                        inf_rates_val=inf_rates_val.detach().numpy(),
+                        noise_level=cycle_con_noise,
+                    )
+                    print(f"Cycle consistency R2: {cycle_con}")
+                    metrics_dict["cycle_con"].append(cycle_con)
+                elif metric in ["bps"]:
+                    bps = get_bps(
+                        inf_rates=inf_rates_val.detach().numpy(),
+                        true_spikes=self.analyses[i].get_spiking(phase="val"),
+                    )
+                    print(f"BPS: {bps}")
+                    metrics_dict["bps"].append(bps)
 
-        # Colorbar
-        ij_figure.colorbar(
-            plt.imshow(state_r2_mat),
-            ax=ij_ax,
-        )
-        return state_r2_mat
+                elif metric in ["co-bps"]:
+                    inf_rates_co = inf_rates_val[:, :, n_input_neurons:]
+                    spiking_co = self.analyses[i].get_spiking(phase="val")[
+                        :, :, n_input_neurons:
+                    ]
+                    bps = get_bps(
+                        inf_rates=inf_rates_co.detach().numpy(),
+                        true_spikes=spiking_co,
+                    )
+                    print(f"CO-BPS: {bps}")
+                    metrics_dict["co-bps"].append(bps)
+                elif metric in ["linear_cycle_con"]:
+                    linear_cycle_con = get_linear_cycle_consistency_v2(
+                        inf_latents_train=inf_latents_train.detach().numpy(),
+                        inf_rates_train=inf_rates_train.detach().numpy(),
+                        inf_latents_val=inf_latents_val.detach().numpy(),
+                        inf_rates_val=inf_rates_val.detach().numpy(),
+                        variance_threshold=cycle_con_var,
+                    )
+                    print(f"Linear Cycle Consistency R2: {linear_cycle_con}")
+                    metrics_dict["linear_cycle_con"].append(linear_cycle_con)
+                else:
+                    raise ValueError("Invalid metric")
+
+        return metrics_dict
 
     def compare_rate_state_r2(
         self,
@@ -206,13 +235,13 @@ class Comparison:
                 continue
 
             # Compute the rate R2 and state R2
-            rate_state_mat[i, 0] = get_rate_r2(
-                rates_true=true_rates,
-                rates_pred=rates,
+            rate_state_mat[i, 0] = get_signal_r2(
+                signal_true=true_rates,
+                signal_pred=rates,
             )
-            rate_state_mat[i, 1] = get_state_r2_vaf(
-                lats_true=true_lats,
-                lats_pred=latents,
+            rate_state_mat[i, 1] = get_signal_r2_linear(
+                signal_true=true_lats,
+                signal_pred=latents,
             )
             print(f"Rate R2: {rate_state_mat[i, 0]}")
             print(f"State R2: {rate_state_mat[i, 1]}")
@@ -283,15 +312,13 @@ class Comparison:
         for i in range(self.num_analyses):
             if i == ref_ind:
                 continue
-            rate_state_mat[i, 0] = get_state_r2_vaf(
+            rate_state_mat[i, 0] = get_signal_r2_linear(
                 reference_analysis.get_latents(phase="val"),
                 self.analyses[i].get_latents(phase="val"),
-                num_pcs=num_pcs,
             )
-            rate_state_mat[i, 1] = get_state_r2_vaf(
+            rate_state_mat[i, 1] = get_signal_r2_linear(
                 reference_analysis.get_latents(),
                 self.analyses[i].get_latents(),
-                num_pcs=num_pcs,
             )
 
         fig = plt.figure()
@@ -310,32 +337,6 @@ class Comparison:
         ax.set_title("Latent Similarity (Affine matching)")
         ax.set_xlabel("Model captures Reference (~ Rate R2)")
         ax.set_ylabel("Reference captures Model (~ State R2)")
-
-    def compare_latents_vaf(self):
-        # Function to compare the latent activity
-        vaf = np.zeros((self.num_analyses, self.num_analyses))
-        for i in range(self.num_analyses):
-            for j in range(self.num_analyses):
-                vaf[i, j] = get_latents_vaf(self.analyses[i], self.analyses[j])
-
-        ij_figure = plt.figure()
-        ij_ax = ij_figure.add_subplot(111)
-        # Plot it as an image
-        ij_ax.imshow(vaf)
-        ij_ax.set_title("R2 from i to j")
-        # Set ticks
-        ij_ax.set_xticks(np.arange(self.num_analyses))
-        ij_ax.set_yticks(np.arange(self.num_analyses))
-        ij_ax.set_xticklabels([analysis.run_name for analysis in self.analyses])
-        ij_ax.set_yticklabels([analysis.run_name for analysis in self.analyses])
-        # Rotate the tick labels and set their alignment.
-        plt.setp(
-            ij_ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
-        )
-
-        # Colorbar
-        ij_figure.colorbar(plt.imshow(vaf), ax=ij_ax)
-        return vaf
 
     def compare_dynamics_DSA(
         self,
@@ -378,8 +379,6 @@ class Comparison:
         plt.setp(
             ij_ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor"
         )
-
-        # INvert the colorbar
 
         ij_figure.colorbar(
             plt.imshow(fit_mat, cmap=cmap_r),
@@ -658,41 +657,6 @@ class Comparison:
             plt.savefig(f"{self.comparison_tag}_3dLats.pdf")
         return fig
 
-    def compare_procrustes(self, ref_ind=None):
-        # Function to compare the latent activity
-        if ref_ind is None:
-            ref_ind = self.ref_ind
-        if ref_ind is None and self.ref_ind is None:
-            # Throw an error
-            raise ValueError("No reference index provided")
-        reference_analysis = self.analyses[ref_ind]
-        pro_mat = np.zeros(self.num_analyses)
-        ref_lats = reference_analysis.get_latents(phase="val").detach().numpy()
-        for i in range(self.num_analyses):
-            print(f"Working on {i+1} of {self.num_analyses}")
-            if i == ref_ind:
-                continue
-            _, latents = self.analyses[i].get_model_outputs(phase="val")
-
-            if ref_lats.shape[-1] != latents.shape[-1]:
-                continue
-            latents = latents.detach().numpy()
-            pro_mat[i] = procrustes(
-                ref_lats.reshape(-1, ref_lats.shape[-1]),
-                latents.reshape(-1, latents.shape[-1]),
-            )[2]
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        for group in np.unique(self.groups):
-            group_inds = np.where(self.groups == group)[0]
-            ax.bar(group_inds, pro_mat[group_inds], label=group)
-        # Square axis
-        ax.set_ylabel("M2 (Disparity)")
-        ax.set_title("Procrustes M2")
-        ax.legend()
-        plt.savefig(f"{self.comparison_tag}_procrustes.pdf")
-
     def plot_neural_preds(self, neuron_list, trial_list):
         # Function to plot the neural predictions
         ref_ind = self.ref_ind
@@ -759,45 +723,6 @@ class Comparison:
         plt.savefig(f"{self.comparison_tag}_neural_preds.pdf")
 
         return r2_vals
-
-    def compare_CCA(self, ref_ind=None, num_components=10, iters=500):
-        # Function to compare the latent activity
-        if ref_ind is None:
-            ref_ind = self.ref_ind
-        if ref_ind is None and self.ref_ind is None:
-            # Throw an error
-            raise ValueError("No reference index provided")
-        reference_analysis = self.analyses[ref_ind]
-        cca_mat = np.zeros((self.num_analyses, num_components))
-        ref_lats = reference_analysis.get_latents(phase="val").detach().numpy()
-        ref_lats = ref_lats.reshape(-1, ref_lats.shape[-1])
-        for i in range(self.num_analyses):
-            print(f"Working on {i+1} of {self.num_analyses}")
-            if i == ref_ind:
-                continue
-            _, latents = self.analyses[i].get_model_outputs(phase="val")
-
-            if ref_lats.shape[-1] != latents.shape[-1]:
-                continue
-            latents = latents.detach().numpy().reshape(-1, latents.shape[-1])
-            cca = CCA(n_components=num_components, max_iter=iters)
-            cca.fit(latents, ref_lats)
-            cca_lats, cca_ref_lats = cca.transform(latents, ref_lats)
-            cca_mat[i, :] = r2_score(cca_lats, cca_ref_lats, multioutput="raw_values")
-
-        group_inds = np.unique(self.groups)
-        colors = plt.cm.get_cmap("tab10", len(group_inds))
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        for i in range(self.num_analyses):
-            ax.plot(
-                np.arange(num_components),
-                cca_mat[i, :],
-                label=self.analyses[i].run_name,
-                color=colors(np.where(group_inds == self.groups[i])[0][0]),
-            )
-        # Square axis
-        plt.savefig(f"{self.comparison_tag}_CCA.pdf")
 
     def compare_performance(self):
         _, _, targets = self.analyses[self.ref_ind].get_model_inputs(phase="val")
@@ -967,21 +892,21 @@ class Comparison:
                 continue
             inf_inputs = self.analyses[i].get_inferred_inputs(phase=phase)
             # Compute the rate R2 and state R2
-            rate_state_inp_mat[i, 0] = get_rate_r2(
-                rates_true=true_rates,
-                rates_pred=rates,
+            rate_state_inp_mat[i, 0] = get_signal_r2(
+                signal_true=true_rates,
+                signal_pred=rates,
             )
-            rate_state_inp_mat[i, 1] = get_state_r2_vaf(
-                lats_true=true_lats,
-                lats_pred=latents,
+            rate_state_inp_mat[i, 1] = get_signal_r2_linear(
+                signal_true=true_lats,
+                signal_pred=latents,
             )
-            rate_state_inp_mat[i, 2] = get_state_r2_vaf(
-                lats_true=true_inputs,
-                lats_pred=inf_inputs,
+            rate_state_inp_mat[i, 2] = get_signal_r2_linear(
+                signal_true=true_inputs,
+                signal_pred=inf_inputs,
             )
-            rate_state_inp_mat[i, 3] = get_state_r2_vaf(
-                lats_true=inf_inputs,
-                lats_pred=true_inputs,
+            rate_state_inp_mat[i, 3] = get_signal_r2_linear(
+                signal_true=inf_inputs,
+                signal_pred=true_inputs,
             )
 
             print(f"Rate R2: {rate_state_inp_mat[i, 0]}")

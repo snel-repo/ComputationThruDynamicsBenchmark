@@ -22,28 +22,17 @@ def train_PTL(
     run_tag: str = "",
 ):
     compose_list = config_dict.keys()
-    # Format the overrides so they can be used by hydra
-    override_keys = overrides.keys()
+    # Convert the overrides dict into a list of override strings
+    overrides_list = [f"{k}={v}" for k, v in overrides.items()]
 
-    # Format the overrides so they can be used by hydra
-    override_keys = overrides.keys()
-    overrides_flat = {}
-    subfolder = ""
-    for key in override_keys:
-        if type(overrides[key]) == dict:
-            overrides_flat[key] = [
-                f"{k}={v}" for k, v in flatten(overrides[key]).items()
-            ]
-            temp = [f"{k}={v}" for k, v in flatten(overrides[key]).items()]
-            # join the list of strings
-            subfolder += " ".join(temp)
-            subfolder += " "
-        else:
-            overrides_flat[key] = f"{key}={overrides[key]}"
-            subfolder += f"_{key}={overrides[key]}_"
-
-    # Compose the configs for all components
-    subfolder = subfolder[:-1]
+    # Generate a run_name from the overrides
+    run_list = []
+    for k, v in overrides.items():
+        if isinstance(v, float):
+            v = "{:.2E}".format(v)
+        k_list = k.split(".")
+        run_list.append(f"{k_list[-1]}={v}")
+    run_name = "_".join(run_list)
 
     # Compose the configs for all components
     config_all = {}
@@ -51,29 +40,45 @@ def train_PTL(
         with hydra.initialize(
             config_path=str(config_dict[field].parent), job_name=field
         ):
-            if field in overrides_flat.keys():
-                config_all[field] = hydra.compose(
-                    config_name=config_dict[field].name, overrides=overrides_flat[field]
-                )
-            else:
-                config_all[field] = hydra.compose(config_name=config_dict[field].name)
+            # Filter overrides relevant to this field
+            field_prefix = f"{field}."
+            field_overrides = [
+                override
+                for override in overrides_list
+                if override.startswith(field_prefix)
+            ]
+            # Remove the field prefix from the overrides
+            field_overrides = [
+                override[len(field_prefix) :]
+                if override.startswith(field_prefix)
+                else override
+                for override in field_overrides
+            ]
+            config_all[field] = hydra.compose(
+                config_name=config_dict[field].name, overrides=field_overrides
+            )
 
-    # Set seed for pytorch, numpy, and python.random
-    if "params" in overrides:
-        pl.seed_everything(overrides["params"]["seed"], workers=True)
-        if "obs_dim" in overrides["params"]:
-            config_all["datamodule"]["obs_dim"] = overrides["params"]["obs_dim"]
-            config_all["model"]["heldin_size"] = overrides["params"]["obs_dim"]
-            config_all["model"]["heldout_size"] = overrides["params"]["obs_dim"]
-        if "lr_all" in overrides["params"]:
-            config_all["model"]["lr_readout"] = overrides["params"]["lr_all"]
-            config_all["model"]["lr_encoder"] = overrides["params"]["lr_all"]
-            config_all["model"]["lr_decoder"] = overrides["params"]["lr_all"]
-        if "decay_all" in overrides["params"]:
-            config_all["model"]["decay_readout"] = overrides["params"]["decay_all"]
-            config_all["model"]["decay_encoder"] = overrides["params"]["decay_all"]
-            config_all["model"]["decay_decoder"] = overrides["params"]["decay_all"]
+    # Handle special parameters
+    if "params.obs_dim" in overrides:
+        obs_dim = overrides["params.obs_dim"]
+        config_all["datamodule"]["obs_dim"] = obs_dim
+        config_all["model"]["heldin_size"] = obs_dim
+        config_all["model"]["heldout_size"] = obs_dim
 
+    if "params.lr_all" in overrides:
+        lr_all = overrides["params.lr_all"]
+        config_all["model"]["lr_readout"] = lr_all
+        config_all["model"]["lr_encoder"] = lr_all
+        config_all["model"]["lr_decoder"] = lr_all
+
+    if "params.decay_all" in overrides:
+        decay_all = overrides["params.decay_all"]
+        config_all["model"]["decay_readout"] = decay_all
+        config_all["model"]["decay_encoder"] = decay_all
+        config_all["model"]["decay_decoder"] = decay_all
+    if "params.seed" in overrides:
+        seed = overrides["params.seed"]
+        pl.seed_everything(seed, workers=True)
     else:
         pl.seed_everything(0, workers=True)
 
@@ -82,7 +87,6 @@ def train_PTL(
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(
         config_all["datamodule"], _convert_="all"
     )
-    tt_name = datamodule.name[:-3]
 
     # ---------------------------Instantiate callbacks---------------------------
     callbacks: List[pl.Callback] = []
@@ -134,7 +138,7 @@ def train_PTL(
     # -----------------------------Save the model-------------------------------
     # Save the model, datamodule, and simulator to the directory
     save_path = path_dict["trained_models"]
-    save_path = os.path.join(save_path, tt_name, run_tag, subfolder)
+    save_path = os.path.join(save_path, run_tag, run_name)
 
     Path(save_path).mkdir(parents=True, exist_ok=True)
     model_path = os.path.join(save_path, "model.pkl")

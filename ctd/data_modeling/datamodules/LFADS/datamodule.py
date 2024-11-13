@@ -122,9 +122,9 @@ class BasicDataModule(pl.LightningDataModule):
     def __init__(
         self,
         prefix: str,
+        neuron_dict: dict,
         noise_dict: dict,
         embed_dict: dict,
-        n_neurons: int,
         seed: int,
         batch_keys: list[str] = [],
         attr_keys: list[str] = [],
@@ -136,6 +136,7 @@ class BasicDataModule(pl.LightningDataModule):
         dm_ic_enc_seq_len: int = 0,
         provide_inputs: bool = True,
         file_index: int = 0,
+        dt_stim: str = "dt",
     ):
         assert (
             reshuffle_tv_seed is None or len(attr_keys) == 0
@@ -143,10 +144,10 @@ class BasicDataModule(pl.LightningDataModule):
         super().__init__()
 
         filedir = f"{prefix}"
+        self.neuron_dict = neuron_dict
         self.embed_dict = embed_dict
         self.noise_dict = noise_dict
-        self.n_neurons = n_neurons
-        data_dir = os.path.join(HOME_DIR, "content", "datasets", "dt")
+        data_dir = os.path.join(HOME_DIR, "content", "datasets", dt_stim)
         fpath = os.path.join(data_dir, filedir)
         dirs = os.listdir(fpath)
         if file_index >= len(dirs):
@@ -161,7 +162,10 @@ class BasicDataModule(pl.LightningDataModule):
             filename = run_folder
             self.fpath = os.path.join(fpath, filename)
         else:
-            filename = f"n_neurons_{self.n_neurons}"
+            filename = (
+                f"heldin_{neuron_dict['n_neurons_heldin']}_"
+                f"heldout_{neuron_dict['n_neurons_heldout']}"
+            )
             if embed_dict["rect_func"] not in ["exp"]:
                 for key, val in self.embed_dict.items():
                     filename += f"_{key}_{val}"

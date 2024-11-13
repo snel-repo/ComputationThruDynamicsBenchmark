@@ -8,7 +8,6 @@ import hydra
 import pytorch_lightning as pl
 from gymnasium import Env
 
-from ctd.task_modeling.simulator.neural_simulator import NeuralDataSimulator
 from utils import flatten
 
 log = logging.getLogger(__name__)
@@ -41,63 +40,66 @@ def train(
     12. Simulate neural data
     13. Save simulator + sim datamodule
 
-    TODO: REVISE (^I grabbed that from a comment below)
-
-    Args: 
-        overrides (dict): 
-        config_dict (dict): 
-        run_tag (str): 
-        path_dict (dict): 
+    Args:
+        overrides (dict):
+        config_dict (dict):
+        run_tag (str):
+        path_dict (dict):
 
     Returns:
         None
     """
-    # Print the current working directory
     compose_list = config_dict.keys()
-    # Format the overrides so they can be used by hydra
-    override_keys = overrides.keys()
-    overrides_flat = {}
-    subfolder = ""
-    for key in override_keys:
-        if type(overrides[key]) == dict:
-            overrides_flat[key] = [
-                f"{k}={v}" for k, v in flatten(overrides[key]).items()
-            ]
-            temp = [f"{k}={v}" for k, v in flatten(overrides[key]).items()]
-            # join the list of strings
-            subfolder += " ".join(temp)
-            subfolder += " "
-        else:
-            overrides_flat[key] = f"{key}={overrides[key]}"
-            subfolder += f"_{key}={overrides[key]}_"
+    # Convert the overrides dict into a list of override strings
+    overrides_list = [f"{k}={v}" for k, v in overrides.items()]
+
+    # Generate a run_name from the overrides
+    run_list = []
+    for k, v in overrides.items():
+        if isinstance(v, float):
+            v = "{:.2E}".format(v)
+        k_list = k.split(".")
+        run_list.append(f"{k_list[-1]}={v}")
+    run_name = "_".join(run_list)
 
     # Compose the configs for all components
-    subfolder = subfolder[:-1]
     config_all = {}
     for field in compose_list:
         with hydra.initialize(
             config_path=str(config_dict[field].parent), job_name=field
         ):
-            if field in overrides_flat.keys():
-                config_all[field] = hydra.compose(
-                    config_name=config_dict[field].name, overrides=overrides_flat[field]
-                )
-            else:
-                config_all[field] = hydra.compose(config_name=config_dict[field].name)
+            # Filter overrides relevant to this field
+            field_prefix = f"{field}."
+            field_overrides = [
+                override
+                for override in overrides_list
+                if override.startswith(field_prefix)
+            ]
+            # Remove the field prefix from the overrides
+            field_overrides = [
+                override[len(field_prefix) :]
+                if override.startswith(field_prefix)
+                else override
+                for override in field_overrides
+            ]
+            config_all[field] = hydra.compose(
+                config_name=config_dict[field].name, overrides=field_overrides
+            )
 
-    # Set seed for pytorch, numpy, and python.random
-    if "params" in overrides:
-        if "seed" in overrides["params"]:
-            pl.seed_everything(overrides["params"]["seed"], workers=True)
-            config_all["datamodule_task"]["seed"] = overrides["params"]["seed"]
-            config_all["datamodule_sim"]["seed"] += overrides["params"]["seed"]
-        else:
-            pl.seed_everything(0, workers=True)
+    # Get all of the overrides that start with "params"
+    p_overrides = {k: v for k, v in overrides.items() if k.startswith("params.")}
+    if "params.seed" in p_overrides:
+        pl.seed_everything(overrides["params.seed"], workers=True)
+        config_all["datamodule_task"]["seed"] = overrides["params.seed"]
+        config_all["datamodule_sim"]["seed"] += overrides["params.seed"]
+    else:
+        pl.seed_everything(0, workers=True)
+
+    env_overrides = {k: v for k, v in overrides.items() if k.startswith("env_params.")}
     # Set shared params for both the task and sim envs
-    if "env_params" in overrides:
-        for k, v in overrides["env_params"].items():
-            config_all["env_task"][k] = v
-            config_all["env_sim"][k] = v
+    for k, v in env_overrides.items():
+        config_all["env_task"][k.split(".")[1]] = v
+        config_all["env_sim"][k.split(".")[1]] = v
 
     # Order of operations:
     # 1. Instantiate environments
@@ -152,9 +154,7 @@ def train(
 
     # -----Step 5:----------------Instantiate simulator---------------------------
     log.info("Instantiating neural data simulator")
-    simulator: NeuralDataSimulator = hydra.utils.instantiate(
-        config_all["simulator"], _convert_="all"
-    )
+    simulator = hydra.utils.instantiate(config_all["simulator"], _convert_="all")
 
     # -----Step 6:-----------------Instantiate callbacks---------------------------
     callbacks: List[pl.Callback] = []
@@ -204,13 +204,13 @@ def train(
     SAVE_PATH = path_dict["trained_models"] / "task-trained"
     task_wrapper.set_environment(sim_env)
 
-    dir_path = os.path.join(SAVE_PATH, run_tag, subfolder, "")
+    dir_path = os.path.join(SAVE_PATH, run_tag, run_name, "")
     Path(dir_path).mkdir(parents=True, exist_ok=True)
-    path1 = os.path.join(SAVE_PATH, run_tag, subfolder, "model.pkl")
+    path1 = os.path.join(SAVE_PATH, run_tag, run_name, "model.pkl")
     with open(path1, "wb") as f:
         pickle.dump(task_wrapper, f)
 
-    path2 = os.path.join(SAVE_PATH, run_tag, subfolder, "datamodule_train.pkl")
+    path2 = os.path.join(SAVE_PATH, run_tag, run_name, "datamodule_train.pkl")
     with open(path2, "wb") as f:
         pickle.dump(datamodule, f)
 
@@ -227,21 +227,22 @@ def train(
     sim_datamodule.setup()
 
     task_wrapper.set_environment(sim_env)
+
     # ------Step 12:------------Simulate neural data---------------------------
     simulator.simulate_neural_data(
         task_trained_model=task_wrapper,
         datamodule=sim_datamodule,
         run_tag=run_tag,
         dataset_path=path_dict["dt_datasets"],
-        subfolder=subfolder,
+        subfolder=run_name,
         seed=0,
     )
 
     # ------Step 13:--------Save simulator and sim datamodule------------
-    path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "simulator.pkl")
+    path3 = os.path.join(SAVE_PATH, run_tag, run_name, "simulator.pkl")
     with open(path3, "wb") as f:
         pickle.dump(simulator, f)
 
-    path3 = os.path.join(SAVE_PATH, run_tag, subfolder, "datamodule_sim.pkl")
+    path3 = os.path.join(SAVE_PATH, run_tag, run_name, "datamodule_sim.pkl")
     with open(path3, "wb") as f:
         pickle.dump(sim_datamodule, f)

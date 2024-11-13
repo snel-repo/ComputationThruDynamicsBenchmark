@@ -9,6 +9,7 @@ import wandb
 from sklearn.decomposition import PCA
 
 from ctd.data_modeling.callbacks.metrics import (
+    compute_metrics,
     linear_regression,
     r2_score,
     regression_r2_score,
@@ -185,7 +186,7 @@ class RasterPlot(pl.Callback):
             return
         # Get data samples
         dataloader = trainer.datamodule.val_dataloader()
-        spikes, _, inputs, extras, latents, inds, rates = next(iter(dataloader))
+        spikes, ho_spikes, inputs, extras, latents, inds, rates = next(iter(dataloader))
         spikes = spikes.to(pl_module.device)
         inputs = inputs.to(pl_module.device)
         # Compute model output
@@ -201,7 +202,7 @@ class RasterPlot(pl.Callback):
         pred_rates_flat = torch.Tensor(pred_rates.reshape(-1, pred_rates.shape[-1]))
         rates_flat = torch.Tensor(rates.reshape(-1, rates.shape[-1]))
         r2 = r2_score(pred_rates_flat, rates_flat)
-        plot_arrays = [spikes, rates, pred_rates]
+        plot_arrays = [ho_spikes, rates, pred_rates]
         fig, axes = plt.subplots(
             len(plot_arrays),
             self.n_samples,
@@ -604,3 +605,81 @@ class InputsPlot(pl.Callback):
 
         # Log the plot to tensorboard
         logger.log_image(key="inputs_to_network", images=[wandb.Image(fig)])
+
+
+class DTMetricsCallback(pl.Callback):
+    """Plots the inputs fed to the DMFC model. Makes sure that it's doing what
+    I want it to do.
+    """
+
+    def __init__(
+        self,
+        n_samples=2,
+        log_every_n_epochs=20,
+    ):
+        self.n_samples = n_samples
+        self.log_every_n_epochs = log_every_n_epochs
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        """Logs plots at the end of the validation epoch.
+
+        Parameters
+        ----------
+        trainer : pytorch_lightning.Trainer
+            The trainer currently handling the model.
+        pl_module : pytorch_lightning.LightningModule
+            The model currently being trained.
+        """
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+
+        # Get inputs for plotting
+        dataloader = trainer.datamodule.val_dataloader()
+
+        def batch_fwd(pl_module, batch):
+            return pl_module(
+                batch[0].to(pl_module.device), batch[2].to(pl_module.device)
+            )
+
+        # if pl_module has a variable called "intensity_func"
+        # then use it to compute the rates
+
+        rates = torch.exp(
+            torch.cat([batch_fwd(pl_module, batch)[0] for batch in dataloader])
+        )
+        true_rates = torch.cat([batch[6] for batch in dataloader]).to(pl_module.device)
+        latents = torch.cat([batch_fwd(pl_module, batch)[1] for batch in dataloader])
+        true_latents = torch.cat([batch[4] for batch in dataloader]).to(
+            pl_module.device
+        )
+        hi_spikes = torch.cat([batch[0] for batch in dataloader]).to(pl_module.device)
+        spikes = torch.cat([batch[1] for batch in dataloader]).to(pl_module.device)
+        hi_neurons = hi_spikes.shape[2]
+
+        true_rates = true_rates.reshape(-1, true_rates.shape[-1]).detach().cpu().numpy()
+        rates = rates.reshape(-1, rates.shape[-1]).detach().cpu().numpy()
+        true_latents = (
+            true_latents.reshape(-1, true_latents.shape[-1]).detach().cpu().numpy()
+        )
+        latents = latents.reshape(-1, latents.shape[-1]).detach().cpu().numpy()
+        spikes = spikes.reshape(-1, spikes.shape[-1]).detach().cpu().numpy()
+
+        # Compute metrics
+        metrics = compute_metrics(
+            true_rates=true_rates,
+            inf_rates=rates,
+            true_latents=true_latents,
+            inf_latents=latents,
+            true_inputs=None,
+            inf_inputs=None,
+            true_spikes=spikes,
+            n_heldin=hi_neurons,
+            device=pl_module.device,
+        )
+
+        # Log the plot to tensorboard
+        pl_module.log_dict(
+            {
+                **metrics,
+            }
+        )

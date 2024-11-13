@@ -21,9 +21,9 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         self,
         embed_dict: dict,
         noise_dict: dict,
+        neuron_dict: dict,
         prefix=None,
         system: str = "3BFF",
-        n_neurons: int = 50,
         seed: int = 0,
         batch_size: int = 64,
         num_workers: int = 2,
@@ -32,7 +32,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.n_neurons = n_neurons
+        self.neuron_dict = neuron_dict
         self.seed = seed
         self.noise_dict = noise_dict
         self.embed_dict = embed_dict
@@ -48,7 +48,9 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         else:
             run_folder = dirs[file_index]
 
-        filename = f"n_neurons_{self.n_neurons}"
+        filename = (
+            f"heldin_{neuron_dict['n_heldin']}_heldout_{neuron_dict['n_heldout']}"
+        )
         if embed_dict["rect_func"] not in ["exp"]:
             for key, val in self.embed_dict.items():
                 filename += f"_{key}_{val}"
@@ -98,6 +100,9 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
             # Load the data
             train_data = to_tensor(h5file["train_encod_data"][()])
             valid_data = to_tensor(h5file["valid_encod_data"][()])
+
+            train_recon_data = to_tensor(h5file["train_recon_data"][()])
+            valid_recon_data = to_tensor(h5file["valid_recon_data"][()])
             # test_data = to_tensor(h5file["test_data"][()])
             # Load the activity
             train_activity = to_tensor(h5file["train_activity"][()])
@@ -134,7 +139,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
             # Store datasets
             self.train_ds = TensorDataset(
                 train_data,
-                train_data,
+                train_recon_data,
                 train_inputs,
                 train_extra,
                 train_latents,
@@ -144,7 +149,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
             self.valid_ds = TensorDataset(
                 valid_data,
-                valid_data,
+                valid_recon_data,
                 valid_inputs,
                 valid_extra,
                 valid_latents,
@@ -154,7 +159,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
         else:
             self.train_ds = TensorDataset(
                 train_data,
-                train_data,
+                train_recon_data,
                 None,
                 train_extra,
                 train_latents,
@@ -164,7 +169,7 @@ class TaskTrainedRNNDataModule(pl.LightningDataModule):
 
             self.valid_ds = TensorDataset(
                 valid_data,
-                valid_data,
+                valid_recon_data,
                 None,
                 valid_extra,
                 valid_latents,

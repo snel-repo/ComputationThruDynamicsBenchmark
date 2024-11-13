@@ -11,6 +11,13 @@ All models must meet a few requirements
     3. They must have a cell attribute that is the recurrent cell
     4. They must have a readout attribute that is the output layer
     (mapping from latent to output)
+
+    Optionally,
+    1. They can have an init_hidden method that takes
+    batch_size as an argument and returns an initial hidden state
+    2. They can have a model_loss method that takes a loss_dict
+    as an argument and returns a loss (L2 regularization on latents, etc.)
+
 """
 
 

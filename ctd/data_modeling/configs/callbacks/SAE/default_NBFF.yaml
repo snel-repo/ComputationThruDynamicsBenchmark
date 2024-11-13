@@ -28,3 +28,7 @@ avg_firing_rate_callback:
 inputs_plot:
   _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.InputsPlot
   log_every_n_epochs: 100
+
+dt_metrics:
+  _target_: ctd.data_modeling.callbacks.SAE.sim_callbacks.DTMetricsCallback
+  log_every_n_epochs: 100

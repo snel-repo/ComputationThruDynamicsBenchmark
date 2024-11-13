@@ -19,6 +19,7 @@ class LFADS(pl.LightningModule):
         inv_encoder: bool,
         encod_data_dim: int,
         encod_seq_len: int,
+        recon_data_dim: int,
         recon_seq_len: int,
         ext_input_dim: int,
         ic_enc_seq_len: int,

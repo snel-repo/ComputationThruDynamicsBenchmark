@@ -8,6 +8,9 @@ tune_report_callback:
 trajectory_plot:
   _target_: ctd.data_modeling.callbacks.LFADS.callbacks.TrajectoryPlot
   log_every_n_epochs: 100
+dt_metrics:
+  _target_: ctd.data_modeling.callbacks.LFADS.callbacks.DTMetricsCallback
+  log_every_n_epochs: 100
 
 input_accuracy:
   _target_: ctd.data_modeling.callbacks.LFADS.extensions.task_trained.InputR2Plot

@@ -1,132 +1,366 @@
 import numpy as np
+import torch
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import explained_variance_score, r2_score
+from sklearn.metrics import r2_score
+
+from ctd.data_modeling.callbacks.metrics import bits_per_spike
 
 
-# TODO Make metrics agnostic to the analysis class
-def get_rate_r2(rates_true, rates_pred):
-    """
-    Function to compare the rate-reconstruction of the different models
-
-    TODO: REVISE
-
-    Args:
-        rates_true (TODO: dtype) :
-        rates_pred (TODO: dtype) :
-
-    Returns:
-        r2_rates (float) : R^2 value for the rate-reconstruction (higher is better)
-    """
-    if len(rates_pred.shape) == 3:
-        n_b_pred, n_t_pred, n_d_pred = rates_pred.shape
-        rates_pred_flat = (
-            rates_pred.reshape(n_b_pred * n_t_pred, n_d_pred).detach().numpy()
-        )
-    else:
-        rates_pred_flat = rates_pred.detach().numpy()
-
-    if len(rates_true.shape) == 3:
-        n_b_true, n_t_true, n_d_true = rates_true.shape
-        rates_true_flat = (
-            rates_true.reshape(n_b_true * n_t_true, n_d_true).detach().numpy()
-        )
-    else:
-        rates_true_flat = rates_true.detach().numpy()
-    # lr = LinearRegression().fit(rates_pred_flat, rates_true_flat)
-    # preds = lr.predict(rates_pred_flat)
-    # r2_rates = r2_score(rates_true_flat, preds, multioutput="variance_weighted")
-    r2_rates = r2_score(
-        rates_true_flat, rates_pred_flat, multioutput="variance_weighted"
-    )
-    return r2_rates
-
-
-def get_state_r2(lats_true, lats_pred, num_pcs=3):
-    """
-    Function to compare the latent activity of the different models
-
-    TODO: REVISE
-
-    Args:
-        lats_true (TODO: dtype) :
-        lats_pred (TODO: dtype) :
-        num_pcs (int) : Number of principal components to use for comparison
-
-    Returns:
-        state_r2 (float) : R^2 value for the latent activity (higher is better)
-    """
-    n_b_pred, n_t_pred, n_d_pred = lats_pred.shape
-    lats_pred_flat = lats_pred.reshape(n_b_pred * n_t_pred, n_d_pred).detach().numpy()
-    pca = PCA(n_components=num_pcs)
-    if lats_pred_flat.shape[1] < num_pcs:
-        # append zeros to the latent activity
-        lats_pred_flat = np.concatenate(
-            [
-                lats_pred_flat,
-                np.zeros((lats_pred_flat.shape[0], num_pcs - lats_pred_flat.shape[1])),
-            ],
-            axis=1,
-        )
-    lats_pred_flat_pca = pca.fit_transform(lats_pred_flat)
-    lats_pred = lats_pred_flat_pca.reshape((n_b_pred, n_t_pred, num_pcs))
-
-    n_b_true, n_t_true, n_d_true = lats_true.shape
-    lats_true_flat = lats_true.reshape(n_b_true * n_t_true, n_d_true).detach().numpy()
-    pca = PCA(n_components=num_pcs)
-    lats_true_flat_pca = pca.fit_transform(lats_true_flat)
-    lats_true = lats_true_flat_pca.reshape((n_b_true, n_t_true, num_pcs))
-
-    # Compare the latent activity
-    state_r2 = []
-    for j in range(num_pcs):
-        reg = LinearRegression().fit(lats_pred_flat_pca, lats_true_flat_pca[:, j])
-        state_r2.append(reg.score(lats_pred_flat_pca, lats_true_flat_pca[:, j]))
-
-    state_r2 = np.array(state_r2)
-    return np.mean(state_r2)
-
-
-def get_state_r2_vaf(lats_true, lats_pred):
+def get_signal_r2_linear(
+    signal_true_train, signal_pred_train, signal_true_val, signal_pred_val
+):
     # Function to compare the latent activity
-    if len(lats_pred.shape) == 3:
-        n_b_pred, n_t_pred, n_d_pred = lats_pred.shape
-        lats_pred_flat = (
-            lats_pred.reshape(n_b_pred * n_t_pred, n_d_pred).detach().numpy()
+    if len(signal_pred_train.shape) == 3:
+        n_b_pred, n_t_pred, n_d_pred = signal_pred_train.shape
+        signal_pred_train_flat = (
+            signal_pred_train.reshape(-1, n_d_pred).detach().numpy()
         )
+        signal_pred_val_flat = signal_pred_val.reshape(-1, n_d_pred).detach().numpy()
     else:
-        lats_pred_flat = lats_pred.detach().numpy()
+        signal_pred_train_flat = signal_pred_train.detach().numpy()
+        signal_pred_val_flat = signal_pred_val.detach().numpy()
 
-    if len(lats_true.shape) == 3:
-        n_b_true, n_t_true, n_d_true = lats_true.shape
-        lats_true_flat = (
-            lats_true.reshape(n_b_true * n_t_true, n_d_true).detach().numpy()
+    if len(signal_true_train.shape) == 3:
+        n_b_true, n_t_true, n_d_true = signal_true_train.shape
+        signal_true_train_flat = (
+            signal_true_train.reshape(-1, n_d_true).detach().numpy()
         )
+        signal_true_val_flat = signal_true_val.reshape(-1, n_d_true).detach().numpy()
     else:
-        lats_true_flat = lats_true.detach().numpy()
+        signal_true_train_flat = signal_true_train.detach().numpy()
+        signal_true_val_flat = signal_true_val.detach().numpy()
 
     # Compare the latent activity
-    reg = LinearRegression().fit(lats_true_flat, lats_pred_flat)
-    preds = reg.predict(lats_true_flat)
-    state_r2 = r2_score(lats_pred_flat, preds, multioutput="variance_weighted")
-    return state_r2
+    reg = LinearRegression().fit(signal_true_train_flat, signal_pred_train_flat)
+    preds = reg.predict(signal_true_val_flat)
+    signal_r2_linear = r2_score(
+        signal_pred_val_flat, preds, multioutput="variance_weighted"
+    )
+    return signal_r2_linear
 
 
-def get_latents_vaf(lats1, lats2, num_pcs=3):
-    lats1_flat = (
-        lats1.reshape(lats1.shape[0] * lats1.shape[1], lats1.shape[2]).detach().numpy()
-    )
-    pca = PCA(n_components=num_pcs)
-    lats1_flat_pca = pca.fit_transform(lats1_flat)
+def get_signal_r2(signal_true, signal_pred):
+    """
+    Function to compare the activity of the different model
+    without a linear transformation
 
-    lats2_flat = (
-        lats2.reshape(lats2.shape[0] * lats2.shape[1], lats2.shape[2]).detach().numpy()
+    Typically used for comparisons of rates to true rates
+    """
+    if len(signal_pred.shape) == 3:
+        n_b_pred, n_t_pred, n_d_pred = signal_pred.shape
+        signal_pred_flat = (
+            signal_pred.reshape(n_b_pred * n_t_pred, n_d_pred).detach().numpy()
+        )
+    else:
+        signal_pred_flat = signal_pred.detach().numpy()
+
+    if len(signal_true.shape) == 3:
+        n_b_true, n_t_true, n_d_true = signal_true.shape
+        signal_true_flat = (
+            signal_true.reshape(n_b_true * n_t_true, n_d_true).detach().numpy()
+        )
+    else:
+        signal_true_flat = signal_true.detach().numpy()
+
+    signal_r2 = r2_score(
+        signal_true_flat, signal_pred_flat, multioutput="variance_weighted"
     )
-    pca = PCA(n_components=num_pcs)
-    lats2_flat_pca = pca.fit_transform(lats2_flat)
-    reg = LinearRegression().fit(lats1_flat_pca, lats2_flat_pca)
-    preds = reg.predict(lats1_flat_pca)
-    var_exp = explained_variance_score(
-        lats2_flat_pca, preds, multioutput="variance_weighted"
+    return signal_r2
+
+
+def get_cycle_consistency(
+    inf_latents_train, inf_rates_train, inf_latents_val, inf_rates_val, noise_level=0.1
+):
+    if len(inf_latents_train.shape) == 3:
+        n_b_pred, n_t_pred, n_d_pred = inf_latents_train.shape
+        inf_latents_train_flat = inf_latents_train.reshape(-1, n_d_pred)
+        inf_latents_val_flat = inf_latents_val.reshape(-1, n_d_pred)
+
+    else:
+        inf_latents_train_flat = inf_latents_train
+
+    if len(inf_rates_train.shape) == 3:
+        n_b_true, n_t_true, n_d_true = inf_rates_train.shape
+        inf_rates_train_flat = inf_rates_train.reshape(-1, n_d_true)
+        inf_rates_val_flat = inf_rates_val.reshape(-1, n_d_true)
+
+    else:
+        inf_rates_train_flat = inf_rates_train
+        inf_rates_val_flat = inf_rates_val
+
+    torch.set_grad_enabled(True)
+    inf_latents_torch = torch.tensor(inf_latents_train_flat).float()
+    inf_rates_torch = torch.tensor(inf_rates_train_flat).float()
+
+    inf_latents_val_torch = torch.tensor(inf_latents_val_flat).float()
+    inf_rates_val_torch = torch.tensor(inf_rates_val_flat).float()
+
+    mlp = torch.nn.Sequential(
+        torch.nn.Linear(inf_rates_train_flat.shape[1], 100),
+        torch.nn.ReLU(),
+        torch.nn.Linear(100, 100),
+        torch.nn.ReLU(),
+        torch.nn.Linear(100, inf_latents_train_flat.shape[1]),
     )
-    return var_exp
+
+    val_rates = inf_rates_val_torch
+    val_latents = inf_latents_val_torch
+
+    # Convert validation data to torch tensors if not already
+    train_rates = inf_rates_torch
+    train_latents = inf_latents_torch
+
+    val_rates = torch.tensor(val_rates, dtype=torch.float32)
+    val_latents = torch.tensor(val_latents, dtype=torch.float32)
+
+    optimizer = torch.optim.Adam(mlp.parameters(), lr=1e-3)
+    criterion = torch.nn.MSELoss()
+
+    # Early stopping parameters
+    patience = 10
+    best_val_loss = float("inf")
+    counter = 0
+
+    for epoch in range(100):
+        # Training step
+        mlp.train()
+        optimizer.zero_grad()
+        pred_train = mlp(train_rates)
+        train_loss = criterion(pred_train, train_latents)
+        train_loss.backward()
+        optimizer.step()
+
+        # Validation step
+        mlp.eval()
+        with torch.no_grad():
+            pred_val = mlp(val_rates)
+            val_loss = criterion(pred_val, val_latents)
+        # Early stopping check
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            counter = 0  # Reset counter if validation loss improves
+            best_model_state = mlp.state_dict()  # Save best model state
+        else:
+            counter += 1
+            if counter >= patience:
+                print(f"Early stopping at epoch {epoch + 1}")
+                break
+
+    # Load the best model state before returning results
+    mlp.load_state_dict(best_model_state)
+
+    # Evaluate performance
+    if noise_level is None:
+        return r2_score(
+            val_latents,
+            mlp(val_rates).detach().cpu().numpy(),
+            multioutput="variance_weighted",
+        )
+    else:
+        noised_rates_flat = val_rates + torch.rand_like(val_rates) * noise_level
+        latent_pred_flat = mlp(noised_rates_flat).detach().cpu().numpy()
+        return r2_score(val_latents, latent_pred_flat, multioutput="variance_weighted")
+
+
+def get_linear_cycle_consistency(
+    inf_latents_train, inf_rates_train, inf_latents_val, inf_rates_val, noise_level=0.01
+):
+    if len(inf_latents_train.shape) == 3:
+        n_b_pred, n_t_pred, n_d_pred = inf_latents_train.shape
+        inf_latents_train_flat = inf_latents_train.reshape(-1, n_d_pred)
+        inf_latents_val_flat = inf_latents_val.reshape(-1, n_d_pred)
+
+    else:
+        inf_latents_train_flat = inf_latents_train
+
+    if len(inf_rates_train.shape) == 3:
+        n_b_true, n_t_true, n_d_true = inf_rates_train.shape
+        inf_rates_train_flat = inf_rates_train.reshape(-1, n_d_true)
+        inf_rates_val_flat = inf_rates_val.reshape(-1, n_d_true)
+
+    else:
+        inf_rates_train_flat = inf_rates_train
+        inf_rates_val_flat = inf_rates_val
+
+    inf_logrates_train_flat = np.log(inf_rates_train_flat)
+    inf_logrates_val_flat = np.log(inf_rates_val_flat)
+
+    pca_logrates = PCA()
+    pca_logrates.fit(inf_logrates_train_flat)
+    inf_logrates_train_flat = pca_logrates.transform(inf_logrates_train_flat)
+    inf_logrates_val_flat = pca_logrates.transform(inf_logrates_val_flat)
+
+    pca_lats = PCA()
+    pca_lats.fit(inf_latents_train_flat)
+    inf_latents_train_flat = pca_lats.transform(inf_latents_train_flat)
+    inf_latents_val_flat = pca_lats.transform(inf_latents_val_flat)
+
+    reg = LinearRegression().fit(inf_logrates_train_flat, inf_latents_train_flat)
+    preds = reg.predict(inf_logrates_val_flat)
+
+    if noise_level is not None:
+        noised_rates_flat = (
+            np.exp(inf_logrates_val_flat)
+            + np.random.randn(*inf_logrates_val_flat.shape) * noise_level
+        )
+        rectified_noised_rates_flat = np.maximum(noised_rates_flat, 1e-5)
+        noised_logrates_flat = np.log(rectified_noised_rates_flat)
+        latent_pred_flat = reg.predict(noised_logrates_flat)
+        return r2_score(
+            inf_latents_val_flat, latent_pred_flat, multioutput="variance_weighted"
+        )
+    else:
+
+        return r2_score(inf_latents_val_flat, preds, multioutput="variance_weighted")
+
+
+def get_linear_cycle_consistency_v2(
+    inf_latents_train,
+    inf_rates_train,
+    inf_latents_val,
+    inf_rates_val,
+    variance_threshold=0.01,
+):
+    """
+    Computes the variance-weighted R² score between the original latent variables
+    and the reconstructed latent variables after applying
+    singular value thresholding during reconstruction.
+
+    Parameters:
+    inf_latents_train (numpy.ndarray): Inferred latent variables for training,
+        shape can be (n_samples, n_latents) or (n_batches, n_time_steps, n_latents).
+    inf_rates_train (numpy.ndarray): Inferred rates for training,
+        shape can be (n_samples, n_neurons) or (n_batches, n_time_steps, n_neurons).
+    inf_latents_val (numpy.ndarray): Inferred latent variables for validation,
+        same shape considerations as training latents.
+    inf_rates_val (numpy.ndarray): Inferred rates for validation,
+        same shape considerations as training rates.
+    variance_threshold (float): Threshold for cumulative variance
+        to retain in singular values (e.g., 0.01 for 1%).
+
+    Returns:
+    float: Variance-weighted R² score between
+        original and reconstructed latent variables.
+    """
+
+    def reconstruct_latents(
+        lin_reg_model, N_pred, variance_threshold=variance_threshold
+    ):
+        """
+        Reconstructs the latent variables from predicted log-rates using
+        the pseudoinverse of the readout matrix, applying singular value thresholding.
+
+        Parameters:
+        lin_reg_model (LinearRegression): Trained LinearRegression model
+            mapping latents to log-rates.
+        N_pred (numpy.ndarray): Predicted log-rates, shape (n_samples, n_neurons).
+        variance_threshold (float): Threshold for cumulative variance to retain.
+
+        Returns:
+        numpy.ndarray: Reconstructed latent variables, shape (n_samples, n_latents).
+        """
+        # Extract the estimated readout matrix (coefficients) and intercept
+        W_hat = lin_reg_model.coef_  # Shape: (n_neurons, n_latents)
+        b_hat = lin_reg_model.intercept_  # Shape: (n_neurons,)
+
+        # Ensure N_pred is a 2D array
+        if N_pred.ndim == 1:
+            N_pred = N_pred.reshape(-1, 1)
+
+        # Subtract the intercept from the predicted log-rates
+        N_centered = N_pred - b_hat  # Shape: (n_samples, n_neurons)
+
+        # Perform SVD on W_hat
+        U, Sigma, Vt = np.linalg.svd(
+            W_hat, full_matrices=False
+        )  # W_hat = U @ diag(Sigma) @ Vt
+
+        # Compute normalized squared singular values (variance explained)
+        normalized_variance = (Sigma**2) / np.sum(Sigma**2)
+
+        # Compute cumulative variance
+        cumulative_variance = np.cumsum(normalized_variance)
+
+        # Determine number of components to retain to capture desired variance
+        num_components = (
+            np.searchsorted(cumulative_variance, (1 - variance_threshold)) + 1
+        )
+
+        # Ensure num_components does not exceed total number of components
+        num_components = min(num_components, len(Sigma))
+
+        # Truncate the singular values and corresponding matrices
+        U_trunc = U[:, :num_components]  # Shape: (n_neurons, num_components)
+        Sigma_trunc = Sigma[:num_components]  # Shape: (num_components,)
+        Vt_trunc = Vt[:num_components, :]  # Shape: (num_components, n_latents)
+
+        # Compute the truncated pseudoinverse
+        Sigma_inv_trunc = np.diag(
+            1 / Sigma_trunc
+        )  # Shape: (num_components, num_components)
+        W_pinv_trunc = (
+            Vt_trunc.T @ Sigma_inv_trunc @ U_trunc.T
+        )  # Shape: (n_latents, n_neurons)
+
+        # Reconstruct the latent variables
+        L_hat = N_centered @ W_pinv_trunc.T  # Shape: (n_samples, n_latents)
+
+        return L_hat
+
+    # Flatten training latent variables if necessary
+    if len(inf_latents_train.shape) == 3:
+        n_b_pred, n_t_pred, n_d_pred = inf_latents_train.shape
+        inf_latents_train_flat = inf_latents_train.reshape(-1, n_d_pred)
+        inf_latents_val_flat = inf_latents_val.reshape(-1, n_d_pred)
+    else:
+        inf_latents_train_flat = inf_latents_train
+        inf_latents_val_flat = inf_latents_val
+
+    # Flatten training rates if necessary
+    if len(inf_rates_train.shape) == 3:
+        n_b_true, n_t_true, n_d_true = inf_rates_train.shape
+        inf_rates_train_flat = inf_rates_train.reshape(-1, n_d_true)
+    else:
+        inf_rates_train_flat = inf_rates_train
+
+    # Compute log-rates
+    inf_logrates_train_flat = np.log(inf_rates_train_flat)
+    # inf_logrates_val_flat = np.log(inf_rates_val_flat)
+
+    pca_lats = PCA()
+    pca_lats.fit(inf_latents_train_flat)
+    inf_latents_train_flat = pca_lats.transform(inf_latents_train_flat)
+
+    pca_logrates = PCA()
+    pca_logrates.fit(inf_logrates_train_flat)
+    inf_logrates_train_flat = pca_logrates.transform(inf_logrates_train_flat)
+
+    inf_latents_val_flat = pca_lats.transform(inf_latents_val_flat)
+
+    # Fit linear regression model from latent variables to log-rates
+    emp_readout = LinearRegression()
+    emp_readout.fit(inf_latents_train_flat, inf_logrates_train_flat)
+
+    # Predict log-rates from validation latent variables
+    preds = emp_readout.predict(inf_latents_val_flat)
+
+    # Reconstruct latent variables from predicted log-rates
+    latent_pred_flat = reconstruct_latents(
+        emp_readout, preds, variance_threshold=variance_threshold
+    )
+
+    # Compute variance-weighted R² score between original
+    # and reconstructed latent variables
+    r2 = r2_score(
+        inf_latents_val_flat, latent_pred_flat, multioutput="variance_weighted"
+    )
+
+    return r2
+
+
+def get_bps(inf_rates, true_spikes):
+    bps = bits_per_spike(
+        torch.tensor(np.log(inf_rates)).float(), true_spikes.clone().detach().float()
+    ).item()
+    return bps

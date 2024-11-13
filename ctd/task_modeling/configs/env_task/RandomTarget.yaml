@@ -14,3 +14,4 @@ act_weight: 1.0
 pos_weight: 1.0
 
 context_input_noise: 0.04
+is_aligned: False

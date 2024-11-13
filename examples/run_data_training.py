@@ -1,3 +1,5 @@
+# import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import logging
 import os
 import shutil
@@ -6,20 +8,15 @@ from pathlib import Path
 
 import dotenv
 import ray
-from omegaconf import OmegaConf
 from ray import tune
 from ray.tune import CLIReporter
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.search.basic_variant import BasicVariantGenerator
 
-from ctd.data_modeling.extensions.SAE.utils import make_data_tag
-from ctd.data_modeling.train_JAX import train_JAX
 from ctd.data_modeling.train_PTL import train_PTL
 
 dotenv.load_dotenv(override=True)
 HOME_DIR = Path(os.environ.get("HOME_DIR"))
-
-OmegaConf.register_new_resolver("make_data_tag", make_data_tag)
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
@@ -27,37 +24,32 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "NBFF_SLDS2_Sweep_LR_4"
+RUN_DESC = "MultiTask_LFADS"  # Description of the run
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "SwitchingLDS2"  # "ResLFADS" or "LFADS"
-DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"  # "ResLFADS" or "LFADS"
+DATA = "MultiTask"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":
-    prefix = "tt_3bff"
+    prefix = "20241017_NBFF_NoisyGRU_NewFinal"
 elif DATA == "MultiTask":
-    prefix = "tt_MultiTask"
+    prefix = "20241017_MultiTask_NoisyGRU_NewFinal"
 elif DATA == "RandomTarget":
-    prefix = "tt_RandomTarget"
+    prefix = "20241017_RandomTarget_NoisyGRU_NewFinal"
 
 # -------------------------------------
-SEARCH_SPACE = dict(
-    datamodule=dict(
-        # Change the prefix to the correct path for your task-trained network
-        prefix=tune.grid_search([prefix]),
-    ),
-    model=dict(
-        num_LDS=tune.grid_search([1, 3, 5, 8, 10, 15, 20]),
-        lr=tune.grid_search([5e-3]),
-    ),
-    params=dict(
-        seed=tune.grid_search([0]),
-    ),
-    trainer=dict(
-        max_epochs=tune.grid_search([1500]),
-    ),
-)
+# -------------------------------------
+SEARCH_SPACE = {
+    # 'model.latent_size': tune.grid_search([3,5,8,16,32,64,96]),
+    # 'model.num_modes': tune.grid_search([16]),
+    # 'model.lr': tune.grid_search([2e-3]),
+    # 'model.gen_dim': tune.grid_search([256]),
+    "datamodule.prefix": tune.grid_search([prefix]),
+    "trainer.max_epochs": tune.grid_search([1000]),
+    "params.seed": tune.grid_search([0]),
+    # 'params.odin_dim': tune.grid_search([18]),
+}
 
 # -----------------Default Parameter Sets -----------------------------------
 cpath = "../data_modeling/configs"
@@ -99,7 +91,7 @@ else:
         datamodule=datamodule_path,
         trainer=trainer_path,
     )
-    train = train_JAX
+    # train = train_JAX
 
 # ------------------Data Management Variables --------------------------------
 DATE_STR = datetime.now().strftime("%Y%m%d")
@@ -135,7 +127,7 @@ def main(
             train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=4, gpu=0.45),
+        resources_per_trial=dict(cpu=4, gpu=0.9),
         num_samples=NUM_SAMPLES,
         storage_path=run_dir,
         search_alg=BasicVariantGenerator(),

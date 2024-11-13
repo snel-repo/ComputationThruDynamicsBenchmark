@@ -1,4 +1,5 @@
 import io
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,7 +7,9 @@ import pytorch_lightning as pl
 import torch
 from PIL import Image
 from sklearn.decomposition import PCA
+from torch.nn.functional import poisson_nll_loss
 
+from ctd.data_modeling.callbacks.metrics import compute_metrics
 from ctd.data_modeling.extensions.LFADS.utils import send_batch_to_device
 
 # plt.switch_backend("Agg")
@@ -298,4 +301,124 @@ class CondAvgTrajectoryPlot(pl.Callback):
             "trajectory_plot_cond_avg",
             fig,
             trainer.global_step,
+        )
+
+
+class DTMetricsCallback(pl.Callback):
+    """Plots validation spiking data side-by-side with
+    inferred inputs and rates and logs to tensorboard.
+    """
+
+    def __init__(self, log_every_n_epochs=100):
+        """Initializes the callback.
+        Parameters
+        ----------
+        n_samples : int, optional
+            The number of samples to plot, by default 3
+        log_every_n_epochs : int, optional
+            The frequency with which to plot and log, by default 100
+        """
+        self.log_every_n_epochs = log_every_n_epochs
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        """Logs plots at the end of the validation epoch.
+        Parameters
+        ----------
+        trainer : pytorch_lightning.Trainer
+            The trainer currently handling the model.
+        pl_module : pytorch_lightning.LightningModule
+            The model currently being trained.
+        """
+        if (trainer.current_epoch % self.log_every_n_epochs) != 0:
+            return
+        # Check for any image loggers
+        if not has_image_loggers(trainer.loggers):
+            return
+
+        def bits_per_spike(preds, targets):
+            """
+            Computes BPS for n_samples x n_timesteps x n_neurons arrays.
+            Preds are logrates and targets are binned spike counts.
+            """
+            nll_model = poisson_nll_loss(preds, targets, full=True, reduction="sum")
+            nll_null = poisson_nll_loss(
+                torch.mean(targets, dim=(0, 1), keepdim=True),
+                targets,
+                log_input=False,
+                full=True,
+                reduction="sum",
+            )
+            return (nll_null - nll_model) / torch.nansum(targets) / math.log(2)
+
+        # Get data samples from the dataloaders
+        dataloader = trainer.datamodule.val_dataloader()
+        spikes_list = []
+        latents_list = []
+        true_latents_list = []
+        inputs_list = []
+        true_inputs_list = []
+        rates_list = []
+        true_rates_list = []
+
+        for batch in dataloader:
+            # Move data to the right device
+            batch = send_batch_to_device(batch, pl_module.device)
+            # Compute model output
+            output = pl_module.predict_step(
+                batch=batch,
+                batch_ix=None,
+                sample_posteriors=False,
+            )
+            # Discard the extra data - only the SessionBatches are relevant here
+            batch_data = batch[0]
+            extra_data = batch[1]
+            # Log a few example outputs for each session
+            # Convert everything to numpy
+            encod_data = batch_data.encod_data.detach().cpu().numpy()
+            hi_neurons = encod_data.shape[-1]
+            recon_data = batch_data.recon_data.detach().cpu().numpy()
+            means = output.output_params.detach().cpu().numpy()
+            inputs = output.gen_inputs.detach().cpu().numpy()
+            lat = output.gen_states.detach().cpu().numpy()
+
+            spikes_list.append(recon_data)
+            latents_list.append(lat)
+            inputs_list.append(inputs)
+            rates_list.append(means)
+            true_inputs_list.append(extra_data[0].detach().cpu().numpy())
+            true_latents_list.append(extra_data[1].detach().cpu().numpy())
+            true_rates_list.append(extra_data[2].detach().cpu().numpy())
+
+        spikes = np.concatenate(spikes_list, axis=0)
+        latents = np.concatenate(latents_list, axis=0)
+        inputs = np.concatenate(inputs_list, axis=0)
+        rates = np.concatenate(rates_list, axis=0)
+        true_inputs = np.concatenate(true_inputs_list, axis=0)
+        true_latents = np.concatenate(true_latents_list, axis=0)
+        true_rates = np.concatenate(true_rates_list, axis=0)
+
+        spikes = spikes.reshape(-1, spikes.shape[-1])
+        latents = latents.reshape(-1, latents.shape[-1])
+        inputs = inputs.reshape(-1, inputs.shape[-1])
+        rates = rates.reshape(-1, rates.shape[-1])
+        true_inputs = true_inputs.reshape(-1, true_inputs.shape[-1])
+        true_latents = true_latents.reshape(-1, true_latents.shape[-1])
+        true_rates = true_rates.reshape(-1, true_rates.shape[-1])
+
+        metric_dict = compute_metrics(
+            true_rates=true_rates,
+            inf_rates=rates,
+            true_latents=true_latents,
+            inf_latents=latents,
+            true_spikes=spikes,
+            true_inputs=true_inputs,
+            inf_inputs=inputs,
+            hi_neurons=hi_neurons,
+            device=pl_module.device,
+        )
+        # Log the figure
+        pl_module.log_dict(
+            {
+                **metric_dict,
+            }
         )

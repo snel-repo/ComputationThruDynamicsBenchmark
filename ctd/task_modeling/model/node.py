@@ -1,8 +1,25 @@
 import torch
 from torch import nn
 
+"""
+All models must meet a few requirements
+    1. They must have an init_model method that takes
+    input_size and output_size as arguments
+    2. They must have a forward method that takes inputs and hidden
+    as arguments and returns output and hidden for one time step
+    3. They must have a cell attribute that is the recurrent cell
+    4. They must have a readout attribute that is the output layer
+    (mapping from latent to output)
 
-# TODO: Rename lowercase
+    Optionally,
+    1. They can have an init_hidden method that takes
+    batch_size as an argument and returns an initial hidden state
+    2. They can have a model_loss method that takes a loss_dict
+    as an argument and returns a loss (L2 regularization on latents, etc.)
+
+"""
+
+
 class NODE(nn.Module):
     def __init__(
         self,

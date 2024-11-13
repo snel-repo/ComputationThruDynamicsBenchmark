@@ -9,10 +9,6 @@ tune_report_callback:
   metrics:
     loss: valid/loss
 
-# video_generation:
-#   _target_: ctd.task_modeling.callbacks.callbacks_coupled.MotorNetVideoGeneration
-#   log_every_n_epochs: 50
-
 video_generation_arm:
   _target_: ctd.task_modeling.callbacks.callbacks_coupled.MotorNetVideoGenerationArm
   log_every_n_epochs: 50
@@ -20,3 +16,4 @@ video_generation_arm:
 latent_traj:
   _target_: ctd.task_modeling.callbacks.callbacks_coupled.LatentTrajectoryPlot
   log_every_n_epochs: 50
+  trim_inds: [5, -1]

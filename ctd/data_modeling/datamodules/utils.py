@@ -1,9 +1,4 @@
-import json
-import os
-import sys
-
 import numpy as np
-import requests
 import torch
 
 
@@ -137,73 +132,3 @@ def flatten(dictionary, level=[]):
         else:
             tmp_dict[".".join(level + [key])] = val
     return tmp_dict
-
-
-def send_completion_message(run_name, server):
-    url = """https://hooks.slack.com/services/T3H0891U6/
-    B03F69NEG4A/ishLtKN1050EQM60k19eAq6r"""
-    title = "Great work! You're a real scientist now!"
-    message = f"""*{os.path.split(run_name)}{chr(10)}* has encountered an error on
-                {chr(10)} *{server}* {chr(10)}But it's a good error!"""
-    slack_data = {
-        "username": "ClusterBot",
-        "icon_emoji": ":matrix:",
-        "blocks": [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": title,
-                },
-            },
-            {"type": "divider"},
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": message,
-                },
-            },
-        ],
-    }
-
-    byte_length = str(sys.getsizeof(slack_data))
-    headers = {"Content-Type": "application/json", "Content-Length": byte_length}
-    response = requests.post(url, data=json.dumps(slack_data), headers=headers)
-    if response.status_code != 200:
-        raise Exception(response.status_code, response.text)
-
-
-def send_error_message(run_name, server):
-    url = """https://hooks.slack.com/services/
-    T3H0891U6/B03F69NEG4A/ishLtKN1050EQM60k19eAq6r"""
-    title = "Get to work you lazy bum!"
-    message = f"""*{os.path.split(run_name)}{chr(10)}*
-    has encountered an error on{chr(10)} *{server}* {chr(10)}Bad job!"""
-    slack_data = {
-        "username": "ClusterBot",
-        "icon_emoji": ":matrix:",
-        "blocks": [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": title,
-                },
-            },
-            {"type": "divider"},
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": message,
-                },
-            },
-        ],
-    }
-
-    byte_length = str(sys.getsizeof(slack_data))
-    headers = {"Content-Type": "application/json", "Content-Length": byte_length}
-    response = requests.post(url, data=json.dumps(slack_data), headers=headers)
-    if response.status_code != 200:
-        raise Exception(response.status_code, response.text)

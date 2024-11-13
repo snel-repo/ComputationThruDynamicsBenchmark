@@ -1,5 +1,7 @@
-_target_: ctd.task_modeling.simulator.neural_simulator.NeuralDataSimulatorGeneral
-n_neurons: 50
+_target_: ctd.task_modeling.simulator.neural_simulator.NeuralDataSimulator
+neuron_dict:
+  n_neurons_heldin: 50
+  n_neurons_heldout: 10
 embed_dict:
   rect_func: exp
   fr_scaling: 2.0

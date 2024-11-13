@@ -137,13 +137,15 @@ class Analysis_TT(Analysis):
             return tt_ics, valid_noiseless_inputs, tt_targets
 
     def get_model_outputs(self, phase="all"):
+        inputs_to_env = self.get_inputs_to_env(phase=phase)
         tt_ics, tt_inputs, tt_targets = self.get_model_inputs(phase=phase)
-        out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
+        out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env)
         return out_dict
 
     def get_model_outputs_noiseless(self, phase="all"):
+        inputs_to_env = self.get_inputs_to_env(phase=phase)
         tt_ics, tt_inputs, tt_targets = self.get_model_inputs_noiseless(phase=phase)
-        out_dict = self.wrapper(tt_ics, tt_inputs, tt_targets)
+        out_dict = self.wrapper(tt_ics, tt_inputs, inputs_to_env)
         return out_dict
 
     def get_latents(self, phase="all"):

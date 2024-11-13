@@ -10,8 +10,8 @@ latent_size: 128
 input_size: 3
 
 weight_decay: 0
-lr: 1e-4
+lr: 1e-3
 
-num_LDS: 4
+num_modes: 4
 
 dropout: 0.05

@@ -17,25 +17,63 @@ class LinearCell(nn.Module):
         return self.linear_ih(input) + self.linear_hh(hidden)
 
 
-class RNN(nn.Module):
-    def __init__(self, cells):
+class SwitchingLinearCell(nn.Module):
+    def __init__(self, input_size, latent_size, num_modes):
         super().__init__()
-        self.cells = nn.ModuleList(cells)
-        self.num_LDS = len(cells)
+        self.input_size = input_size
+        self.latent_size = latent_size
+        self.num_modes = num_modes
+        self.cells = nn.ModuleList(
+            [LinearCell(input_size, latent_size) for _ in range(num_modes)]
+        )
+        # A network to compute mode probabilities, taking both input and hidden state
+        self.mode_network = nn.Sequential(
+            nn.Linear(input_size + latent_size, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_modes),
+        )
 
-    def forward(self, input, h_0, selection_probs):
+    def forward(self, input, hidden):
+        # Compute mode probabilities
+        mode_input = torch.cat(
+            [input, hidden], dim=-1
+        )  # Shape: (batch_size, input_size + latent_size)
+        mode_logits = self.mode_network(mode_input)
+        mode_probs = nn.functional.softmax(
+            mode_logits, dim=-1
+        )  # Shape: (batch_size, num_modes)
+        # Compute outputs of each mode
+        outputs = []
+        for cell in self.cells:
+            output = cell(input, hidden)  # Shape: (batch_size, latent_size)
+            outputs.append(output.unsqueeze(-1))  # Shape: (batch_size, latent_size, 1)
+        outputs = torch.cat(
+            outputs, dim=-1
+        )  # Shape: (batch_size, latent_size, num_modes)
+        # Weight outputs by mode probabilities
+        mode_probs = mode_probs.unsqueeze(1)  # Shape: (batch_size, 1, num_modes)
+        output = (outputs * mode_probs).sum(dim=-1)  # Shape: (batch_size, latent_size)
+        return output, mode_probs
+
+
+class RNN(nn.Module):
+    def __init__(self, cell):
+        super().__init__()
+        self.cell = cell
+
+    def forward(self, input, h_0):
         hidden = h_0
         states = []
+        mode_probs_list = []
         for input_step in input.transpose(0, 1):
-            weighted_hidden = torch.zeros_like(hidden)
-            for i in range(self.num_LDS):
-                weighted_hidden += selection_probs[:, i : i + 1] * self.cells[i](
-                    input_step, hidden
-                )
-            hidden = weighted_hidden
+            hidden, mode_probs = self.cell(input_step, hidden)
             states.append(hidden)
-        states = torch.stack(states, dim=1)
-        return states, hidden
+            mode_probs_list.append(mode_probs)
+        states = torch.stack(states, dim=1)  # Shape: (batch_size, seq_len, latent_size)
+        mode_probs = torch.stack(
+            mode_probs_list, dim=1
+        )  # Shape: (batch_size, seq_len, num_modes)
+        return states, hidden, mode_probs
 
 
 class SwitchingLDS(pl.LightningModule):
@@ -51,10 +89,11 @@ class SwitchingLDS(pl.LightningModule):
         weight_decay: float,
         dropout: float,
         input_size: int,
-        num_LDS: int,
+        num_modes: int,
         loss_func: LossFunc = PoissonLossFunc(),
     ):
         super().__init__()
+        # Instantiate bidirectional GRU encoder
         self.encoder = nn.GRU(
             input_size=heldin_size,
             hidden_size=encoder_size,
@@ -68,36 +107,21 @@ class SwitchingLDS(pl.LightningModule):
         self.latent_size = latent_size
         self.weight_decay = weight_decay
         self.lr = lr
-
-        self.num_LDS = num_LDS
-        self.selection_mlp = nn.Sequential(
-            nn.Linear(latent_size, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_LDS),
-            nn.Softmax(dim=-1),
-        )
-
-        cells = [LinearCell(input_size, latent_size) for _ in range(num_LDS)]
-        self.decoder = RNN(cells)
         self.loss_func = loss_func
+        # Use SwitchingLinearCell in the decoder
+        self.decoder = RNN(SwitchingLinearCell(input_size, latent_size, num_modes))
 
     def forward(self, data, inputs):
-        device = data.device
-        self.decoder.to(
-            device
-        )  # Ensure the decoder (and its cells) are moved to the same device
-
-        data, inputs = data.to(device), inputs.to(device)
-
+        # Pass data through the encoder
         _, h_n = self.encoder(data[:, : self.encoder_window, :])
         h_n = torch.cat([*h_n], -1)
         h_n_drop = self.dropout(h_n)
         ic = self.ic_linear(h_n_drop)
         ic_drop = self.dropout(ic)
-
-        selection_probs = self.selection_mlp(ic_drop)
-        latents, _ = self.decoder(inputs, ic_drop, selection_probs)
-
+        # Pass through the decoder with switching dynamics
+        latents, _, mode_probs = self.decoder(inputs, ic_drop)
+        B, T, N = latents.shape
+        # Map decoder state to data dimension
         rates = self.readout(latents)
         return rates, latents
 
@@ -115,13 +139,9 @@ class SwitchingLDS(pl.LightningModule):
 
     def training_step(self, batch, batch_ix):
         spikes, recon_spikes, inputs, extra, *_ = batch
-        spikes, recon_spikes, inputs, extra = (
-            spikes.to(self.device),
-            recon_spikes.to(self.device),
-            inputs.to(self.device),
-            extra.to(self.device),
-        )
+        # Pass data through the model
         pred_logrates, pred_latents = self.forward(spikes, inputs)
+        # Compute the weighted loss
         loss_dict = dict(
             controlled=pred_logrates,
             targets=recon_spikes,
@@ -130,16 +150,12 @@ class SwitchingLDS(pl.LightningModule):
         loss = self.loss_func(loss_dict)
 
         self.log("train/loss_all", loss)
+
         return loss
 
     def validation_step(self, batch, batch_ix):
         spikes, recon_spikes, inputs, extra, *_ = batch
-        spikes, recon_spikes, inputs, extra = (
-            spikes.to(self.device),
-            recon_spikes.to(self.device),
-            inputs.to(self.device),
-            extra.to(self.device),
-        )
+        # Pass data through the model
         pred_logrates, latents = self.forward(spikes, inputs)
         loss_dict = dict(
             controlled=pred_logrates,

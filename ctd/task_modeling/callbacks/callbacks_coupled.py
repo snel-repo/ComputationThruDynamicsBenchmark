@@ -115,8 +115,10 @@ class LatentTrajectoryPlot(pl.Callback):
     def __init__(
         self,
         log_every_n_epochs=10,
+        trim_inds=[0, -1],
     ):
         self.log_every_n_epochs = log_every_n_epochs
+        self.trim_inds = trim_inds
 
     def on_validation_epoch_end(self, trainer, pl_module):
 
@@ -127,18 +129,26 @@ class LatentTrajectoryPlot(pl.Callback):
 
         # Get trajectories and model predictions
         train_dataloader = trainer.datamodule.train_dataloader()
+
         ics_train = torch.cat([batch[0] for batch in train_dataloader]).to(
             pl_module.device
         )
         inputs_train = torch.cat([batch[1] for batch in train_dataloader]).to(
             pl_module.device
         )
+        ext_inputs_train = torch.cat([batch[6] for batch in train_dataloader]).to(
+            pl_module.device
+        )
 
-        output_dict = pl_module.forward(ics_train, inputs_train)
+        output_dict = pl_module.forward(
+            ics_train, inputs_train, inputs_to_env=ext_inputs_train
+        )
 
         lats_train = output_dict["latents"]
 
         lats_train = lats_train.detach().cpu().numpy()
+        lats_train = lats_train[:, self.trim_inds[0] : self.trim_inds[1], :]
+
         n_trials, n_times, n_lat_dim = lats_train.shape
         if n_lat_dim > 3:
             pca1 = PCA(n_components=3)

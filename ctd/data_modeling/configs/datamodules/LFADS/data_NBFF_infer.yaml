@@ -1,10 +1,12 @@
 _target_: ctd.data_modeling.datamodules.LFADS.datamodule.BasicDataModule
-prefix: 20240122_NBFF_GRU
-n_neurons: 50
+prefix: tt_3bff
 seed: 0
 batch_size: 500
 provide_inputs: False
 
+neuron_dict:
+  n_heldin: 50
+  n_heldout: 10
 embed_dict:
   rect_func: exp
   fr_scaling: 2.0

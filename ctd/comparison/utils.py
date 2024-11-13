@@ -4,6 +4,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as npr
+from sklearn.decomposition import PCA
 
 """Classes copied directly from Matt Golub's fixed-point-finder and
 recurrent-whisperer and adapted for Python 3.7
@@ -22,6 +23,32 @@ Written using Python 2.7.12
 @ Matt Golub, August 2018.
 Please direct correspondence to mgolub@stanford.edu.
 """
+
+
+def pca_with_nan_handling(A, pca_components):
+    B, T, N = A.shape
+
+    # Flatten the 3D matrix into a 2D matrix
+    A_flattened = A.reshape(B * T, N)
+
+    # Identify rows with NaNs
+    nan_rows = np.isnan(A_flattened).any(axis=1)
+
+    # Separate the data into rows with and without NaNs
+    data_no_nan = A_flattened[~nan_rows]
+
+    # Perform PCA on the data without NaNs
+    pca = PCA(n_components=pca_components)
+    pca_transformed = pca.fit_transform(data_no_nan)
+
+    # Create the output array with NaNs in the appropriate places
+    A_pca = np.full((B * T, pca_components), np.nan)
+    A_pca[~nan_rows] = pca_transformed
+
+    # Reshape the output array back to 3D
+    A_pca_reshaped = A_pca.reshape(B, T, pca_components)
+
+    return A_pca_reshaped, pca
 
 
 class AdaptiveGradNormClip(object):

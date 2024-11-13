@@ -28,13 +28,20 @@ class TaskTrainedWrapper(pl.LightningModule):
             weight_decay (float):
                 The weight decay for the optimizer
             input_size (int):
-                The size of the input to the model (i.e., 3 for 3BFF)
+                The size of the input to the model
+                ( NBFF: N pulsatile inputs
+                  MultiTask: 20 total: 5 time-varying inputs and 15 task flag inputs
+                  RandomTarget: 17 total: 12 muscle inputs,
+                    2 visual inputs, 2 target inputs, 1 go cue)
             output_size (int):
-                The size of the output of the model (i.e., what the model is predicting)
+                The size of the output of the model
+                ( NBFF: N total: The state of the environment
+                  MultiTask: 3 total: 2 outputs and 1 fixation
+                RandomTarget: 6 muscle activation commands)
             task_env (Env):
-                The environment to simulate
+                The environment to learn to operate in
             model (nn.Module):
-                The model to train
+                torch.nn.Module dynamics model that transforms the inputs to the outputs
             loss_func (LossFunc):
                 The loss function to use
                 - see loss_func.py for examples
@@ -52,7 +59,9 @@ class TaskTrainedWrapper(pl.LightningModule):
         self.save_hyperparameters()
 
     def set_environment(self, task_env: Env):
-        """Set the environment for the training pipeline"""
+        """Set the environment for the training pipeline
+        This method sizes the input and output of the model based on the environment
+        and checks to see whether the environment is coupled or if noise is dynamic"""
 
         self.task_env = task_env
         self.input_size = (
@@ -81,37 +90,44 @@ class TaskTrainedWrapper(pl.LightningModule):
         )
         return optimizer
 
-    def forward_step_coupled(self, env_states, context_inputs, rnn_hidden, joint_state):
-        """Forward step for coupled environment combining the RNN and environment"""
-        # model takes in:
-        # - inputs: composed of env_states and context_inputs
-        # - rnn_hidden: hidden state of the RNN
-        inputs = torch.hstack((env_states, context_inputs))
-        action, rnn_hidden = self.model(inputs, rnn_hidden)
-        self.task_env.reset(
-            batch_size=env_states.shape[0], options={"ic_state": joint_state}
-        )
-        env_states, _, terminated, _, info = self.task_env.step(
-            action=action, inputs=context_inputs
-        )
-        joint_state = info["states"]["joint"]
-        return action, rnn_hidden, env_states, joint_state
-
-    def forward(self, ics, inputs, inputs_to_env=None):
+    def forward(self, ics, inputs, inputs_to_env=None, stim_inputs=None):
         """Pass data through the model
         args:
             ics (torch.Tensor):
                 The initial conditions for the environment
             inputs (torch.Tensor):
-                The inputs to the model
+                The pre-computed inputs to the model
+                All NBFF and MultiTask inputs are pre-computed,
+                Only the target location and go cue are pre-computed in RandomTarget
             targets (torch.Tensor):
                 The targets for the model
                 (i.e., the outputs of the environment or MotorNet goal)
 
+        returns:
+            output_dict (dict):
+                A dictionary containing the controlled variable,
+                    latent activity, actions, states, and joints
+                controlled: The variable being optimized by the model
+                    NBFF: The "memorized" bit state
+                    MultiTask: The output and fixation signals
+                    RandomTarget: The fingertip position
+                latents: The latent activity of the model
+                actions: The actions taken by the model
+                    NBFF: The "memorized" bit state (same as controlled)
+                    MultiTask: The output and fixation signals (same as controlled)
+                    RandomTarget: The muscle activation commands
+                states: The state of the environment that the model is interacting with
+                    NBFF: N/A
+                    MultiTask: N/A
+                    RandomTarget: Kinematics of the arm
+                joints: The joint angles of the arm (only for coupled environments)
+
+
         """
         batch_size = ics.shape[0]
 
-        # If a coupled environment, set the environment state
+        # Step 1: For environments with coupled dynamics,
+        # reset the environment with the initial conditions
         if self.task_env.coupled_env:
             options = {"ic_state": ics}
             env_states, info = self.task_env.reset(
@@ -123,12 +139,13 @@ class TaskTrainedWrapper(pl.LightningModule):
             env_states = None
             env_state_list = None
 
-        # Call initializations (if they exist)
+        # Step 2: If the model has functionality to reset the hidden state, do so
         if hasattr(self.model, "init_hidden"):
             hidden = self.model.init_hidden(batch_size=batch_size).to(self.device)
         else:
             hidden = torch.zeros(batch_size, self.latent_size).to(self.device)
 
+        # Step 3: Step through each trial over time, providing inputs to the model
         latents = []  # Latent activity of TT model
         controlled = []  # Variable controlled by model
         actions = []  # Actions taken by model (sometimes = controlled)
@@ -136,21 +153,24 @@ class TaskTrainedWrapper(pl.LightningModule):
         count = 0
         terminated = False
         while not terminated and len(controlled) < self.task_env.n_timesteps:
-
-            # Build inputs to model
+            # Step 3a: For coupled environments,
+            # add the environment state to the model input
             if self.task_env.coupled_env:
                 model_input = torch.hstack((env_states, inputs[:, count, :]))
             else:
                 model_input = inputs[:, count, :]
 
+            # Step 3b: If needed, add dynamic noise to the model input
             if self.dynamic_noise > 0:
                 model_input = (
                     model_input + torch.randn_like(model_input) * self.dynamic_noise
                 )
-            # Produce an action and a hidden state
+
+            # Step 3c: Pass the inputs into the model
+            # and get the "action" and new hidden state
             action, hidden = self.model(model_input, hidden)
 
-            # Apply action to environment (for coupled)
+            # Step 3d: If coupled, apply action to environment using step()
             if self.task_env.coupled_env:
                 # Apply external loads (if they exist)
                 if inputs_to_env is not None:
@@ -163,6 +183,8 @@ class TaskTrainedWrapper(pl.LightningModule):
                     env_states, _, terminated, _, info = self.task_env.step(
                         action=action, inputs=inputs[:, count, :]
                     )
+                if stim_inputs is not None:
+                    hidden += stim_inputs[:, count, :]
                 controlled.append(info["states"][self.state_label])
                 joints.append(info["states"]["joint"])
                 actions.append(action)
@@ -174,7 +196,7 @@ class TaskTrainedWrapper(pl.LightningModule):
             latents.append(hidden)
             count += 1
 
-        # Compile outputs
+        # Step 4: Compile outputs and return:
         controlled = torch.stack(controlled, dim=1)
         latents = torch.stack(latents, dim=1)
         actions = torch.stack(actions, dim=1)
@@ -195,7 +217,25 @@ class TaskTrainedWrapper(pl.LightningModule):
         return output_dict
 
     def training_step(self, batch, batch_ix):
-        # Get the batch data
+        """Training step for the model
+        args:
+            batch (tuple):
+                The batch of data to train on
+                ics: The initial conditions for the environment
+                inputs: The pre-computed inputs to the model
+                targets: The targets for the model
+                conds: The conditions for the model
+                extras: Extra information for the model
+                inputs_to_env: The inputs to the environment
+            batch_ix (int):
+                The index of the batch
+
+        returns:
+            loss_all (torch.Tensor):
+                The loss for the batch
+
+        """
+        # Step 1: Unpack the batch
         ics = batch[0]
         inputs = batch[1]
         targets = batch[2]
@@ -203,10 +243,10 @@ class TaskTrainedWrapper(pl.LightningModule):
         extras = batch[5]
         inputs_to_env = batch[6]
 
-        # Pass data through the model
+        # Step 2: Pass data through the model
         output_dict = self.forward(ics, inputs, inputs_to_env)
 
-        # Compute the weighted loss
+        # Step 3: Compute the weighted loss using the environments loss function
         loss_dict = {
             "controlled": output_dict["controlled"],
             "latents": output_dict["latents"],
@@ -217,16 +257,34 @@ class TaskTrainedWrapper(pl.LightningModule):
             "extra": extras,
             "epoch": self.current_epoch,
         }
-
-        # Compute the loss using the loss function object
         loss_all = self.loss_func(loss_dict)
-        # If self.model has a loss function, add it to the loss
+        # Step 4: If the model itself has has a loss function, add its contribution
         if hasattr(self.model, "model_loss"):
             loss_all += self.model.model_loss(loss_dict)
         self.log("train/loss", loss_all)
         return loss_all
 
     def validation_step(self, batch, batch_ix):
+        """Validation step for the model
+        args:
+            batch (tuple):
+                The batch of data to train on
+                ics: The initial conditions for the environment
+                inputs: The pre-computed inputs to the model
+                targets: The targets for the model
+                conds: The conditions for the model
+                extras: Extra information for the model
+                inputs_to_env: The inputs to the environment
+            batch_ix (int):
+                The index of the batch
+
+        returns:
+            loss_all (torch.Tensor):
+                The loss for the batch
+
+        """
+
+        # Step 1: Unpack the batch
         ics = batch[0]
         inputs = batch[1]
         targets = batch[2]
@@ -234,10 +292,10 @@ class TaskTrainedWrapper(pl.LightningModule):
         extras = batch[5]
         inputs_to_env = batch[6]
 
-        # Pass data through the model
+        # Step 2: Pass data through the model
         output_dict = self.forward(ics, inputs, inputs_to_env=inputs_to_env)
 
-        # Compute the weighted loss
+        # Step 3: Compute the weighted loss
         loss_dict = {
             "controlled": output_dict["controlled"],
             "actions": output_dict["actions"],
@@ -248,9 +306,9 @@ class TaskTrainedWrapper(pl.LightningModule):
             "extra": extras,
             "epoch": self.current_epoch,
         }
-
-        # Compute the loss using the loss function object
         loss_all = self.loss_func(loss_dict)
+
+        # Step 4: Compute the loss using the loss function object
         if hasattr(self.model, "model_loss"):
             loss_all += self.model.model_loss(loss_dict)
         self.log("valid/loss", loss_all)

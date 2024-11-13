@@ -137,6 +137,39 @@ class NBitFlipFlop(DecoupledEnvironment):
         inputs = inputs + np.random.normal(loc=0.0, scale=self.noise, size=inputs.shape)
         return inputs, outputs, true_inputs
 
+    def generate_trial_with_stim(self):
+        # Make one trial of flip-flop
+        self.reset()
+
+        # Generate the times when the bit should flip
+        inputRand = np.random.random(size=(self.n_timesteps, self.n))
+        inputs = np.zeros((self.n_timesteps, self.n))
+        inputs[
+            inputRand > (1 - self.switch_prob)
+        ] = 1  # 2% chance of flipping up or down
+        inputs[inputRand < (self.switch_prob)] = -1
+
+        # Set the first 3 inputs to 0 to make sure no inputs come in immediately
+        inputs[0:3, :] = 0
+
+        bit = np.random.randint(0, self.n)
+        ind_25 = int(self.n_timesteps / 4)
+        ind_75 = int(3 * self.n_timesteps / 4)
+        stim_mag = np.random.uniform(0.5, 1.5)
+        inputs[ind_25:ind_75, bit] += stim_mag
+        # pick a random bit to add a step function to
+
+        # Generate the desired outputs given the inputs
+        outputs = np.zeros((self.n_timesteps, self.n))
+        for i in range(self.n_timesteps):
+            self.step(inputs[i, :])
+            outputs[i, :] = self.state
+
+        # Add noise to the inputs for the trial
+        true_inputs = inputs
+        inputs = inputs + np.random.normal(loc=0.0, scale=self.noise, size=inputs.shape)
+        return inputs, outputs, true_inputs
+
     def reset(self):
         """
         Resets the state of the flip-flop
@@ -152,7 +185,7 @@ class NBitFlipFlop(DecoupledEnvironment):
         self.state = np.zeros(self.n)
         return self.state
 
-    def generate_dataset(self, n_samples):
+    def generate_dataset(self, n_samples, stim=False):
         """
         Generates a dataset for the NBFF task
 
@@ -172,7 +205,10 @@ class NBitFlipFlop(DecoupledEnvironment):
         inputs_ds = np.zeros(shape=(n_samples, n_timesteps, self.n))
         true_inputs_ds = np.zeros(shape=(n_samples, n_timesteps, self.n))
         for i in range(n_samples):
-            inputs, outputs, true_inputs = self.generate_trial()
+            if stim:
+                inputs, outputs, true_inputs = self.generate_trial_with_stim()
+            else:
+                inputs, outputs, true_inputs = self.generate_trial()
             outputs_ds[i, :, :] = outputs
             inputs_ds[i, :, :] = inputs
             true_inputs_ds[i, :, :] = true_inputs

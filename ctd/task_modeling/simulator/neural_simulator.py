@@ -70,262 +70,129 @@ def apply_data_warp_sigmoid(data):
 class NeuralDataSimulator:
     def __init__(
         self,
-        n_neurons=50,
-        nonlin_embed=False,
-        fr_scaling=2.0,
-    ):
-
-        """Initialize the neural data simulator
-        Args:
-            n_neurons (int): The number of neurons to simulate
-            nonlin_embed (bool): Use a nonlinearity to embed latents?
-            fr_scaling (float): Factor to scale firing rates (rel std. dev.)
-                        Higher values lower the firing rates. Default is 2.0"""
-        self.n_neurons = n_neurons
-        self.nonlin_embed = nonlin_embed
-        self.fr_scaling = fr_scaling
-        self.obs_noise = "poisson"
-        self.readout = None
-        self.orig_mean = None
-        self.orig_std = None
-
-    def simulate_neural_data(
-        self, task_trained_model, datamodule, run_tag, subfolder, dataset_path, seed=0
-    ):
-        """
-        Simulate neural data from a task-trained model
-
-        TODO: REVISE
-
-        Args:
-            task_trained_model (TODO: dtype):
-            datamodule (Union[BasicDataModule, TaskTrainedRNNDataModule]):
-            run_tag (str):
-            subfolder (str):
-            dataset_path (str): 
-            seed (int): Random seed used in data generation
-        
-        Returns:
-            data (np.ndarray):
-            inputs (np.ndarray):
-            activity (np.ndarray):
-            latents (np.ndarray):
-        """
-
-        # Make a filename based on the system being modeled, the number of neurons,
-        # the nonlinearity, the observation noise, the epoch number, the model type,
-        # and the seed
-        coupled = task_trained_model.task_env.coupled_env
-        # Get trajectories and model predictions
-        train_ds = datamodule.train_ds
-        valid_ds = datamodule.valid_ds
-
-        ics = train_ds.tensors[0]
-        inputs = train_ds.tensors[1]
-        extra = train_ds.tensors[5]
-
-        ics_val = valid_ds.tensors[0]
-        inputs_val = valid_ds.tensors[1]
-        extra_val = valid_ds.tensors[5]
-
-        ics = torch.cat((ics, ics_val), dim=0)
-        inputs = torch.cat((inputs, inputs_val), dim=0)
-        extra = torch.cat((extra, extra_val), dim=0)
-
-        output_dict = task_trained_model(ics, inputs)
-
-        latents = output_dict["latents"]
-
-        if coupled:
-            states = output_dict["states"]
-            inputs = torch.concatenate((states, inputs), dim=-1).detach().numpy()
-
-        filename = (
-            f"{run_tag}_"
-            f"{datamodule.data_env.dataset_name}_"
-            f"model_{type(task_trained_model.model).__name__}_"
-            f"n_neurons_{self.n_neurons}_"
-            f"seed_{seed}"
-        )
-        if self.nonlin_embed:
-            filename += "_nonlin_embed"
-        fpath = os.path.join(dataset_path, filename)
-
-        # Make the directory if it doesn't exist
-        if not os.path.exists(fpath):
-            os.makedirs(fpath)
-        fpath = os.path.join(fpath, subfolder + ".h5")
-        n_trials, n_times, n_lat_dim = latents.shape
-        latents = latents.detach().numpy()
-
-        # Make random permutation of latents
-        rng = np.random.default_rng(seed)
-        num_stacks = np.ceil(self.n_neurons / n_lat_dim)
-        for i in range(int(num_stacks)):
-            perm_inds_stack = rng.permutation(n_lat_dim)
-            if i == 0:
-                perm_inds = perm_inds_stack
-            else:
-                perm_inds = np.concatenate((perm_inds, perm_inds_stack))
-
-        # Get the first n_neurons indices and permute the latents
-        perm_inds = perm_inds[: self.n_neurons]
-        latents_perm = latents[:, :, perm_inds]
-        activity = latents_perm[:, :, : self.n_neurons]
-        perm_neurons = perm_inds[: self.n_neurons]
-
-        # Make the readout matrix
-        readout = np.zeros((n_lat_dim, self.n_neurons))
-        for i in range(self.n_neurons):
-            readout[perm_inds[i], i] = 1
-
-        # Standardize and record original mean and standard deviations
-        orig_mean = np.mean(activity, keepdims=True)
-        orig_std = np.std(activity, keepdims=True)
-        activity = (activity - orig_mean) / (self.fr_scaling * orig_std)
-
-        self.orig_mean = orig_mean
-        self.orig_std = orig_std
-
-        if self.nonlin_embed:
-            rng = np.random.default_rng(seed)
-            scaling_matrix = np.logspace(0.2, 1, (self.n_neurons))
-            activity = activity * scaling_matrix[None, :]
-
-        # Add noise to the observations
-        if self.obs_noise is not None:
-            if self.nonlin_embed:
-                activity = apply_data_warp_sigmoid(activity)
-            elif self.obs_noise in ["poisson"]:
-                activity = np.exp(activity)
-            noise_fn = getattr(rng, self.obs_noise)
-            data = noise_fn(activity).astype(float)
-        else:
-            if self.nonlin_embed:
-                activity = apply_data_warp_sigmoid(activity)
-            data = activity
-
-        latents = latents.reshape(n_trials, n_times, n_lat_dim)
-        activity = activity.reshape(n_trials, n_times, self.n_neurons)
-        data = data.reshape(n_trials, n_times, self.n_neurons)
-
-        # Perform data splits
-        train_inds = range(0, int(0.8 * n_trials))
-        valid_inds = range(int(0.8 * n_trials), n_trials)
-
-        # Save the trajectories
-        with h5py.File(fpath, "w") as h5file:
-            h5file.create_dataset("train_encod_data", data=data[train_inds])
-            h5file.create_dataset("valid_encod_data", data=data[valid_inds])
-
-            h5file.create_dataset("train_recon_data", data=data[train_inds])
-            h5file.create_dataset("valid_recon_data", data=data[valid_inds])
-
-            h5file.create_dataset("train_inputs", data=inputs[train_inds])
-            h5file.create_dataset("valid_inputs", data=inputs[valid_inds])
-
-            h5file.create_dataset("train_activity", data=activity[train_inds])
-            h5file.create_dataset("valid_activity", data=activity[valid_inds])
-
-            h5file.create_dataset("train_latents", data=latents[train_inds])
-            h5file.create_dataset("valid_latents", data=latents[valid_inds])
-
-            h5file.create_dataset("train_extra", data=extra[train_inds])
-            h5file.create_dataset("valid_extra", data=extra[valid_inds])
-
-            h5file.create_dataset("train_inds", data=train_inds)
-            h5file.create_dataset("valid_inds", data=valid_inds)
-
-            h5file.create_dataset("readout", data=readout)
-            h5file.create_dataset("orig_mean", data=orig_mean)
-            h5file.create_dataset("orig_std", data=orig_std)
-
-            h5file.create_dataset("perm_neurons", data=perm_neurons)
-
-
-class NeuralDataSimulatorGeneral:
-    def __init__(
-        self,
+        neuron_dict,
         embed_dict,
         noise_dict,
-        n_neurons=50,
+        trim_inds=None,
     ):
 
         """Initialize the neural data simulator
         Args:
-            n_neurons (int): The number of neurons to simulate
-            nonlin_embed (bool): Use a nonlinearity to embed latents?
-            fr_scaling (float): Factor to scale firing rates (rel std. dev.)
-                        Higher values lower the firing rates. Default is 2.0"""
-        self.n_neurons = n_neurons
+            embed_dict (dict): Dictionary of embedding parameters
+                fr_scaling (float): Scaling factor for firing rates
+                    (higher values lead to lower firing rates)
+                rect_func (str): Nonlinearity for rectification
+                    options:
+                        - "exp": Exponential
+                        - "sigmoid": Sigmoid
+                        - "softplus": Softplus
+            noise_dict (dict): Dictionary of noise parameters
+                obs_noise (str): Observation noise model
+                    options:
+                        - "poisson": Poisson noise
+                        - "pseudoPoisson": Pseudo-Poisson noise
+                dispersion (float): Dispersion parameter for pseudo-Poisson noise
+
+            n_neurons (int): Number of neurons to simulate
+            trim_inds (tuple): Tuple of start and end indices t
+                o trim the data for simulation
+
+        """
+        self.neuron_dict = neuron_dict
         self.embed_dict = embed_dict
         self.noise_dict = noise_dict
         self.readout = None
         self.orig_mean = None
         self.orig_std = None
+        self.trim_inds = trim_inds
+        self.frozen_params = False
 
     def generate_simulated_data(self, task_trained_model, datamodule, seed):
         coupled = task_trained_model.task_env.coupled_env
 
         # Step 1: Get trajectories and model predictions
-        train_ds = datamodule.train_ds
-        valid_ds = datamodule.valid_ds
+        if hasattr(datamodule, "train_ds"):
+            train_ds = datamodule.train_ds
+            valid_ds = datamodule.valid_ds
 
-        ics = train_ds.tensors[0]
-        inputs = train_ds.tensors[1]
-        extra = train_ds.tensors[5]
+            ics = train_ds.tensors[0]
+            inputs = train_ds.tensors[1]
+            extra = train_ds.tensors[5]
+            inputs_to_env = train_ds.tensors[6]
 
-        ics_val = valid_ds.tensors[0]
-        inputs_val = valid_ds.tensors[1]
-        extra_val = valid_ds.tensors[5]
+            ics_val = valid_ds.tensors[0]
+            inputs_val = valid_ds.tensors[1]
+            extra_val = valid_ds.tensors[5]
+            inputs_to_env_val = valid_ds.tensors[6]
 
-        ics = torch.cat((ics, ics_val), dim=0)
-        inputs = torch.cat((inputs, inputs_val), dim=0)
-        extra = torch.cat((extra, extra_val), dim=0)
+            ics = torch.cat((ics, ics_val), dim=0)
+            inputs = torch.cat((inputs, inputs_val), dim=0)
+            extra = torch.cat((extra, extra_val), dim=0)
+            inputs_to_env = torch.cat((inputs_to_env, inputs_to_env_val), dim=0)
+        else:
+            ics = datamodule.stim_ds.tensors[0]
+            inputs = datamodule.stim_ds.tensors[1]
+            extra = datamodule.stim_ds.tensors[5]
+            inputs_to_env = datamodule.stim_ds.tensors[6]
 
-        output_dict = task_trained_model(ics, inputs)
+        output_dict = task_trained_model(ics, inputs, inputs_to_env=inputs_to_env)
         latents = output_dict["latents"]
+
+        n_neurons_heldin = self.neuron_dict["n_neurons_heldin"]
+        n_neurons_heldout = self.neuron_dict["n_neurons_heldout"]
+        total_neurons = n_neurons_heldin + n_neurons_heldout
 
         if coupled:
             states = output_dict["states"]
             inputs = torch.concatenate((states, inputs), dim=-1).detach().numpy()
-
         n_trials, n_times, n_lat_dim = latents.shape
         latents = latents.detach().numpy()
 
-        # Step 2: Randomly permute latents (if more neurons than latents)
         rng = np.random.default_rng(seed)
-        num_stacks = np.ceil(self.n_neurons / n_lat_dim)
-        for i in range(int(num_stacks)):
-            perm_inds_stack = rng.permutation(n_lat_dim)
-            if i == 0:
-                perm_inds = perm_inds_stack
-            else:
-                perm_inds = np.concatenate((perm_inds, perm_inds_stack))
+        # Step 2: Randomly permute latents (if more neurons than latents)
+        if not self.frozen_params:
+            num_stacks = np.ceil(total_neurons / n_lat_dim)
+            for i in range(int(num_stacks)):
+                perm_inds_stack = rng.permutation(n_lat_dim)
+                if i == 0:
+                    perm_inds = perm_inds_stack
+                else:
+                    perm_inds = np.concatenate((perm_inds, perm_inds_stack))
+            self.perm_inds = perm_inds[:total_neurons]
+            # Make the readout matrix
+            readout = np.zeros((n_lat_dim, total_neurons))
+            for i in range(total_neurons):
+                readout[self.perm_inds[i], i] = 1
+            self.readout = readout
+
+        latents_perm = latents[:, :, self.perm_inds]
+        activity = latents_perm[:, :, :total_neurons]
+        perm_neurons = self.perm_inds[:total_neurons]
+
+        if self.trim_inds is not None:
+            latents = latents[:, self.trim_inds[0] - 1 : self.trim_inds[1], :]
+            inputs = inputs[:, self.trim_inds[0] - 1 : self.trim_inds[1], :]
+            activity = activity[:, self.trim_inds[0] - 1 : self.trim_inds[1], :]
+            if hasattr(datamodule.data_env, "extra_timing_inds"):
+                for ind1 in datamodule.data_env.extra_timing_inds:
+                    extra[:, ind1] = extra[:, ind1] - self.trim_inds[0]
 
         # Get the first n_neurons indices and permute the latents
-        perm_inds = perm_inds[: self.n_neurons]
-        latents_perm = latents[:, :, perm_inds]
-        activity = latents_perm[:, :, : self.n_neurons]
-        perm_neurons = perm_inds[: self.n_neurons]
-
-        # Make the readout matrix
-        readout = np.zeros((n_lat_dim, self.n_neurons))
-        for i in range(self.n_neurons):
-            readout[perm_inds[i], i] = 1
+        n_times_cut = activity.shape[1]
 
         # Standardize and record original mean and standard deviations
-        orig_mean = np.mean(activity, keepdims=True)
-        orig_std = np.std(activity, keepdims=True)
-        activity = (activity - orig_mean) / (self.embed_dict["fr_scaling"] * orig_std)
+        if not self.frozen_params:
+            self.orig_mean = np.mean(activity, keepdims=True)
+            self.orig_std = np.std(activity, keepdims=True)
 
-        self.orig_mean = orig_mean
-        self.orig_std = orig_std
+        activity = (activity - self.orig_mean) / (
+            self.embed_dict["fr_scaling"] * self.orig_std
+        )
 
         # Step 3: Apply rectification to positive "rates"
         if self.embed_dict["rect_func"] == "sigmoid":
             rng = np.random.default_rng(seed)
-            scaling_matrix = np.logspace(0.2, 1, (self.n_neurons))
+            scaling_matrix = np.logspace(0.2, 1, (total_neurons))
             activity = activity * scaling_matrix[None, :]
             activity = apply_data_warp_sigmoid(activity)
         elif self.embed_dict["rect_func"] == "exp":
@@ -341,9 +208,12 @@ class NeuralDataSimulatorGeneral:
             data = generate_samples(activity, dispersion, rng)
 
         # Step 5: Reshape into data tensor
-        latents = latents.reshape(n_trials, n_times, n_lat_dim)
-        activity = activity.reshape(n_trials, n_times, self.n_neurons)
-        data = data.reshape(n_trials, n_times, self.n_neurons)
+        latents = latents.reshape(n_trials, n_times_cut, n_lat_dim)
+        activity = activity.reshape(n_trials, n_times_cut, total_neurons)
+        data = data.reshape(n_trials, n_times_cut, total_neurons)
+
+        self.frozen_params = True
+
         sim_dict = {
             "data": data,
             "inputs": inputs,
@@ -351,7 +221,7 @@ class NeuralDataSimulatorGeneral:
             "latents": latents,
             "extra": extra,
             "perm_neurons": perm_neurons,
-            "readout": readout,
+            "readout": self.readout,
         }
         return sim_dict
 
@@ -368,9 +238,9 @@ class NeuralDataSimulatorGeneral:
             datamodule (Union[BasicDataModule, TaskTrainedRNNDataModule]):
             run_tag (str):
             subfolder (str):
-            dataset_path (str): 
+            dataset_path (str):
             seed (int): Random seed used in data generation
-        
+
         Returns:
             data (np.ndarray):
             inputs (np.ndarray):
@@ -401,8 +271,10 @@ class NeuralDataSimulatorGeneral:
         dt_folder = run_tag
 
         folder_path = os.path.join(dataset_path, dt_folder, subfolder)
-
-        filename = f"n_neurons_{self.n_neurons}"
+        n_heldin = self.neuron_dict["n_neurons_heldin"]
+        n_heldout = self.neuron_dict["n_neurons_heldout"]
+        total_neurons = n_heldin + n_heldout
+        filename = f"heldin_{n_heldin}_heldout_{n_heldout}"
         if self.embed_dict["rect_func"] not in ["exp"]:
             for key, val in self.embed_dict.items():
                 filename += f"_{key}_{val}"
@@ -420,11 +292,19 @@ class NeuralDataSimulatorGeneral:
 
         # Save the trajectories
         with h5py.File(fpath, "w") as h5file:
-            h5file.create_dataset("train_encod_data", data=data[train_inds])
-            h5file.create_dataset("valid_encod_data", data=data[valid_inds])
+            h5file.create_dataset(
+                "train_encod_data", data=data[train_inds, :, :n_heldin]
+            )
+            h5file.create_dataset(
+                "valid_encod_data", data=data[valid_inds, :, :n_heldin]
+            )
 
-            h5file.create_dataset("train_recon_data", data=data[train_inds])
-            h5file.create_dataset("valid_recon_data", data=data[valid_inds])
+            h5file.create_dataset(
+                "train_recon_data", data=data[train_inds, :, :total_neurons]
+            )
+            h5file.create_dataset(
+                "valid_recon_data", data=data[valid_inds, :, :total_neurons]
+            )
 
             h5file.create_dataset("train_inputs", data=inputs[train_inds])
             h5file.create_dataset("valid_inputs", data=inputs[valid_inds])
