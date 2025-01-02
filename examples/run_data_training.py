@@ -1,4 +1,5 @@
 # import os
+
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import logging
 import os
@@ -20,35 +21,31 @@ HOME_DIR = Path(os.environ.get("HOME_DIR"))
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = False
+LOCAL_MODE = True
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "MultiTask_LFADS"  # Description of the run
+RUN_DESC = "NBFF_GRU_RNN"  # Description of the run
 NUM_SAMPLES = 1
-MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
-MODEL = "LFADS"  # "ResLFADS" or "LFADS"
-DATA = "MultiTask"  # "NBFF", "RandomTarget" or "MultiTask
+MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
+MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
+DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":
-    prefix = "20241017_NBFF_NoisyGRU_NewFinal"
+    prefix = "tt_3bff"
 elif DATA == "MultiTask":
-    prefix = "20241113_MultiTask_NoisyGRU_Final2"
+    prefix = "tt_MultiTask"
 elif DATA == "RandomTarget":
-    prefix = "20241113_RandomTarget_NoisyGRU_Final2"
+    prefix = "tt_RandomTarget"
 
 # -------------------------------------
 # -------------------------------------
 SEARCH_SPACE = {
-    # 'model.latent_size': tune.grid_search([3,5,8,16,32,64,96]),
-    # 'model.num_modes': tune.grid_search([16]),
-    # 'model.lr': tune.grid_search([2e-3]),
-    # 'model.gen_dim': tune.grid_search([256]),
     "datamodule.prefix": tune.grid_search([prefix]),
+    "model.latent_size": tune.grid_search([3]),
     "trainer.max_epochs": tune.grid_search([1000]),
     "params.seed": tune.grid_search([0]),
-    # 'params.odin_dim': tune.grid_search([18]),
 }
 
 # -----------------Default Parameter Sets -----------------------------------

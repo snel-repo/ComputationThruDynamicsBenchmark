@@ -201,7 +201,9 @@ class RasterPlot(pl.Callback):
         # Create subplots
         pred_rates_flat = torch.Tensor(pred_rates.reshape(-1, pred_rates.shape[-1]))
         rates_flat = torch.Tensor(rates.reshape(-1, rates.shape[-1]))
-        r2 = r2_score(pred_rates_flat, rates_flat)
+        r2 = r2_score(
+            pred_rates_flat.detach().cpu().numpy(), rates_flat.detach().cpu().numpy()
+        )
         plot_arrays = [ho_spikes, rates, pred_rates]
         fig, axes = plt.subplots(
             len(plot_arrays),
