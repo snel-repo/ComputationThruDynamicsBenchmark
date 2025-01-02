@@ -25,11 +25,9 @@ def copy_folder_contents(src_folder, dest_folder):
 dotenv.load_dotenv(override=True)
 HOME_DIR = os.environ.get("HOME_DIR")
 
-tt_3bff_path = HOME_DIR + "pretrained/20240503_Fig1_NBFF_NoisyGRU/"
-tt_MultiTask_path = HOME_DIR + "pretrained/20240703_MultiTask_TrialLenFix/"
-tt_RandomTarget_path = (
-    HOME_DIR + "pretrained/20240605_RandomTarget_NoisyGRU_GoStep_ModL2_Delay/"
-)
+tt_3bff_path = HOME_DIR + "pretrained/20241017_NBFF_NoisyGRU_NewFinal/"
+tt_MultiTask_path = HOME_DIR + "pretrained/20241113_MultiTask_NoisyGRU_Final2/"
+tt_RandomTarget_path = HOME_DIR + "pretrained/20241113_RandomTarget_NoisyGRU_Final2/"
 
 tt_3bff = Analysis_TT(run_name="tt_3bff", filepath=tt_3bff_path)
 tt_MultiTask = Analysis_TT(run_name="tt_MultiTask", filepath=tt_MultiTask_path)
