@@ -5,6 +5,7 @@ gen_type: RNN
 inv_encoder: False
 encod_data_dim: 50
 encod_seq_len: 320
+recon_data_dim: 60
 recon_seq_len: 320
 ext_input_dim: 20 # Ext. Inputs
 ic_enc_seq_len: 0
@@ -23,7 +24,7 @@ readin:
 readout:
   - _target_: ctd.data_modeling.models.LFADS.modules.readin_readout.FanInLinear
     in_features: ${fac_dim}
-    out_features: 50
+    out_features: 60
 # readout:
 #   - _target_: ctd.data_modeling.models.LFADS.modules.readin_readout.Flow
 #     in_features: ${fac_dim}

@@ -34,9 +34,9 @@ INFER_INPUTS = False
 if DATA == "NBFF":
     prefix = "20241017_NBFF_NoisyGRU_NewFinal"
 elif DATA == "MultiTask":
-    prefix = "20241017_MultiTask_NoisyGRU_NewFinal"
+    prefix = "20241113_MultiTask_NoisyGRU_Final2"
 elif DATA == "RandomTarget":
-    prefix = "20241017_RandomTarget_NoisyGRU_NewFinal"
+    prefix = "20241113_RandomTarget_NoisyGRU_Final2"
 
 # -------------------------------------
 # -------------------------------------

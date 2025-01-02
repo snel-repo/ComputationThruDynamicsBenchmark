@@ -6,8 +6,8 @@ batch_size: 250
 provide_inputs: True
 
 neuron_dict:
-  n_heldin: 50
-  n_heldout: 10
+  n_neurons_heldin: 50
+  n_neurons_heldout: 10
 
 embed_dict:
   rect_func: exp

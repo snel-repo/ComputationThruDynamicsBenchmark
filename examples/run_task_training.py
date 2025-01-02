@@ -25,13 +25,13 @@ dotenv.load_dotenv(override=True)
 # ---------------Options---------------
 OVERWRITE = True  # Set to True to overwrite existing run
 
-RUN_DESC = "RandomTarget_NoisyGRU_ImportTest"
+RUN_DESC = "RandomTarget_NoisyGRU_Final"
 TASK = "RandomTarget"  # Task to train on (see configs/task_env for options)
 MODEL = "NoisyGRULatentL2"  # Model to train (see configs/model for options)
 
 # ----------------- Parameter Selection -----------------------------------
 SEARCH_SPACE = {
-    "trainer.max_epochs": tune.choice([500]),
+    "trainer.max_epochs": tune.choice([3000]),
     # 'datamodule_train.batch_size': tune.choice([1000]),
     # 'task_wrapper.weight_decay': tune.choice([1e-5]),
     "params.seed": tune.grid_search([0]),
