@@ -1,4 +1,5 @@
 # import os
+
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import logging
 import os
@@ -20,7 +21,7 @@ HOME_DIR = Path(os.environ.get("HOME_DIR"))
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = False
+LOCAL_MODE = True
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
