@@ -413,7 +413,7 @@ class DTMetricsCallback(pl.Callback):
             true_spikes=spikes,
             true_inputs=true_inputs,
             inf_inputs=inputs,
-            hi_neurons=hi_neurons,
+            n_heldin=hi_neurons,
             device=pl_module.device,
         )
         # Log the figure

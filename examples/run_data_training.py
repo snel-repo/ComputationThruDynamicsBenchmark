@@ -25,7 +25,7 @@ LOCAL_MODE = True
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "NBFF_GRU_RNN"  # Description of the run
+RUN_DESC = "NBFF_GRU_Sweep"  # Description of the run
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
 MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
@@ -43,9 +43,9 @@ elif DATA == "RandomTarget":
 # -------------------------------------
 SEARCH_SPACE = {
     "datamodule.prefix": tune.grid_search([prefix]),
-    "model.latent_size": tune.grid_search([3]),
+    "model.latent_size": tune.grid_search([3, 5, 8, 16, 32,64,128,256]),
     "trainer.max_epochs": tune.grid_search([1000]),
-    "params.seed": tune.grid_search([0]),
+    "params.seed": tune.grid_search([0, 1, 2, 3, 4]),
 }
 
 # -----------------Default Parameter Sets -----------------------------------
@@ -124,7 +124,7 @@ def main(
             train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=4, gpu=0.9),
+        resources_per_trial=dict(cpu=4, gpu=0.45),
         num_samples=NUM_SAMPLES,
         storage_path=run_dir,
         search_alg=BasicVariantGenerator(),

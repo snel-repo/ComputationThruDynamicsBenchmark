@@ -58,7 +58,7 @@ class GRULatentSAE(pl.LightningModule):
         h_n_drop = self.dropout(h_n)
         ic = self.ic_linear(h_n_drop)
         ic_drop = self.dropout(ic)
-        # Evaluate the NeuralODE
+        # Evaluate the forward pass
         latents, _ = self.decoder(inputs, ic_drop)
         B, T, N = latents.shape
         # Map decoder state to data dimension
