@@ -16,7 +16,7 @@ con_dim: 0 # Hidden size of controller
 co_dim: 0 # # of controller inputs
 ic_dim: 128 # # neurons if Flow_inv, gen_dim if not
 gen_dim: 128
-fac_dim: 20
+fac_dim: 128
 
 # --------- readin / readout --------- #
 readin:
@@ -24,7 +24,7 @@ readin:
 readout:
   - _target_: ctd.data_modeling.models.LFADS.modules.readin_readout.FanInLinear
     in_features: ${fac_dim}
-    out_features: 60
+    out_features: ${recon_data_dim}
 # readout:
 #   - _target_: ctd.data_modeling.models.LFADS.modules.readin_readout.Flow
 #     in_features: ${fac_dim}
@@ -78,7 +78,7 @@ loss_scale: 1.0e+4
 recon_reduce_mean: True
 
 # --------- learning rate --------- #
-lr_init: 1.0e-3
+lr_init: 5.0e-3
 lr_stop: 1.0e-5
 lr_decay: 0.95
 lr_patience: 6
@@ -88,7 +88,7 @@ lr_adam_epsilon: 1.0e-7
 lr_scheduler: True
 
 # --------- regularization --------- #
-weight_decay: 1.0e-5
+weight_decay: 1.0e-8
 l2_start_epoch: 0
 l2_increase_epoch: 80
 l2_ic_enc_scale: 0.0
@@ -98,5 +98,5 @@ l2_con_scale: 0.0 # sampled
 l2_readout_scale: 0
 kl_start_epoch: 0
 kl_increase_epoch: 80
-kl_ic_scale: 1.0e-6 # sampled
-kl_co_scale: 1.0e-5 # sampled
+kl_ic_scale: 1.0e-8 # sampled
+kl_co_scale: 1.0e-8 # sampled

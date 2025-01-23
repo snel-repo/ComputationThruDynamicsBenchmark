@@ -163,8 +163,8 @@ class BasicDataModule(pl.LightningDataModule):
             self.fpath = os.path.join(fpath, filename)
         else:
             filename = (
-                f"heldin_{neuron_dict['n_neurons_heldin']}_"
-                f"heldout_{neuron_dict['n_neurons_heldout']}"
+                f"heldin_{neuron_dict['n_heldin']}_"
+                f"heldout_{neuron_dict['n_heldout']}"
             )
             if embed_dict["rect_func"] not in ["exp"]:
                 for key, val in self.embed_dict.items():

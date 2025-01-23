@@ -24,6 +24,7 @@ def copy_folder_contents(src_folder, dest_folder):
 
 dotenv.load_dotenv(override=True)
 HOME_DIR = os.environ.get("HOME_DIR")
+print(HOME_DIR)
 
 tt_3bff_path = HOME_DIR + "pretrained/20241017_NBFF_NoisyGRU_NewFinal/"
 tt_MultiTask_path = HOME_DIR + "pretrained/20241113_MultiTask_NoisyGRU_Final2/"

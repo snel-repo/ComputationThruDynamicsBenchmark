@@ -1,6 +1,8 @@
 _target_: ctd.data_modeling.datamodules.SAE.task_trained_data.TaskTrainedRNNDataModule
 prefix: tt_RandomTarget
-n_neurons: 50
+neuron_dict:
+  n_heldin: 50
+  n_heldout: 10
 embed_dict:
   rect_func: exp
   fr_scaling: 2.0
