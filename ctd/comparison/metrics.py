@@ -69,100 +69,6 @@ def get_signal_r2(signal_true, signal_pred):
     return signal_r2
 
 
-def get_cycle_consistency(
-    inf_latents_train, inf_rates_train, inf_latents_val, inf_rates_val, noise_level=0.1
-):
-    if len(inf_latents_train.shape) == 3:
-        n_b_pred, n_t_pred, n_d_pred = inf_latents_train.shape
-        inf_latents_train_flat = inf_latents_train.reshape(-1, n_d_pred)
-        inf_latents_val_flat = inf_latents_val.reshape(-1, n_d_pred)
-
-    else:
-        inf_latents_train_flat = inf_latents_train
-
-    if len(inf_rates_train.shape) == 3:
-        n_b_true, n_t_true, n_d_true = inf_rates_train.shape
-        inf_rates_train_flat = inf_rates_train.reshape(-1, n_d_true)
-        inf_rates_val_flat = inf_rates_val.reshape(-1, n_d_true)
-
-    else:
-        inf_rates_train_flat = inf_rates_train
-        inf_rates_val_flat = inf_rates_val
-
-    torch.set_grad_enabled(True)
-    inf_latents_torch = torch.tensor(inf_latents_train_flat).float()
-    inf_rates_torch = torch.tensor(inf_rates_train_flat).float()
-
-    inf_latents_val_torch = torch.tensor(inf_latents_val_flat).float()
-    inf_rates_val_torch = torch.tensor(inf_rates_val_flat).float()
-
-    mlp = torch.nn.Sequential(
-        torch.nn.Linear(inf_rates_train_flat.shape[1], 100),
-        torch.nn.ReLU(),
-        torch.nn.Linear(100, 100),
-        torch.nn.ReLU(),
-        torch.nn.Linear(100, inf_latents_train_flat.shape[1]),
-    )
-
-    val_rates = inf_rates_val_torch
-    val_latents = inf_latents_val_torch
-
-    # Convert validation data to torch tensors if not already
-    train_rates = inf_rates_torch
-    train_latents = inf_latents_torch
-
-    val_rates = torch.tensor(val_rates, dtype=torch.float32)
-    val_latents = torch.tensor(val_latents, dtype=torch.float32)
-
-    optimizer = torch.optim.Adam(mlp.parameters(), lr=1e-3)
-    criterion = torch.nn.MSELoss()
-
-    # Early stopping parameters
-    patience = 10
-    best_val_loss = float("inf")
-    counter = 0
-
-    for epoch in range(100):
-        # Training step
-        mlp.train()
-        optimizer.zero_grad()
-        pred_train = mlp(train_rates)
-        train_loss = criterion(pred_train, train_latents)
-        train_loss.backward()
-        optimizer.step()
-
-        # Validation step
-        mlp.eval()
-        with torch.no_grad():
-            pred_val = mlp(val_rates)
-            val_loss = criterion(pred_val, val_latents)
-        # Early stopping check
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            counter = 0  # Reset counter if validation loss improves
-            best_model_state = mlp.state_dict()  # Save best model state
-        else:
-            counter += 1
-            if counter >= patience:
-                print(f"Early stopping at epoch {epoch + 1}")
-                break
-
-    # Load the best model state before returning results
-    mlp.load_state_dict(best_model_state)
-
-    # Evaluate performance
-    if noise_level is None:
-        return r2_score(
-            val_latents,
-            mlp(val_rates).detach().cpu().numpy(),
-            multioutput="variance_weighted",
-        )
-    else:
-        noised_rates_flat = val_rates + torch.rand_like(val_rates) * noise_level
-        latent_pred_flat = mlp(noised_rates_flat).detach().cpu().numpy()
-        return r2_score(val_latents, latent_pred_flat, multioutput="variance_weighted")
-
-
 def get_linear_cycle_consistency(
     inf_latents_train, inf_rates_train, inf_latents_val, inf_rates_val, noise_level=0.01
 ):
@@ -215,7 +121,7 @@ def get_linear_cycle_consistency(
         return r2_score(inf_latents_val_flat, preds, multioutput="variance_weighted")
 
 
-def get_linear_cycle_consistency_v2(
+def get_cycle_consistency(
     inf_latents_train,
     inf_rates_train,
     inf_latents_val,

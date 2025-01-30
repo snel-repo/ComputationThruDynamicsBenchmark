@@ -21,14 +21,14 @@ HOME_DIR = Path(os.environ.get("HOME_DIR"))
 
 log = logging.getLogger(__name__)
 # ---------------Options---------------
-LOCAL_MODE = True
+LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "NBFF_GRU_RNN"  # Description of the run
+RUN_DESC = "NBFF_NODE"  # Description of the run
 NUM_SAMPLES = 1
 MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "GRU_RNN"  # "ResLFADS" or "LFADS"
+MODEL = "NODE"  # "ResLFADS" or "LFADS"
 DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
@@ -43,9 +43,9 @@ elif DATA == "RandomTarget":
 # -------------------------------------
 SEARCH_SPACE = {
     "datamodule.prefix": tune.grid_search([prefix]),
-    "model.latent_size": tune.grid_search([3]),
-    "trainer.max_epochs": tune.grid_search([1000]),
-    "params.seed": tune.grid_search([0]),
+    "model.latent_size": tune.grid_search([3, 5, 8, 16, 32, 64]),
+    "trainer.max_epochs": tune.grid_search([500]),
+    "params.seed": tune.grid_search([0, 1, 2, 3, 4]),
 }
 
 # -----------------Default Parameter Sets -----------------------------------

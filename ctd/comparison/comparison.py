@@ -9,7 +9,6 @@ from sklearn.metrics import r2_score
 from ctd.comparison.metrics import (
     get_bps,
     get_cycle_consistency,
-    get_linear_cycle_consistency_v2,
     get_signal_r2,
     get_signal_r2_linear,
 )
@@ -121,25 +120,6 @@ class Comparison:
                     )
                     print(f"State R2: {state_r2}")
                     metrics_dict["state_r2"].append(state_r2)
-
-                elif metric in ["cycle_con"]:
-                    cycle_con = get_cycle_consistency(
-                        inf_latents_train=inf_latents_train.detach().numpy(),
-                        inf_rates_train=inf_rates_train.detach().numpy(),
-                        inf_latents_val=inf_latents_val.detach().numpy(),
-                        inf_rates_val=inf_rates_val.detach().numpy(),
-                        noise_level=cycle_con_noise,
-                    )
-                    print(f"Cycle consistency R2: {cycle_con}")
-                    metrics_dict["cycle_con"].append(cycle_con)
-                elif metric in ["bps"]:
-                    bps = get_bps(
-                        inf_rates=inf_rates_val.detach().numpy(),
-                        true_spikes=self.analyses[i].get_spiking(phase="val"),
-                    )
-                    print(f"BPS: {bps}")
-                    metrics_dict["bps"].append(bps)
-
                 elif metric in ["co-bps"]:
                     inf_rates_co = inf_rates_val[:, :, n_input_neurons:]
                     spiking_co = self.analyses[i].get_spiking(phase="val")[
@@ -151,16 +131,16 @@ class Comparison:
                     )
                     print(f"CO-BPS: {bps}")
                     metrics_dict["co-bps"].append(bps)
-                elif metric in ["linear_cycle_con"]:
-                    linear_cycle_con = get_linear_cycle_consistency_v2(
+                elif metric in ["cycle_con"]:
+                    linear_cycle_con = get_cycle_consistency(
                         inf_latents_train=inf_latents_train.detach().numpy(),
                         inf_rates_train=inf_rates_train.detach().numpy(),
                         inf_latents_val=inf_latents_val.detach().numpy(),
                         inf_rates_val=inf_rates_val.detach().numpy(),
                         variance_threshold=cycle_con_var,
                     )
-                    print(f"Linear Cycle Consistency R2: {linear_cycle_con}")
-                    metrics_dict["linear_cycle_con"].append(linear_cycle_con)
+                    print(f"Cycle Consistency R2: {linear_cycle_con}")
+                    metrics_dict["cycle_con"].append(linear_cycle_con)
                 else:
                     raise ValueError("Invalid metric")
 
