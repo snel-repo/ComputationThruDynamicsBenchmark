@@ -124,7 +124,7 @@ def main(
             train, run_tag=run_tag_in, config_dict=config_dict, path_dict=path_dict
         ),
         config=SEARCH_SPACE,
-        resources_per_trial=dict(cpu=4, gpu=0.9),
+        resources_per_trial=dict(cpu=4, gpu=0.45),
         num_samples=NUM_SAMPLES,
         storage_path=run_dir,
         search_alg=BasicVariantGenerator(),

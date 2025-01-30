@@ -21,13 +21,16 @@ pip install -e .
 ```
 Second, navigate to the .env file and modify HOME_DIR to the path where you cloned the environment.
 
-You also need to install Dynamical Similarity Analysis (DSA).
-Follow the instructions on this git repo:
+Included in CtdB are three primary external packages:
+
+Dynamical Similarity Analysis:
 https://github.com/mitchellostrow/DSA
 
-lfads-jslds is a JAX model that implements Jacobian-Switching Linear Dynamical Systems, provided by David Zoltowski.
+JAX: which provides an implementation of lfads-jslds (Jacobian-Switching Linear Dynamical Systems), provided by David Zoltowski.
+For more information on JAX, see the documentation at:
+https://github.com/jax-ml/jax
 
-We use MotorNet, a musculoskeletal modeling package called MotorNet from Oli Codol.
+MotorNet: a musculoskeletal modeling and simulation package from Oli Codol.
 For more information on MotorNet, see the documentation:
 MotorNet: https://www.motornet.org/index.html
 

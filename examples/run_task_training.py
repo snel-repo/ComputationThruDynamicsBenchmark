@@ -2,7 +2,7 @@ import os
 
 import ray
 
-LOCAL_MODE = True  # Set to True to run locally (for debugging or RandomTarget)
+LOCAL_MODE = False  # Set to True to run locally (for debugging or RandomTarget)
 if LOCAL_MODE:
     ray.init(local_mode=True, num_gpus=0)  # Ensure no GPUs are requested
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -25,8 +25,8 @@ dotenv.load_dotenv(override=True)
 # ---------------Options---------------
 OVERWRITE = True  # Set to True to overwrite existing run
 
-RUN_DESC = "RandomTarget_NoisyGRU_Final"
-TASK = "RandomTarget"  # Task to train on (see configs/task_env for options)
+RUN_DESC = "NBFF_NoisyGRU_Final"
+TASK = "NBFF"  # Task to train on (see configs/task_env for options)
 MODEL = "NoisyGRULatentL2"  # Model to train (see configs/model for options)
 
 # ----------------- Parameter Selection -----------------------------------

@@ -10,6 +10,6 @@ latent_size: 128
 input_size: 3
 
 weight_decay: 0
-lr: 5e-3
+lr: 2e-3
 
 dropout: 0.05
