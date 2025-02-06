@@ -266,7 +266,21 @@ def get_cycle_consistency(
 
 
 def get_bps(inf_rates, true_spikes):
+    # Flatten training latent variables if necessary
+    if len(inf_rates.shape) == 3:
+        n_b_pred, n_t_pred, n_d_pred = inf_rates.shape
+        inf_rates_flat = inf_rates.reshape(-1, n_d_pred)
+    else:
+        inf_rates_flat = inf_rates
+
+    # Flatten training rates if necessary
+    if len(true_spikes.shape) == 3:
+        n_b_true, n_t_true, n_d_true = true_spikes.shape
+        true_spikes_flat = true_spikes.reshape(-1, n_d_true)
+    else:
+        true_spikes_flat = true_spikes
     bps = bits_per_spike(
-        torch.tensor(np.log(inf_rates)).float(), true_spikes.clone().detach().float()
+        torch.tensor(np.log(inf_rates_flat)).float(),
+        true_spikes_flat.clone().detach().float(),
     ).item()
     return bps

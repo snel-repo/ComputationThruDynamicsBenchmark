@@ -2,6 +2,7 @@ import io
 import pickle
 from abc import ABC, abstractmethod
 
+import h5py
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -20,18 +21,20 @@ class CPU_Unpickler(pickle.Unpickler):
             return super().find_class(module, name)
 
 
-class Analysis_DT(ABC, Analysis):
+class Analysis_DD(ABC, Analysis):
     @staticmethod
     def create(run_name, filepath, model_type="N/A"):
         if model_type == "SAE":
-            return Analysis_DT_SAE(run_name, filepath, model_type)
+            return Analysis_DD_SAE(run_name, filepath, model_type)
         elif model_type == "LFADS":
-            return Analysis_DT_LFADS(run_name, filepath, model_type)
+            return Analysis_DD_LFADS(run_name, filepath, model_type)
+        elif model_type == "External":
+            return Analysis_DD_Ext(run_name, filepath)
         else:
             raise ValueError(f"Unknown model_type: {model_type}")
 
     def __init__(self, run_name, filepath, model_type):
-        self.tt_or_dt = "dt"
+        self.tt_or_dd = "dd"
         self.run_name = run_name
         self.model_type = model_type
         self.load_wrapper(filepath)
@@ -294,29 +297,29 @@ class Analysis_DT(ABC, Analysis):
         pass
 
 
-class Analysis_DT_SAE(Analysis_DT):
+class Analysis_DD_SAE(Analysis_DD):
     def get_model_inputs(self, phase="all"):
         if phase == "all":
-            dt_train_ds = self.datamodule.train_ds
-            dt_val_ds = self.datamodule.valid_ds
-            dt_spiking = torch.cat(
-                (dt_train_ds.tensors[0], dt_val_ds.tensors[0]), dim=0
+            dd_train_ds = self.datamodule.train_ds
+            dd_val_ds = self.datamodule.valid_ds
+            dd_spiking = torch.cat(
+                (dd_train_ds.tensors[0], dd_val_ds.tensors[0]), dim=0
             )
-            dt_inputs = torch.cat((dt_train_ds.tensors[2], dt_val_ds.tensors[2]), dim=0)
+            dd_inputs = torch.cat((dd_train_ds.tensors[2], dd_val_ds.tensors[2]), dim=0)
         elif phase == "train":
-            dt_spiking = self.datamodule.train_ds.tensors[0]
-            dt_inputs = self.datamodule.train_ds.tensors[2]
+            dd_spiking = self.datamodule.train_ds.tensors[0]
+            dd_inputs = self.datamodule.train_ds.tensors[2]
         elif phase == "val":
-            dt_spiking = self.datamodule.valid_ds.tensors[0]
-            dt_inputs = self.datamodule.valid_ds.tensors[2]
+            dd_spiking = self.datamodule.valid_ds.tensors[0]
+            dd_inputs = self.datamodule.valid_ds.tensors[2]
 
-        return dt_spiking, dt_inputs
+        return dd_spiking, dd_inputs
 
     def get_model_outputs(self, phase="all"):
-        dt_spiking, dt_inputs = self.get_model_inputs(phase=phase)
-        dt_spiking = dt_spiking.to(self.model.device)
-        dt_inputs = dt_inputs.to(self.model.device)
-        log_rates, latents = self.model(dt_spiking, dt_inputs)
+        dd_spiking, dd_inputs = self.get_model_inputs(phase=phase)
+        dd_spiking = dd_spiking.to(self.model.device)
+        dd_inputs = dd_inputs.to(self.model.device)
+        log_rates, latents = self.model(dd_spiking, dd_inputs)
         return torch.exp(log_rates), latents
 
     def get_latents(self, phase="all"):
@@ -328,10 +331,10 @@ class Analysis_DT_SAE(Analysis_DT):
 
     def get_true_rates(self, phase="all"):
         if phase == "all":
-            dt_train_ds = self.datamodule.train_ds
-            dt_val_ds = self.datamodule.valid_ds
-            rates_train = dt_train_ds.tensors[6]
-            rates_val = dt_val_ds.tensors[6]
+            dd_train_ds = self.datamodule.train_ds
+            dd_val_ds = self.datamodule.valid_ds
+            rates_train = dd_train_ds.tensors[6]
+            rates_val = dd_val_ds.tensors[6]
             true_rates = torch.cat((rates_train, rates_val), dim=0)
         elif phase == "train":
             true_rates = self.datamodule.train_ds.tensors[6]
@@ -345,10 +348,10 @@ class Analysis_DT_SAE(Analysis_DT):
 
     def get_trial_lens(self, phase="all"):
         if phase == "all":
-            dt_train_ds = self.datamodule.train_ds
-            dt_val_ds = self.datamodule.valid_ds
+            dd_train_ds = self.datamodule.train_ds
+            dd_val_ds = self.datamodule.valid_ds
             trial_lens = torch.cat(
-                (dt_train_ds.tensors[3][:, -1], dt_val_ds.tensors[3][:, -1]), dim=0
+                (dd_train_ds.tensors[3][:, -1], dd_val_ds.tensors[3][:, -1]), dim=0
             )
         elif phase == "train":
             trial_lens = self.datamodule.train_ds.tensors[3][:, -1]
@@ -358,121 +361,121 @@ class Analysis_DT_SAE(Analysis_DT):
 
     def get_spiking(self, phase="all"):
         if phase == "all":
-            dt_train_ds = self.datamodule.train_ds
-            dt_val_ds = self.datamodule.valid_ds
-            dt_spiking = torch.cat(
-                (dt_train_ds.tensors[1], dt_val_ds.tensors[1]), dim=0
+            dd_train_ds = self.datamodule.train_ds
+            dd_val_ds = self.datamodule.valid_ds
+            dd_spiking = torch.cat(
+                (dd_train_ds.tensors[1], dd_val_ds.tensors[1]), dim=0
             )
         elif phase == "train":
-            dt_spiking = self.datamodule.train_ds.tensors[1]
+            dd_spiking = self.datamodule.train_ds.tensors[1]
         elif phase == "val":
-            dt_spiking = self.datamodule.valid_ds.tensors[1]
-        return dt_spiking
+            dd_spiking = self.datamodule.valid_ds.tensors[1]
+        return dd_spiking
 
 
-class Analysis_DT_LFADS(Analysis_DT):
+class Analysis_DD_LFADS(Analysis_DD):
     def get_trial_lens(self, phase="all"):
-        dt_extra = []
+        dd_extra = []
         if phase == "all":
             train_dl = self.datamodule.train_dataloader(shuffle=False)
             val_dl = self.datamodule.val_dataloader()
             for batch in train_dl:
                 # Move data to the right device
                 train_extra = batch[1][3][:, -1]
-                dt_extra.append(train_extra)
+                dd_extra.append(train_extra)
             for batch in val_dl:
                 # Move data to the right device
                 val_extra = batch[1][3][:, -1]
-                dt_extra.append(val_extra)
+                dd_extra.append(val_extra)
         elif phase == "train":
             train_dl = self.datamodule.train_dataloader(shuffle=False)
             for batch in train_dl:
                 # Move data to the right device
                 train_extra = batch[1][3][:, -1]
-                dt_extra.append(train_extra)
+                dd_extra.append(train_extra)
         elif phase == "val":
             val_dl = self.datamodule.val_dataloader()
             for batch in val_dl:
                 # Move data to the right device
                 val_extra = batch[1][3][:, -1]
-                dt_extra.append(val_extra)
-        dt_extra = torch.cat(dt_extra, dim=0)
-        return dt_extra
+                dd_extra.append(val_extra)
+        dd_extra = torch.cat(dd_extra, dim=0)
+        return dd_extra
 
     def get_model_inputs(self, phase="all"):
         if phase == "all":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             val_dataloader = self.datamodule.val_dataloader()
-            dt_spiking = []
-            dt_inputs = []
+            dd_spiking = []
+            dd_inputs = []
             for batch in train_ds:
                 # Move data to the right device
                 spiking_train = batch[0][0]
                 inputs_train = batch[0][2]
-                dt_spiking.append(spiking_train)
-                dt_inputs.append(inputs_train)
+                dd_spiking.append(spiking_train)
+                dd_inputs.append(inputs_train)
             for batch in val_dataloader:
                 # Move data to the right device
                 spiking_val = batch[0][0]
                 inputs_val = batch[0][2]
-                dt_spiking.append(spiking_val)
-                dt_inputs.append(inputs_val)
+                dd_spiking.append(spiking_val)
+                dd_inputs.append(inputs_val)
         elif phase == "train":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
-            dt_spiking = []
-            dt_inputs = []
+            dd_spiking = []
+            dd_inputs = []
             for batch in train_ds:
                 # Move data to the right device
                 spiking_train = batch[0][0]
                 inputs_train = batch[0][2]
-                dt_spiking.append(spiking_train)
-                dt_inputs.append(inputs_train)
+                dd_spiking.append(spiking_train)
+                dd_inputs.append(inputs_train)
         elif phase == "val":
             val_dataloader = self.datamodule.val_dataloader()
-            dt_spiking = []
-            dt_inputs = []
+            dd_spiking = []
+            dd_inputs = []
             for batch in val_dataloader:
                 # Move data to the right device
                 spiking_val = batch[0][0]
                 inputs_val = batch[0][2]
-                dt_spiking.append(spiking_val)
-                dt_inputs.append(inputs_val)
-        dt_spiking = torch.cat(dt_spiking, dim=0)
-        dt_inputs = torch.cat(dt_inputs, dim=0)
-        return dt_spiking, dt_inputs
+                dd_spiking.append(spiking_val)
+                dd_inputs.append(inputs_val)
+        dd_spiking = torch.cat(dd_spiking, dim=0)
+        dd_inputs = torch.cat(dd_inputs, dim=0)
+        return dd_spiking, dd_inputs
 
     def get_true_rates(self, phase="all"):
         if phase == "all":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             val_dataloader = self.datamodule.val_dataloader()
-            dt_rates = []
+            dd_rates = []
             for batch in train_ds:
                 # Move data to the right device
                 rates_train = batch[1][2]
-                dt_rates.append(rates_train)
+                dd_rates.append(rates_train)
             for batch in val_dataloader:
                 # Move data to the right device
                 rates_val = batch[1][2]
-                dt_rates.append(rates_val)
+                dd_rates.append(rates_val)
         elif phase == "train":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
-            dt_rates = []
+            dd_rates = []
             for batch in train_ds:
                 # Move data to the right device
                 rates_train = batch[1][2]
-                dt_rates.append(rates_train)
+                dd_rates.append(rates_train)
         elif phase == "val":
             val_dataloader = self.datamodule.val_dataloader()
-            dt_rates = []
+            dd_rates = []
             for batch in val_dataloader:
                 # Move data to the right device
                 rates_val = batch[1][2]
-                dt_rates.append(rates_val)
-        dt_rates = torch.cat(dt_rates, dim=0)
-        return dt_rates
+                dd_rates.append(rates_val)
+        dd_rates = torch.cat(dd_rates, dim=0)
+        return dd_rates
 
     def get_inferred_inputs(self, phase="all"):
-        dt_inf_inputs = []
+        dd_inf_inputs = []
         if phase == "all":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             val_dataloader = self.datamodule.val_dataloader()
@@ -486,7 +489,7 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_inf_inputs.append(output[4])
+                dd_inf_inputs.append(output[4])
 
             for batch in val_dataloader:
                 # Move data to the right device
@@ -497,7 +500,7 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_inf_inputs.append(output[4])
+                dd_inf_inputs.append(output[4])
         elif phase == "train":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             for batch in train_ds:
@@ -509,7 +512,7 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_inf_inputs.append(output[4])
+                dd_inf_inputs.append(output[4])
         elif phase == "val":
             val_dataloader = self.datamodule.val_dataloader()
             for batch in val_dataloader:
@@ -521,13 +524,13 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_inf_inputs.append(output[4])
-        dt_inf_inputs = torch.cat(dt_inf_inputs, dim=0)
-        return dt_inf_inputs
+                dd_inf_inputs.append(output[4])
+        dd_inf_inputs = torch.cat(dd_inf_inputs, dim=0)
+        return dd_inf_inputs
 
     def get_model_outputs(self, phase="all"):
-        dt_rates = []
-        dt_latents = []
+        dd_rates = []
+        dd_latents = []
         if phase == "all":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             val_dataloader = self.datamodule.val_dataloader()
@@ -540,8 +543,8 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_rates.append(output[0])
-                dt_latents.append(output[6])
+                dd_rates.append(output[0])
+                dd_latents.append(output[6])
 
             for batch in val_dataloader:
                 # Move data to the right device
@@ -552,8 +555,8 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_rates.append(output[0])
-                dt_latents.append(output[6])
+                dd_rates.append(output[0])
+                dd_latents.append(output[6])
         elif phase == "train":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             for batch in train_ds:
@@ -565,8 +568,8 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_rates.append(output[0])
-                dt_latents.append(output[6])
+                dd_rates.append(output[0])
+                dd_latents.append(output[6])
         elif phase == "val":
             val_dataloader = self.datamodule.val_dataloader()
             for batch in val_dataloader:
@@ -578,11 +581,11 @@ class Analysis_DT_LFADS(Analysis_DT):
                     batch_ix=None,
                     sample_posteriors=False,
                 )
-                dt_rates.append(output[0])
-                dt_latents.append(output[6])
-        dt_rates = torch.cat(dt_rates, dim=0)
-        dt_latents = torch.cat(dt_latents, dim=0)
-        return dt_rates, dt_latents
+                dd_rates.append(output[0])
+                dd_latents.append(output[6])
+        dd_rates = torch.cat(dd_rates, dim=0)
+        dd_latents = torch.cat(dd_latents, dim=0)
+        return dd_rates, dd_latents
 
     def get_rates(self, phase="all"):
         rates, _ = self.get_model_outputs(phase=phase)
@@ -599,28 +602,121 @@ class Analysis_DT_LFADS(Analysis_DT):
         if phase == "all":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
             val_dataloader = self.datamodule.val_dataloader()
-            dt_spiking = []
+            dd_spiking = []
             for batch in train_ds:
                 # Move data to the right device
                 spiking_train = batch[0][1]
-                dt_spiking.append(spiking_train)
+                dd_spiking.append(spiking_train)
             for batch in val_dataloader:
                 # Move data to the right device
                 spiking_val = batch[0][1]
-                dt_spiking.append(spiking_val)
+                dd_spiking.append(spiking_val)
         elif phase == "train":
             train_ds = self.datamodule.train_dataloader(shuffle=False)
-            dt_spiking = []
+            dd_spiking = []
             for batch in train_ds:
                 # Move data to the right device
                 spiking_train = batch[0][1]
-                dt_spiking.append(spiking_train)
+                dd_spiking.append(spiking_train)
         elif phase == "val":
             val_dataloader = self.datamodule.val_dataloader()
-            dt_spiking = []
+            dd_spiking = []
             for batch in val_dataloader:
                 # Move data to the right device
                 spiking_val = batch[0][1]
-                dt_spiking.append(spiking_val)
-        dt_spiking = torch.cat(dt_spiking, dim=0)
-        return dt_spiking
+                dd_spiking.append(spiking_val)
+        dd_spiking = torch.cat(dd_spiking, dim=0)
+        return dd_spiking
+
+
+class Analysis_DD_Ext(Analysis_DD):
+    def __init__(self, run_name, filepath):
+        self.tt_or_dd = "dd"
+        self.run_name = run_name
+        self.filepath = filepath
+
+        self.train_true_rates = None
+        self.train_true_latents = None
+        self.eval_true_rates = None
+        self.eval_true_latents = None
+
+        self.load_data(filepath)
+
+    def load_data(self, filepath):
+        with h5py.File(filepath, "r") as h5file:
+            # Check the fields
+            print(h5file.keys())
+            self.eval_rates = torch.Tensor(h5file["eval_rates"][()])
+            self.eval_latents = torch.Tensor(h5file["eval_latents"][()])
+            self.train_rates = torch.Tensor(h5file["train_rates"][()])
+            self.train_latents = torch.Tensor(h5file["train_latents"][()])
+            if "fixed_points" in h5file.keys():
+                self.fixed_points = torch.Tensor(h5file["fixed_points"][()])
+            else:
+                self.fixed_points = None
+
+    def get_latents(self, phase="all"):
+        if phase == "train":
+            return self.train_latents
+        elif phase == "val":
+            return self.eval_latents
+        else:
+            full_latents = torch.cat((self.train_latents, self.eval_latents), dim=0)
+            return full_latents
+
+    def get_rates(self, phase="all"):
+        if phase == "train":
+            return self.train_rates
+        elif phase == "val":
+            return self.eval_rates
+        else:
+            full_rates = torch.cat((self.train_rates, self.eval_rates), dim=0)
+            return full_rates
+
+    def get_true_rates(self, phase="all"):
+        if phase == "train":
+            return self.train_true_rates
+        elif phase == "val":
+            return self.eval_true_rates
+        else:
+            full_true_rates = torch.cat(
+                (self.train_true_rates, self.eval_true_rates), dim=0
+            )
+            return full_true_rates
+
+    def get_model_outputs(self, phase="all"):
+        if phase == "train":
+            return self.train_rates, self.train_latents
+        elif phase == "val":
+            return self.eval_rates, self.eval_latents
+        else:
+            return self.get_rates(), self.get_latents()
+
+    def compute_FPs(self, latents, inputs):
+        return None
+
+    def add_true_rates(self, train_true_rates, eval_true_rates):
+        self.train_true_rates = train_true_rates
+        self.eval_true_rates = eval_true_rates
+
+    def plot_fps(self):
+        if self.fixed_points is None:
+            print("No fixed points to plot")
+            return
+        fig = plt.figure(figsize=(10, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        latents = self.get_latents(phase="val")
+        fps = self.fixed_points
+        for i in range(100):
+            ax.plot(
+                latents[i, :, 0],
+                latents[i, :, 1],
+                latents[i, :, 2],
+                c="k",
+                linewidth=0.1,
+            )
+        ax.scatter(fps[:, 0], fps[:, 1], fps[:, 2], c="r")
+        ax.set_title(f"Fixed Points: {self.run_name}")
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_ylim(-0.5, 0.5)
+        ax.set_zlim(-0.5, 0.5)

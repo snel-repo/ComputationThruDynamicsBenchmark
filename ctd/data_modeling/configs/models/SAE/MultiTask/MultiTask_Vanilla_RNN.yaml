@@ -1,4 +1,4 @@
-_target_: ctd.data_modeling.models.SAE.dyn_models_RNN.RNNLatentSAE
+_target_: ctd.data_modeling.models.SAE.vanilla_rnn.RNNLatentSAE
 dataset: MultiTask
 
 encoder_size: 100

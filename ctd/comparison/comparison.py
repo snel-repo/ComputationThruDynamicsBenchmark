@@ -44,7 +44,6 @@ class Comparison:
         self,
         ref_ind=None,
         metric_list=["rate_r2", "state_r2"],
-        cycle_con_noise=None,
         cycle_con_var=0.01,
     ):
         # Get the rates, latents, and inputs
@@ -54,18 +53,53 @@ class Comparison:
             # Throw an error
             raise ValueError("No reference index provided")
         reference_analysis = self.analyses[ref_ind]
+        true_lats_train = reference_analysis.get_latents(phase="train")
+        true_lats_val = reference_analysis.get_latents(phase="val")
+
+        true_inputs_train = reference_analysis.get_inputs(phase="train")
+        true_inputs_val = reference_analysis.get_inputs(phase="val")
+
+        # If the task has unequal trial lengths, trim the trials
+        if reference_analysis.env.dataset_name == "MultiTask":
+            unequal_trial_lens = True
+            trial_lens_train = reference_analysis.get_trial_lens(phase="train")
+            trial_lens_val = reference_analysis.get_trial_lens(phase="val")
+            true_lats_list_train = []
+            true_lats_list_val = []
+            true_inputs_list_train = []
+            true_inputs_list_val = []
+            for i, t_len in enumerate(trial_lens_train):
+                true_lats_list_train.append(true_lats_train[i, :t_len, :])
+                true_inputs_list_train.append(true_inputs_train[i, :t_len, :])
+            for i, v_len in enumerate(trial_lens_val):
+                true_lats_list_val.append(true_lats_val[i, :v_len, :])
+                true_inputs_list_val.append(true_inputs_val[i, v_len, :])
+
+            true_lats_train = torch.concatenate(true_lats_list_train)
+            true_lats_val = torch.concatenate(true_lats_list_val)
+            true_inputs_train = torch.concatenate(true_inputs_list_train)
+            true_inputs_val = torch.concatenate(true_inputs_list_val)
+
+        else:
+            unequal_trial_lens = False
+
         metrics_dict = {"run_name": [], "group": []}
         for metric in metric_list:
             metrics_dict[metric] = []
+
+        # Iterate through the analyses
         for i in range(self.num_analyses):
             print("")
             print(
                 f"Working on {i+1} of {self.num_analyses}: {self.analyses[i].run_name}"
             )
-            if i == ref_ind:
+
+            if i == ref_ind:  # Skip the task-trained network
                 continue
+
             metrics_dict["run_name"].append(self.analyses[i].run_name)
             metrics_dict["group"].append(self.groups[i])
+
             n_input_neurons = self.analyses[i].get_inputs()[0].shape[-1]
             inf_rates_train, inf_latents_train = self.analyses[i].get_model_outputs(
                 phase="train"
@@ -74,8 +108,32 @@ class Comparison:
                 phase="val"
             )
             true_rates_val = self.analyses[i].get_true_rates(phase="val")
-            true_lats_train = reference_analysis.get_latents(phase="train")
-            true_lats_val = reference_analysis.get_latents(phase="val")
+            inp_spikes_val = self.analyses[i].get_spiking(phase="val")
+
+            if unequal_trial_lens:
+                inf_rates_train_list = []
+                inf_rates_val_list = []
+                inf_latents_train_list = []
+                inf_latents_val_list = []
+                true_rates_val_list = []
+                spiking_val_list = []
+
+                for j, t_len in enumerate(trial_lens_train):
+                    inf_rates_train_list.append(inf_rates_train[j, :t_len, :])
+                    inf_latents_train_list.append(inf_latents_train[j, :t_len, :])
+                for j, v_len in enumerate(trial_lens_val):
+                    inf_rates_val_list.append(inf_rates_val[j, :v_len, :])
+                    inf_latents_val_list.append(inf_latents_val[j, :v_len, :])
+                    true_rates_val_list.append(true_rates_val[j, :v_len, :])
+                    spiking_val_list.append(inp_spikes_val[j, :v_len, :])
+
+                inf_rates_train = torch.concatenate(inf_rates_train_list)
+                inf_latents_train = torch.concatenate(inf_latents_train_list)
+                inf_rates_val = torch.concatenate(inf_rates_val_list)
+                inf_latents_val = torch.concatenate(inf_latents_val_list)
+                true_rates_val = torch.concatenate(true_rates_val_list)
+                inp_spikes_val = torch.concatenate(spiking_val_list)
+
             # Check that latents arenot NaN
             if np.isnan(inf_latents_train.detach().numpy()).any():
                 continue
@@ -97,17 +155,25 @@ class Comparison:
                     print(f"Recon R2: {recon_r2}")
                     metrics_dict["recon_r2"].append(recon_r2)
                 elif metric == "input_r2":
+                    inf_inputs_train = self.analyses[i].get_inferred_inputs(
+                        phase="train"
+                    )
+                    inf_inputs_val = self.analyses[i].get_inferred_inputs(phase="val")
+                    if unequal_trial_lens:
+                        inf_inputs_train_list = []
+                        inf_inputs_val_list = []
+                        for i, t_len in enumerate(trial_lens_train):
+                            inf_inputs_train_list.append(inf_inputs_train[i, :t_len, :])
+                        for i, v_len in enumerate(trial_lens_val):
+                            inf_inputs_val_list.append(inf_inputs_val[i, :v_len, :])
+                        inf_inputs_train = torch.concatenate(inf_inputs_train_list)
+                        inf_inputs_val = torch.concatenate(inf_inputs_val_list)
+
                     input_r2 = get_signal_r2_linear(
-                        signal_true_train=self.analyses[ref_ind].get_inputs(
-                            phase="train"
-                        ),
-                        signal_pred_train=self.analyses[i].get_inferred_inputs(
-                            phase="train"
-                        ),
-                        signal_true_val=self.analyses[ref_ind].get_inputs(phase="val"),
-                        signal_pred_val=self.analyses[i].get_inferred_inputs(
-                            phase="val"
-                        ),
+                        signal_true_train=true_inputs_train,
+                        signal_pred_train=inf_inputs_train,
+                        signal_true_val=true_inputs_val,
+                        signal_pred_val=inf_inputs_val,
                     )
                     print(f"Input R2: {input_r2}")
                     metrics_dict["input_r2"].append(input_r2)
@@ -121,10 +187,8 @@ class Comparison:
                     print(f"State R2: {state_r2}")
                     metrics_dict["state_r2"].append(state_r2)
                 elif metric in ["co-bps"]:
-                    inf_rates_co = inf_rates_val[:, :, n_input_neurons:]
-                    spiking_co = self.analyses[i].get_spiking(phase="val")[
-                        :, :, n_input_neurons:
-                    ]
+                    inf_rates_co = inf_rates_val[..., n_input_neurons:]
+                    spiking_co = inp_spikes_val[..., n_input_neurons:]
                     bps = get_bps(
                         inf_rates=inf_rates_co.detach().numpy(),
                         true_spikes=spiking_co,
@@ -145,178 +209,6 @@ class Comparison:
                     raise ValueError("Invalid metric")
 
         return metrics_dict
-
-    def compare_rate_state_r2(
-        self,
-        ref_ind=None,
-        label_runs=False,
-        label_groups=True,
-        phase="val",
-        plot_dict={},
-    ):
-        if "save_pdf" in plot_dict:
-            save_pdf = plot_dict["save_pdf"]
-        else:
-            save_pdf = False
-        if "ax_lim" in plot_dict:
-            ax_lim = plot_dict["ax_lim"]
-        else:
-            ax_lim = None
-        if "marker" in plot_dict:
-            marker = plot_dict["marker"]
-        else:
-            marker = "o"
-        # Function to compare the latent activity
-        if ref_ind is None:
-            ref_ind = self.ref_ind
-        if ref_ind is None and self.ref_ind is None:
-            # Throw an error
-            raise ValueError("No reference index provided")
-        reference_analysis = self.analyses[ref_ind]
-        rate_state_mat = np.zeros((self.num_analyses, 2))
-        true_lats = reference_analysis.get_latents(phase=phase)
-        is_multitask = reference_analysis.env.dataset_name == "MultiTask"
-        if is_multitask:
-            trial_lens = self.analyses[1].get_trial_lens(phase=phase)
-            # Stack the latents to the different trial lengths
-            true_lats_stack = []
-            for i in range(trial_lens.shape[0]):
-                true_lats_stack.append(true_lats[i, : int(trial_lens[i]), :])
-            true_lats = torch.vstack(true_lats_stack)
-
-        for i in range(self.num_analyses):
-            print(
-                f"Working on {i+1} of {self.num_analyses}: {self.analyses[i].run_name}"
-            )
-            print(f"Group: {self.groups[i]}")
-            if i == ref_ind:
-                continue
-            rates, latents = self.analyses[i].get_model_outputs(phase=phase)
-            true_rates = self.analyses[i].get_true_rates(phase=phase)
-
-            rates_stack = []
-            latents_stack = []
-            true_rates_stack = []
-
-            # If multitask (with different trial lengths)
-            if is_multitask:
-                trial_lens = self.analyses[i].get_trial_lens(phase=phase)
-                # Stack the latents to the different trial lengths
-                for j in range(latents.shape[0]):
-                    latents_stack.append(latents[j, : int(trial_lens[j]), :])
-                    rates_stack.append(rates[j, : int(trial_lens[j]), :])
-                    true_rates_stack.append(true_rates[j, : int(trial_lens[j]), :])
-                rates = torch.vstack(rates_stack)
-                latents = torch.vstack(latents_stack)
-                true_rates = torch.vstack(true_rates_stack)
-
-            # Check that latents arenot NaN
-            if np.isnan(latents.detach().numpy()).any():
-                continue
-
-            # Compute the rate R2 and state R2
-            rate_state_mat[i, 0] = get_signal_r2(
-                signal_true=true_rates,
-                signal_pred=rates,
-            )
-            rate_state_mat[i, 1] = get_signal_r2_linear(
-                signal_true=true_lats,
-                signal_pred=latents,
-            )
-            print(f"Rate R2: {rate_state_mat[i, 0]}")
-            print(f"State R2: {rate_state_mat[i, 1]}")
-
-        # Sort results by the groups
-        num_groups = len(np.unique(self.groups))
-        colors = plt.cm.get_cmap("tab10", num_groups)
-        color_inds = np.array(
-            [np.where(np.unique(self.groups) == group)[0][0] for group in self.groups]
-        )
-
-        # Plot the results
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        for i in range(self.num_analyses):
-            if i != ref_ind:
-                ax.scatter(
-                    rate_state_mat[i, 0],
-                    rate_state_mat[i, 1],
-                    color=colors(color_inds[i]),
-                    marker=marker,
-                )
-                if label_runs:
-                    ax.text(
-                        rate_state_mat[i, 0],
-                        rate_state_mat[i, 1],
-                        self.analyses[i].run_name,
-                    )
-        if label_groups:
-            for i in range(num_groups):
-                ax.scatter(
-                    [],
-                    [],
-                    color=colors(i),
-                    label=np.unique(self.groups)[i],
-                    marker=marker,
-                )
-            ax.legend()
-        bool_idx = np.arange(self.num_analyses) != ref_ind
-        min_val = np.min(rate_state_mat[bool_idx]) - 0.2
-        max_val = np.max(rate_state_mat[bool_idx]) + 0.2
-        max_val = np.min([max_val, 1.05])
-        min_val = np.max([min_val, -1.05])
-        if ax_lim is not None:
-            min_val = ax_lim[0]
-            max_val = ax_lim[1]
-        ax.set_xlim([min_val, max_val])
-        ax.set_ylim([min_val, max_val])
-        ax.plot([min_val, max_val], [min_val, max_val], "k--")
-        # Square axis
-        ax.set_aspect("equal", adjustable="box")
-        ax.set_xlabel("Rate R2 ")
-        ax.set_ylabel("State R2 ")
-        ax.set_title(f"Rate-State R2 ({self.comparison_tag})")
-        if save_pdf:
-            plt.savefig(f"{self.comparison_tag}_rate_state_r2.pdf")
-        return rate_state_mat
-
-    def compare_to_reference_affine(self, ref_ind=None, num_pcs=4):
-        # Function to compare the latent activity
-        if ref_ind is None:
-            ref_ind = self.ref_ind
-        if ref_ind is None and self.ref_ind is None:
-            # Throw an error
-            raise ValueError("No reference index provided")
-        reference_analysis = self.analyses[ref_ind]
-        rate_state_mat = np.zeros((self.num_analyses, 2))
-        for i in range(self.num_analyses):
-            if i == ref_ind:
-                continue
-            rate_state_mat[i, 0] = get_signal_r2_linear(
-                reference_analysis.get_latents(phase="val"),
-                self.analyses[i].get_latents(phase="val"),
-            )
-            rate_state_mat[i, 1] = get_signal_r2_linear(
-                reference_analysis.get_latents(),
-                self.analyses[i].get_latents(),
-            )
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        for i in range(self.num_analyses):
-            if i != ref_ind:
-                ax.scatter(rate_state_mat[i, 0], rate_state_mat[i, 1])
-                ax.text(
-                    rate_state_mat[i, 0],
-                    rate_state_mat[i, 1],
-                    self.analyses[i].run_name,
-                )
-
-        ax.set_xlim([-0.05, 1.05])
-        ax.set_ylim([-0.05, 1.05])
-        ax.set_title("Latent Similarity (Affine matching)")
-        ax.set_xlabel("Model captures Reference (~ Rate R2)")
-        ax.set_ylabel("Reference captures Model (~ State R2)")
 
     def compare_dynamics_DSA(
         self,
@@ -644,7 +536,7 @@ class Comparison:
         fig = plt.figure(figsize=(10, 10))
         rates_list = []
         r2_vals = []
-        dt_names = []
+        dd_names = []
         for i in range(self.num_analyses):
             if i == ref_ind:
                 continue
@@ -658,11 +550,11 @@ class Comparison:
                     multioutput="raw_values",
                 )
             )
-            dt_names.append(self.analyses[i].run_name)
+            dd_names.append(self.analyses[i].run_name)
 
         rates = np.stack(rates_list)
         axes = fig.subplots(len(neuron_list), len(trial_list))
-        for i in range(len(dt_names)):
+        for i in range(len(dd_names)):
             for j in range(len(neuron_list)):
                 for k in range(len(trial_list)):
                     if i == 0:
@@ -674,10 +566,10 @@ class Comparison:
 
                     axes[j, k].plot(
                         rates[i, trial_list[k], :, neuron_list[j]],
-                        label=f"{dt_names[i]} Pred",
+                        label=f"{dd_names[i]} Pred",
                     )
 
-                    if i == len(dt_names) - 1:
+                    if i == len(dd_names) - 1:
                         axes[j, k].set_xlabel("Time")
                     else:
                         axes[j, k].set_xticks([])
@@ -688,7 +580,7 @@ class Comparison:
                         axes[j, k].text(
                             0.5,
                             0.9 - 0.05 * i,
-                            f"{dt_names[i]} R2: {r2_vals[i][neuron_list[j]]:.2f}",
+                            f"{dd_names[i]} R2: {r2_vals[i][neuron_list[j]]:.2f}",
                             horizontalalignment="center",
                             verticalalignment="center",
                             transform=axes[j, k].transAxes,
@@ -764,12 +656,12 @@ class Comparison:
         axes = fig.subplots(self.num_analyses, num_pcs)
         for i in range(self.num_analyses):
             latents = self.analyses[i].get_latents(phase="val").detach().numpy()
-            pca_DT = PCA()
+            pca_DD = PCA()
 
             lats_flat = latents.reshape(
                 latents.shape[0] * latents.shape[1], latents.shape[2]
             )
-            lats_pca_flat = pca_DT.fit_transform(lats_flat)
+            lats_pca_flat = pca_DD.fit_transform(lats_flat)
 
             reg = LinearRegression().fit(ref_lats_pca_flat, lats_pca_flat)
             pred_latents_pca_flat = reg.predict(ref_lats_pca_flat)
@@ -784,7 +676,7 @@ class Comparison:
                     axes[i, j].plot(
                         pred_latents_pca[0, :, j], c="r", label="Predicted from TT"
                     )
-                    axes[i, j].plot(lats_pca[0, :, j], c="k", label="True from DT")
+                    axes[i, j].plot(lats_pca[0, :, j], c="k", label="True from DD")
                     axes[i, j].set_title(f"R2: {r2_scores[j]:.2f}")
                 else:
                     axes[i, j].plot(

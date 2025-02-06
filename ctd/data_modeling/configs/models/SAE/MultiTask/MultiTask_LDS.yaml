@@ -1,4 +1,4 @@
-_target_: ctd.data_modeling.models.SAE.LDS.LDSSAE
+_target_: ctd.data_modeling.models.SAE.lds.LDSSAE
 dataset: MultiTask
 
 encoder_size: 100

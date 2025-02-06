@@ -1,4 +1,4 @@
-_target_: ctd.data_modeling.models.SAE.dyn_models.NODELatentSAE
+_target_: ctd.data_modeling.models.SAE.node.NODELatentSAE
 dataset: RandomTarget
 
 encoder_size: 100

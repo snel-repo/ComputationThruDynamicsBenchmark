@@ -22,11 +22,11 @@ class TemplateSAE(pl.LightningModule):
         #           containing the input to the model (if provided)
         #
         # Returns:
-        # rates: Tensor of shape (batch_size, seq_len, input_size)
+        # log_rates: Tensor of shape (batch_size, seq_len, input_size)
         #       containing the predicted log-firing rates (log if Poisson Loss is used)
         # latents: Tensor of shape (batch_size, seq_len, latent_size)
         #           containing the hidden state of the model
-        # return rates, latents
+        # return log_rates, latents
         pass
 
     def configure_optimizers(self):

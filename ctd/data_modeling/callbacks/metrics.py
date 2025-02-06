@@ -56,9 +56,13 @@ def bits_per_spike(preds, targets):
     Computes BPS for n_samples x n_timesteps x n_neurons arrays.
     Preds are logrates and targets are binned spike counts.
     """
+    if len(preds.shape) == 3:
+        dim = (0, 1)
+    elif len(preds.shape) == 2:
+        dim = 0
     nll_model = poisson_nll_loss(preds, targets, full=True, reduction="sum")
     nll_null = poisson_nll_loss(
-        torch.mean(targets, dim=(0, 1), keepdim=True),
+        torch.mean(targets, dim=dim, keepdim=True),
         targets,
         log_input=False,
         full=True,

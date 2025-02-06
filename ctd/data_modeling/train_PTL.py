@@ -59,23 +59,6 @@ def train_PTL(
             )
 
     # Handle special parameters
-    if "params.obs_dim" in overrides:
-        obs_dim = overrides["params.obs_dim"]
-        config_all["datamodule"]["obs_dim"] = obs_dim
-        config_all["model"]["heldin_size"] = obs_dim
-        config_all["model"]["heldout_size"] = obs_dim
-
-    if "params.lr_all" in overrides:
-        lr_all = overrides["params.lr_all"]
-        config_all["model"]["lr_readout"] = lr_all
-        config_all["model"]["lr_encoder"] = lr_all
-        config_all["model"]["lr_decoder"] = lr_all
-
-    if "params.decay_all" in overrides:
-        decay_all = overrides["params.decay_all"]
-        config_all["model"]["decay_readout"] = decay_all
-        config_all["model"]["decay_encoder"] = decay_all
-        config_all["model"]["decay_decoder"] = decay_all
     if "params.seed" in overrides:
         seed = overrides["params.seed"]
         pl.seed_everything(seed, workers=True)

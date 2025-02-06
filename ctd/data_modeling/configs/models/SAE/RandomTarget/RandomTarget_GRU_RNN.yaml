@@ -1,4 +1,4 @@
-_target_: ctd.data_modeling.models.SAE.dyn_models_GRU.GRULatentSAE
+_target_: ctd.data_modeling.models.SAE.gru_rnn.GRULatentSAE
 dataset: RandomTargetDelay
 
 encoder_size: 100

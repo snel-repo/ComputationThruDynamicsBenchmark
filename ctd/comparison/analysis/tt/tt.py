@@ -50,6 +50,7 @@ class Analysis_TT(Analysis):
         self.n_trials = n_train + n_val
         self.train_inds = range(0, int(0.8 * self.n_trials))
         self.valid_inds = range(int(0.8 * self.n_trials), self.n_trials)
+        self.trim_inds = self.simulator.trim_inds
 
     def get_inputs(self, phase="all"):
         train_ds = self.datamodule.train_ds
@@ -150,11 +151,17 @@ class Analysis_TT(Analysis):
 
     def get_latents(self, phase="all"):
         out_dict = self.get_model_outputs(phase=phase)
-        return out_dict["latents"]
+        if self.trim_inds is not None:
+            return out_dict["latents"][:, self.trim_inds[0] - 1 : self.trim_inds[1], :]
+        else:
+            return out_dict["latents"]
 
     def get_latents_noiseless(self, phase="all"):
         out_dict = self.get_model_outputs_noiseless(phase=phase)
-        return out_dict["latents"]
+        if self.trim_inds is not None:
+            return out_dict["latents"][:, self.trim_inds[0] - 1 : self.trim_inds[1], :]
+        else:
+            return out_dict["latents"]
 
     def get_latents_pca(self, num_PCs=3):
         latents = self.get_latents()
@@ -427,3 +434,23 @@ class Analysis_TT(Analysis):
         ax2.set_yticks([50, 90, 95, 99])
         plt.savefig(f"{HOME_DIR}/scree_plot.png")
         return pca.explained_variance_ratio_
+
+    def get_trial_lens(self, phase="val"):
+        if self.env.dataset_name != "MultiTask":
+            raise NotImplementedError(
+                f"get_trial_lens not implemented for '{self.env.dataset_name}'."
+            )
+        phase_dict = self.datamodule.extra_data["phase_dict"]
+        train_inds = self.datamodule.train_ds.tensors[3].detach().numpy().astype(int)
+        valid_inds = self.datamodule.valid_ds.tensors[3].detach().numpy().astype(int)
+        len_list = []
+        if phase == "val":
+            inds = valid_inds
+        elif phase == "train":
+            inds = train_inds
+        elif phase == "all":
+            inds = np.vstack((train_inds, valid_inds))
+        for i in inds:
+            len_list.append(phase_dict[i]["response"][1])
+
+        return len_list
