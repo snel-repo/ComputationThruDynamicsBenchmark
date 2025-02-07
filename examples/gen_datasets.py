@@ -58,7 +58,7 @@ if not os.path.exists(path_RandomTarget):
     )
 
 # Generate simulated datasets
-dataset_path = HOME_DIR + "content/datasets/dt/"
+dataset_path = HOME_DIR + "content/datasets/dd/"
 
 tt_3bff.simulate_neural_data(
     subfolder="max_epochs=500 n_samples=1000 latent_size=64 seed=0 learning_rate=0.001",

@@ -268,9 +268,9 @@ class NeuralDataSimulator:
         valid_inds = range(int(0.8 * n_trials), n_trials)
 
         # Generate the filepath
-        dt_folder = run_tag
+        dd_folder = run_tag
 
-        folder_path = os.path.join(dataset_path, dt_folder, subfolder)
+        folder_path = os.path.join(dataset_path, dd_folder, subfolder)
         n_heldin = self.neuron_dict["n_neurons_heldin"]
         n_heldout = self.neuron_dict["n_neurons_heldout"]
         total_neurons = n_heldin + n_heldout

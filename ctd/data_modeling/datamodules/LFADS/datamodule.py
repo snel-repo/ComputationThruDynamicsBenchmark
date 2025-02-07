@@ -136,7 +136,7 @@ class BasicDataModule(pl.LightningDataModule):
         dm_ic_enc_seq_len: int = 0,
         provide_inputs: bool = True,
         file_index: int = 0,
-        dt_stim: str = "dt",
+        dd_stim: str = "dd",
     ):
         assert (
             reshuffle_tv_seed is None or len(attr_keys) == 0
@@ -147,7 +147,7 @@ class BasicDataModule(pl.LightningDataModule):
         self.neuron_dict = neuron_dict
         self.embed_dict = embed_dict
         self.noise_dict = noise_dict
-        data_dir = os.path.join(HOME_DIR, "content", "datasets", dt_stim)
+        data_dir = os.path.join(HOME_DIR, "content", "datasets", dd_stim)
         fpath = os.path.join(data_dir, filedir)
         dirs = os.listdir(fpath)
         if file_index >= len(dirs):

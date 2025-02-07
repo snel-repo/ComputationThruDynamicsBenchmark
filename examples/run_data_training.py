@@ -25,11 +25,11 @@ LOCAL_MODE = False
 OVERWRITE = True
 WANDB_LOGGING = True  # If users have a WandB account
 
-RUN_DESC = "NBFF_Vanilla_test"  # Description of the run
+RUN_DESC = "MT_LFADS"  # Description of the run
 NUM_SAMPLES = 1
-MODEL_CLASS = "SAE"  # "LFADS" or "SAE"
-MODEL = "Vanilla_RNN"  # "ResLFADS" or "LFADS"
-DATA = "NBFF"  # "NBFF", "RandomTarget" or "MultiTask
+MODEL_CLASS = "LFADS"  # "LFADS" or "SAE"
+MODEL = "LFADS"  # "ResLFADS" or "LFADS"
+DATA = "MultiTask"  # "NBFF", "RandomTarget" or "MultiTask
 INFER_INPUTS = False
 
 if DATA == "NBFF":
@@ -43,7 +43,7 @@ elif DATA == "RandomTarget":
 # -------------------------------------
 SEARCH_SPACE = {
     "datamodule.prefix": tune.grid_search([prefix]),
-    "model.latent_size": tune.grid_search([64]),
+    # "model.latent_size": tune.grid_search([64]),
     "trainer.max_epochs": tune.grid_search([10]),
     "params.seed": tune.grid_search([0]),
 }
@@ -96,7 +96,7 @@ RUN_TAG = f"{DATE_STR}_{RUN_DESC}"
 RUNS_HOME = Path(HOME_DIR)
 RUN_DIR = HOME_DIR / "content" / "runs" / "data-trained" / RUN_TAG
 path_dict = dict(
-    dt_datasets=HOME_DIR / "content" / "datasets" / "dt",
+    dd_datasets=HOME_DIR / "content" / "datasets" / "dd",
     trained_models=HOME_DIR / "content" / "trained_models" / "task-trained" / prefix,
 )
 
