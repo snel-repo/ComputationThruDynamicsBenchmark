@@ -10,7 +10,7 @@ from ctd.comparison.analysis.tt.tt import Analysis_TT
 from ctd.comparison.fixedpoints import find_fixed_points, find_fixed_points_coupled
 
 
-class TT_RandomTarget(Analysis_TT):
+class Analysis_TT_RandomTarget(Analysis_TT):
     def __init__(self, run_name, filepath):
         # initialize superclass
         super().__init__(run_name, filepath)

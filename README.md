@@ -12,10 +12,10 @@ We recommend using Conda to run this code. Unfortunately, Ray support for Window
 To create an environment and install the dependencies of the project, run the following commands:
 
 ```
-git clone https://github.com/snel-repo/ComputationThruDynamicsBenchmark.git
+git clone https://github.com/snel-repo/ComputationThroughDynamicsBenchmark.git
 conda create --name CtDEnv python=3.10
 conda activate CtDEnv
-cd ComputationThruDynamicsBenchmark
+cd ComputationThroughDynamicsBenchmark
 pip install -e .
 
 ```
@@ -49,24 +49,24 @@ Each uses ray, hydra, and PyTorch Lightning to handle hyperparameter sweeps and 
 
 There are three tasks implemented, ranging from simple to complex:
 1. NBFF: An extension of the 3-bit Flip-Flop from OTBB, this can be extended into higher dimensions for more complex dynamics.
-2. MultiTask: A version of the task used in recent papers by Yang and Driscoll, this task combines 15 simple cognitive tasks into a single task to look at how dynamical motifs can generalize across tasks.
+2. MultiTask: A version of the task used in recent papers by Yang and Driscoll, this task combines 15 simple cognitive tasks into a single task to look at how dynamical motifs can generalize.
 3. RandomTarget: A musculoskeletal modeling and control engine (MotorNet) that we use to simulate a delayed RandomTarget reaching task (Codol et al.)
 
 ## Quick-Start:
 To get an overview of the major components of the code-base, only three scripts are necessary:
 1. examples/run_task_training.py
 2. examples/run_data_training.py
-3. examples/compare_tt_dt_models.py
+3. examples/compare_tt_dd_models.py
 
 Before running these scripts, you will need to modify the HOME_DIR variable in your .env file to a location where you'd like to save the outputs of the runs (datasets, logging info, trained models).
 
-run_task_training trains a simple GRU to perform a 3-Bit Flip-Flop task. The default parameters can be seen in the task_modeling/configs/ folder. Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/dt/. To train a data-trained model on those simulated data, you just need to modify "prefix" in run_data_training.py to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
+run_task_training trains a simple GRU to perform a 3-Bit Flip-Flop task. The default parameters can be seen in the task_modeling/configs/ folder. Once run_task_training.py is finished training, it will save a simulated spiking dataset in HOME_DIR/content/dataset/dd/. To train a data-trained model on those simulated data, you just need to modify "prefix" in run_data_training.py to whatever folder name is saved, typically in the form "yyyyMMdd_RUN_DESC..." Only the yyyyMMdd_RUN_DESC should be included in the prefix.
 
 If there is more than one simulated dataset (i.e., if you did a hyperparameter sweep of task-trained models), data_training just takes the first folder in the directory unless you pass in a "file_index" parameter into the datamodule to select a different simulated dataset.
 
 Once run_data_training.py is complete, it will save a trained model and the datamodule as .pkl files. These pickle files can be loaded into analysis objects that have automated functions to compare models, perform fixed-point analyses, etc.
 
-After both task-trained and data-trained models have been run, modify the dt_path and tt_path in compare_tt_dt_models.py to plot some basic comparisons and fixed-point analyses on the trained models!
+After both task-trained and data-trained models have been run, modify the dd_path and tt_path in compare_tt_dd_models.py to plot some basic comparisons and fixed-point analyses on the trained models!
 
 ## Overview of major components:
 ### Task-Training:
@@ -86,7 +86,7 @@ The "train" versions are what is being used to train the task-trained models, wh
 ### Simulation:
 The simulator's instance variables contains the parameters for the neural data simulation. There are options to change the noise model for the simulation, change the number of simulated neurons, and whether to embed the latent activity onto a non-linear manifold prior to sampling spiking activity (experimental).
 
-The main method for this object is "simulate_neural_data", which takes in a trained model, a datamodule with the trials to simulate neural activity from, the run tag, path variables, and a random seed. This method saves an h5 file of spiking activity (along with other variables that might be needed for training, e.g., inputs etc.) in the "content/datasets/dt/" folder.
+The main method for this object is "simulate_neural_data", which takes in a trained model, a datamodule with the trials to simulate neural activity from, the run tag, path variables, and a random seed. This method saves an h5 file of spiking activity (along with other variables that might be needed for training, e.g., inputs etc.) in the "content/datasets/dd/" folder.
 
 ### Data-Training:
 Runs with either a generic SAE or LFADS models (currently). Whether to use a generic SAE or LFADS is controlled by the MODEL_CLASS variable.
@@ -109,7 +109,6 @@ chrissversteeg@gmail.com for questions/concerns!
 Thanks to a lot of people, including:
 Advisory members:
 - David Sussillo
-- Srdjan Ostojic
 - Scott Linderman
 - Chethan Pandarinath
 
@@ -123,3 +122,5 @@ For help with code:
 - Oli Codol
 - Clay Washington
 - Domenick Mifsud
+
+We'd also like to acknowledge Srdjan Ostojic for their helpful insight in early stages of this project.
